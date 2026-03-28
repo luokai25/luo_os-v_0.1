@@ -31,3 +31,34 @@ Every tool, every feature, forever free. No paywalls. No limits.
 
 ## Status
 🚧 v0.1 — In active development
+
+## How to Run Luo OS v0.1
+
+### Requirements
+```bash
+pip install tkinter
+```
+
+### Launch
+```bash
+python3 luo_os.py
+```
+
+### Boot Modes
+- **Human Mode** — Full GUI desktop
+- **AI Agent Mode** — AI core terminal
+- **Safe Mode** — Minimal shell
+
+## File Structure
+```
+luo_os-v_0.1/
+├── luo_os.py        ← Main launcher (start here)
+├── kernel/          ← Kernel config
+├── ui/              ← Desktop GUI
+├── ai_core/         ← Local AI daemon
+├── compat/          ← Windows/Android compat
+├── shell/           ← Luo shell
+├── drivers/         ← Hardware drivers
+├── apps/            ← Built-in free apps
+└── docs/            ← Architecture + roadmap
+```
