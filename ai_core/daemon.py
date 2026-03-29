@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Luo OS AI Core Daemon v0.2 — Powered by TinyLlama via Ollama
-Local AI agent built into the OS — created by Luo Kai (luokai25)
+Luo OS AI Core Daemon v0.3 — With Memory
+Powered by TinyLlama via Ollama + persistent memory
+Created by Luo Kai (luokai25)
 """
 
 import os
@@ -10,24 +11,28 @@ import subprocess
 import urllib.request
 import urllib.error
 from datetime import datetime
+from memory import remember, recall, get_context, learn_fact, get_fact, stats
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 MODEL = "tinyllama"
 
 SYSTEM_PROMPT = """You are Luo AI, the intelligent core of Luo OS.
-Created by Luo Kai. Be concise. Max 2 sentences per response."""
+Created by Luo Kai. You have memory of past conversations.
+Be concise. Max 2 sentences per response."""
 
 class LuoAI:
     def __init__(self):
         self.name = "Luo AI"
-        self.version = "0.2"
-        self.memory = []
+        self.version = "0.3"
         self.running = True
         print(f"╔══════════════════════════════════════╗")
         print(f"║   LUO OS — AI Core v{self.version}              ║")
-        print(f"║   Powered by TinyLlama (local)       ║")
+        print(f"║   Powered by TinyLlama + Memory      ║")
         print(f"║   Free for Humans & AI Agents        ║")
         print(f"╚══════════════════════════════════════╝")
+        s = stats()
+        print(f"[Memory] {s['total_conversations']} past conversations loaded")
+        print(f"[Memory] {s['total_facts']} facts stored\n")
 
     def check_ollama(self):
         try:
@@ -37,11 +42,9 @@ class LuoAI:
             return False
 
     def think(self, user_input):
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        self.memory.append({"time": timestamp, "input": user_input})
-
-        # Short prompt to keep inference fast
-        prompt = f"{SYSTEM_PROMPT}\nUser: {user_input}\nLuo AI:"
+        # Get memory context
+        context = get_context(limit=5)
+        prompt = f"{SYSTEM_PROMPT}\n\nPast conversations:\n{context}\n\nUser: {user_input}\nLuo AI:" if context else f"{SYSTEM_PROMPT}\n\nUser: {user_input}\nLuo AI:"
 
         payload = json.dumps({
             "model": MODEL,
@@ -52,7 +55,7 @@ class LuoAI:
                 "temperature": 0.7,
                 "num_ctx": 512
             }
-        }).encode("utf-8")
+        }).encode()
 
         try:
             req = urllib.request.Request(
@@ -62,21 +65,42 @@ class LuoAI:
                 method="POST"
             )
             with urllib.request.urlopen(req, timeout=180) as r:
-                result = json.loads(r.read().decode("utf-8"))
-                return result.get("response", "...").strip()
-        except urllib.error.URLError as e:
-            return f"[Error] {e}"
+                result = json.loads(r.read().decode())
+                response = result.get("response", "").strip()
+                remember(user_input, response)
+                return response
         except Exception as e:
             return f"[Error] {e}"
 
+    def handle_special(self, text):
+        t = text.lower().strip()
+        if t == "memory stats":
+            s = stats()
+            return f"Conversations: {s['total_conversations']} | Facts: {s['total_facts']}"
+        elif t.startswith("remember that "):
+            parts = text[14:].split(" is ", 1)
+            if len(parts) == 2:
+                learn_fact(parts[0].strip(), parts[1].strip())
+                return f"Got it! I'll remember that {parts[0].strip()} is {parts[1].strip()}"
+        elif t.startswith("what is "):
+            key = text[8:].strip()
+            fact = get_fact(key)
+            if fact:
+                return f"{key} is {fact['value']}"
+        elif t == "recall":
+            memories = recall(limit=3)
+            if not memories:
+                return "No memories yet."
+            return "\n".join([f"- {m['user']}" for m in memories])
+        return None
+
     def run(self):
-        if self.check_ollama():
-            print(f"[Luo AI] Ollama connected ✅ — Model: {MODEL}")
-        else:
-            print(f"[Luo AI] ⚠️  Start Ollama first: ollama serve &")
+        if not self.check_ollama():
+            print("[Luo AI] ⚠️  Start Ollama: ollama serve &")
             return
 
-        print(f"[Luo AI] Ready. First response may take 30-60 seconds on CPU.\n")
+        print(f"[Luo AI] Ollama connected ✅ — Model: {MODEL}")
+        print(f"[Luo AI] Ready. Type 'memory stats', 'recall', or 'exit'\n")
 
         while self.running:
             try:
@@ -84,13 +108,17 @@ class LuoAI:
                 if not user_input:
                     continue
                 if user_input.lower() == "exit":
-                    print("[Luo AI] Goodbye.")
+                    print("[Luo AI] Goodbye. Your conversation is saved.")
                     break
-                print(f"[Luo AI] Thinking (please wait)...")
+                special = self.handle_special(user_input)
+                if special:
+                    print(f"Luo AI → {special}\n")
+                    continue
+                print("[Luo AI] Thinking...")
                 response = self.think(user_input)
                 print(f"Luo AI → {response}\n")
             except KeyboardInterrupt:
-                print("\n[Luo AI] Interrupted.")
+                print("\n[Luo AI] Memory saved. Goodbye.")
                 break
 
 if __name__ == "__main__":
