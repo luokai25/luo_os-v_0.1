@@ -1,6 +1,6 @@
 # ⚡ Luo OS v0.1
 ### An Open Source Operating System for Humans and AI Agents
-*Built by Abd El-Rahman Abbas (Mr. Kai) — [@luokai25](https://github.com/luokai25)*
+*built by luokai [@luokai25](https://github.com/luokai25)*
 
 > AI is not an app here. It is part of the OS itself.
 
@@ -104,4 +104,4 @@ luo.memory_write("connected to Luo OS")
 
 ---
 
-*Built by Abd El-Rahman Abbas (Mr. Kai) — Cairo, Egypt*
+*Built by luokai*
