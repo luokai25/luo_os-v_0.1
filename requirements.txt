@@ -1,0 +1,17 @@
+# Luo OS — Python Dependencies
+# Install: pip install -r requirements.txt
+
+# Terminal UI
+textual>=0.47.0
+
+# Vector memory
+chromadb>=0.4.0
+
+# Process management
+supervisor>=4.2.0
+
+# AI / agent frameworks
+langchain-core>=0.1.0
+
+# Utilities (stdlib only — no extra deps needed for core)
+# All other deps use Python stdlib: json, socket, subprocess, threading, pathlib
