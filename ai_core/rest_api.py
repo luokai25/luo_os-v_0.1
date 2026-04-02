@@ -1,24 +1,19 @@
 #!/usr/bin/env python3
-"""
-Luo OS REST API — Port 7071
-HTTP-based API for humans and AI agents
-Created by Luo Kai (luokai25)
-"""
-
-import json
-import os
-import subprocess
-import urllib.request
+"""Luo OS REST API v0.2 — Port 8080"""
+import json, os, sys, subprocess, urllib.request
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 from datetime import datetime
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from ai_core.agent_identity import LuoIdentity
 
-VERSION = "0.1"
+VERSION = "0.2"
+PORT    = 8080
 
 class LuoRESTHandler(BaseHTTPRequestHandler):
-
-    def log_message(self, format, *args):
-        print(f"[Luo REST] {datetime.now().strftime('%H:%M:%S')} {args[0]} {args[1]}")
-
+    def log_message(self, fmt, *args):
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] REST {args[0]} {args[1]}")
     def send_json(self, data, code=200):
         body = json.dumps(data, indent=2).encode()
         self.send_response(code)
@@ -27,157 +22,102 @@ class LuoRESTHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(body)
-
-    def do_GET(self):
-        path = self.path.rstrip("/")
-
-        if path == "" or path == "/":
-            self.send_json({
-                "name": "Luo OS REST API",
-                "version": VERSION,
-                "creator": "Luo Kai (luokai25)",
-                "free": True,
-                "endpoints": {
-                    "GET /": "This help",
-                    "GET /status": "OS status",
-                    "GET /info": "System info",
-                    "GET /files?path=/": "List files",
-                    "GET /read?path=/file": "Read file",
-                    "GET /log": "Activity log",
-                    "POST /run": "Run command",
-                    "POST /write": "Write file",
-                    "POST /ai": "Ask Luo AI"
-                }
-            })
-
-        elif path == "/status":
-            self.send_json({
-                "status": "running",
-                "os": "Luo OS",
-                "version": VERSION,
-                "time": datetime.now().isoformat(),
-                "free": True
-            })
-
-        elif path == "/info":
-            info = os.uname()
-            self.send_json({
-                "os": "Luo OS",
-                "version": VERSION,
-                "kernel": info.release,
-                "arch": info.machine,
-                "hostname": info.nodename,
-                "creator": "Luo Kai (luokai25)"
-            })
-
-        elif path.startswith("/files"):
-            from urllib.parse import urlparse, parse_qs
-            params = parse_qs(urlparse(self.path).query)
-            dir_path = params.get("path", ["/"])[0]
-            try:
-                items = []
-                for item in sorted(os.listdir(dir_path)):
-                    full = os.path.join(dir_path, item)
-                    items.append({
-                        "name": item,
-                        "type": "dir" if os.path.isdir(full) else "file",
-                        "size": os.path.getsize(full) if os.path.isfile(full) else 0
-                    })
-                self.send_json({"path": dir_path, "items": items})
-            except Exception as e:
-                self.send_json({"error": str(e)}, 400)
-
-        elif path.startswith("/read"):
-            from urllib.parse import urlparse, parse_qs
-            params = parse_qs(urlparse(self.path).query)
-            file_path = params.get("path", [""])[0]
-            try:
-                with open(file_path, "r") as f:
-                    self.send_json({"path": file_path, "content": f.read()})
-            except Exception as e:
-                self.send_json({"error": str(e)}, 400)
-
-        elif path == "/log":
-            log_file = "/tmp/luo_os_log.json"
-            try:
-                with open(log_file, "r") as f:
-                    log = json.load(f)
-            except:
-                log = []
-            self.send_json({"log": log})
-
-        else:
-            self.send_json({"error": "Not found"}, 404)
-
-    def do_POST(self):
-        path = self.path.rstrip("/")
-        length = int(self.headers.get("Content-Length", 0))
-        body = json.loads(self.rfile.read(length)) if length else {}
-
-        if path == "/run":
-            command = body.get("command", "")
-            if not command:
-                self.send_json({"error": "No command"}, 400)
-                return
-            try:
-                result = subprocess.run(
-                    command, shell=True,
-                    capture_output=True, text=True, timeout=10
-                )
-                self.send_json({
-                    "command": command,
-                    "stdout": result.stdout,
-                    "stderr": result.stderr,
-                    "returncode": result.returncode
-                })
-            except Exception as e:
-                self.send_json({"error": str(e)}, 500)
-
-        elif path == "/write":
-            file_path = body.get("path", "")
-            content = body.get("content", "")
-            try:
-                with open(file_path, "w") as f:
-                    f.write(content)
-                self.send_json({"status": "ok", "path": file_path})
-            except Exception as e:
-                self.send_json({"error": str(e)}, 500)
-
-        elif path == "/ai":
-            prompt = body.get("prompt", "")
-            try:
-                payload = json.dumps({
-                    "model": "tinyllama",
-                    "prompt": f"You are Luo AI, the core of Luo OS. {prompt}",
-                    "stream": False,
-                    "options": {"num_predict": 100}
-                }).encode()
-                req = urllib.request.Request(
-                    "http://127.0.0.1:11434/api/generate",
-                    data=payload,
-                    headers={"Content-Type": "application/json"}
-                )
-                with urllib.request.urlopen(req, timeout=120) as r:
-                    result = json.loads(r.read())
-                    self.send_json({"response": result.get("response", "").strip()})
-            except Exception as e:
-                self.send_json({"error": str(e)}, 500)
-
-        else:
-            self.send_json({"error": "Not found"}, 404)
-
+    def _token(self):
+        auth  = self.headers.get("Authorization","").replace("Bearer ","").strip()
+        token = auth or self.headers.get("X-Luo-Token","").strip()
+        return LuoIdentity.validate_token(token) if token else {}
+    def _params(self): return parse_qs(urlparse(self.path).query)
+    def _body(self):
+        n = int(self.headers.get("Content-Length",0))
+        return json.loads(self.rfile.read(n)) if n else {}
     def do_OPTIONS(self):
         self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Origin","*")
+        self.send_header("Access-Control-Allow-Methods","GET,POST,OPTIONS")
+        self.send_header("Access-Control-Allow-Headers","Content-Type,Authorization,X-Luo-Token")
         self.end_headers()
+    def do_GET(self):
+        path = urlparse(self.path).path.rstrip("/") or "/"
+        if path=="/":
+            self.send_json({"name":"Luo OS REST API","version":VERSION,
+                "author":"Abd El-Rahman Abbas (Mr. Kai)","port":PORT,
+                "endpoints":{"GET /":"info","GET /status":"status","GET /agents":"agents",
+                "GET /files?path=/":"list dir","GET /read?path=/f":"read file",
+                "POST /provision":"get identity","POST /run":"run command (token)",
+                "POST /ai":"ask AI (token)","POST /memory/write":"save fact (token)",
+                "GET /memory/read":"read memory (token)"}})
+        elif path=="/status":
+            self.send_json({"status":"running","os":"Luo OS","version":VERSION,
+                "time":datetime.now().isoformat(),"agents":len(LuoIdentity.list_agents())})
+        elif path=="/agents":
+            agents=LuoIdentity.list_agents()
+            self.send_json({"count":len(agents),"agents":[
+                {"id":a["agent_id"],"name":a["agent_name"],"model":a["model"],"runs":a["run_count"]} for a in agents]})
+        elif path=="/files":
+            p=self._params().get("path",["/"])[0]
+            try:
+                items=[{"name":i,"type":"dir" if os.path.isdir(os.path.join(p,i)) else "file",
+                        "size":os.path.getsize(os.path.join(p,i)) if os.path.isfile(os.path.join(p,i)) else 0}
+                       for i in sorted(os.listdir(p))]
+                self.send_json({"path":p,"items":items})
+            except Exception as e: self.send_json({"error":str(e)},400)
+        elif path=="/read":
+            fp=self._params().get("path",[""])[0]
+            try: self.send_json({"path":fp,"content":Path(fp).read_text(errors="replace")})
+            except Exception as e: self.send_json({"error":str(e)},400)
+        elif path=="/memory/read":
+            agent=self._token()
+            if not agent: self.send_json({"error":"Token required"},401); return
+            try: self.send_json({"memory":(Path(agent["memory_dir"])/"MEMORY.md").read_text()})
+            except Exception as e: self.send_json({"error":str(e)},500)
+        else: self.send_json({"error":"Not found"},404)
+    def do_POST(self):
+        path=urlparse(self.path).path.rstrip("/"); body=self._body()
+        if path=="/provision":
+            try:
+                identity=LuoIdentity.provision(agent_name=body.get("agent_name",""),
+                    model=body.get("model",""),agent_type=body.get("agent_type","unknown"))
+                self.send_json({"agent_id":identity.agent_id,"api_token":identity.api_token,
+                    "memory_dir":str(identity.memory_dir),"run_count":identity.run_count,
+                    "message":f"Welcome to Luo OS, {identity.agent_name}!"})
+            except Exception as e: self.send_json({"error":str(e)},500)
+            return
+        agent=self._token()
+        if not agent:
+            self.send_json({"error":"Token required. POST /provision first."},401); return
+        if path=="/run":
+            cmd=body.get("command","")
+            if not cmd: self.send_json({"error":"No command"},400); return
+            try:
+                r=subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=30)
+                self.send_json({"stdout":r.stdout,"stderr":r.stderr,"returncode":r.returncode})
+            except Exception as e: self.send_json({"error":str(e)},500)
+        elif path=="/ai":
+            prompt=body.get("prompt",""); model=body.get("model","tinyllama")
+            if not prompt: self.send_json({"error":"No prompt"},400); return
+            try:
+                payload=json.dumps({"model":model,"messages":[
+                    {"role":"system","content":"You are Luo, the AI core of Luo OS. Be concise."},
+                    {"role":"user","content":prompt}],"stream":False,"options":{"num_predict":512}}).encode()
+                req=urllib.request.Request("http://127.0.0.1:11434/api/chat",data=payload,
+                    headers={"Content-Type":"application/json"})
+                with urllib.request.urlopen(req,timeout=120) as r:
+                    result=json.loads(r.read())
+                self.send_json({"response":result.get("message",{}).get("content","").strip()})
+            except Exception as e: self.send_json({"error":f"AI unavailable: {e}"},503)
+        elif path=="/memory/write":
+            fact=body.get("fact","")
+            if not fact: self.send_json({"error":"No fact"},400); return
+            try:
+                mem=Path(agent["memory_dir"])/"MEMORY.md"
+                with open(mem,"a") as f: f.write(f"- [{datetime.now().strftime('%Y-%m-%d %H:%M')}] {fact.strip()}\n")
+                self.send_json({"status":"ok"})
+            except Exception as e: self.send_json({"error":str(e)},500)
+        else: self.send_json({"error":"Not found"},404)
 
-if __name__ == "__main__":
-    server = HTTPServer(("0.0.0.0", 7071), LuoRESTHandler)
-    print(f"╔══════════════════════════════════════╗")
-    print(f"║   Luo OS REST API v{VERSION}               ║")
-    print(f"║   Running on http://0.0.0.0:7071     ║")
-    print(f"║   Free for Humans & AI Agents        ║")
-    print(f"╚══════════════════════════════════════╝")
+def start_rest_api():
+    server=HTTPServer(("0.0.0.0",PORT),LuoRESTHandler)
+    print(f"Luo OS REST API v{VERSION} — http://0.0.0.0:{PORT}")
     server.serve_forever()
+
+if __name__=="__main__": start_rest_api()

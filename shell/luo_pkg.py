@@ -1,201 +1,109 @@
 #!/usr/bin/env python3
-"""
-Luo OS Package Manager — luo install <app>
-Free app installer for Luo OS
-Created by Luo Kai (luokai25)
-"""
-
-import json
-import os
-import subprocess
-import sys
-import urllib.request
+"""Luo OS Package Manager v0.2"""
+import json, os, subprocess, sys
 from datetime import datetime
+from pathlib import Path
 
-PKG_DIR = os.path.expanduser("~/.luo_packages")
-PKG_DB = os.path.join(PKG_DIR, "installed.json")
+PKG_DIR = Path("~/.luo_packages").expanduser()
+PKG_DB  = PKG_DIR / "installed.json"
+GR="[92m"; RD="[91m"; YL="[93m"; CY="[96m"; B="[1m"; R="[0m"; DIM="[2m"
 
-# Built-in package registry
 REGISTRY = {
-    "vim": {
-        "description": "Text editor",
-        "install": "apt-get install -y vim",
-        "category": "editor"
-    },
-    "git": {
-        "description": "Version control",
-        "install": "apt-get install -y git",
-        "category": "dev"
-    },
-    "python3": {
-        "description": "Python programming language",
-        "install": "apt-get install -y python3 python3-pip",
-        "category": "dev"
-    },
-    "rust": {
-        "description": "Rust programming language",
-        "install": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
-        "category": "dev"
-    },
-    "nodejs": {
-        "description": "JavaScript runtime",
-        "install": "apt-get install -y nodejs npm",
-        "category": "dev"
-    },
-    "wine": {
-        "description": "Windows compatibility layer",
-        "install": "apt-get install -y wine",
-        "category": "compat"
-    },
-    "vlc": {
-        "description": "Media player",
-        "install": "apt-get install -y vlc",
-        "category": "media"
-    },
-    "firefox": {
-        "description": "Web browser",
-        "install": "apt-get install -y firefox",
-        "category": "browser"
-    },
-    "ollama": {
-        "description": "Local AI model runner",
-        "install": "curl -fsSL https://ollama.com/install.sh | sh",
-        "category": "ai"
-    },
-    "tinyllama": {
-        "description": "TinyLlama local AI model",
-        "install": "ollama pull tinyllama",
-        "category": "ai"
-    },
-    "mistral": {
-        "description": "Mistral 7B local AI model",
-        "install": "ollama pull mistral",
-        "category": "ai"
-    },
-    "htop": {
-        "description": "System monitor",
-        "install": "apt-get install -y htop",
-        "category": "system"
-    },
-    "neofetch": {
-        "description": "System info display",
-        "install": "apt-get install -y neofetch",
-        "category": "system"
-    },
-    "ffmpeg": {
-        "description": "Media converter",
-        "install": "apt-get install -y ffmpeg",
-        "category": "media"
-    },
-    "docker": {
-        "description": "Container runtime",
-        "install": "apt-get install -y docker.io",
-        "category": "dev"
-    }
+    "tinyllama":    {"desc":"TinyLlama 1.1B — 1GB RAM",         "cmd":"ollama pull tinyllama",                     "cat":"ai",     "size":"~600MB"},
+    "qwen2.5:1.5b": {"desc":"Qwen 2.5 1.5B — better reasoning","cmd":"ollama pull qwen2.5:1.5b",                   "cat":"ai",     "size":"~1GB"},
+    "phi3:mini":    {"desc":"Phi-3 Mini — best coding (4GB+)",  "cmd":"ollama pull phi3:mini",                     "cat":"ai",     "size":"~2.3GB"},
+    "gemma2:2b":    {"desc":"Gemma 2B — general (3GB+)",        "cmd":"ollama pull gemma2:2b",                     "cat":"ai",     "size":"~1.6GB"},
+    "mistral":      {"desc":"Mistral 7B — advanced (8GB+)",     "cmd":"ollama pull mistral",                       "cat":"ai",     "size":"~4GB"},
+    "ollama":       {"desc":"Local AI model runner",            "cmd":"curl -fsSL https://ollama.com/install.sh|sh","cat":"ai",     "size":"~50MB"},
+    "git":          {"desc":"Version control",                  "cmd":"apt-get install -y git",                    "cat":"dev",    "size":"~30MB"},
+    "python3":      {"desc":"Python 3 + pip",                   "cmd":"apt-get install -y python3 python3-pip",    "cat":"dev",    "size":"~50MB"},
+    "nodejs":       {"desc":"Node.js + npm",                    "cmd":"apt-get install -y nodejs npm",             "cat":"dev",    "size":"~70MB"},
+    "rust":         {"desc":"Rust language",                    "cmd":"curl --proto=https --tlsv1.2 -sSf https://sh.rustup.rs|sh -s -- -y","cat":"dev","size":"~200MB"},
+    "gcc":          {"desc":"C/C++ compiler",                   "cmd":"apt-get install -y gcc g++",                "cat":"dev",    "size":"~30MB"},
+    "docker":       {"desc":"Container runtime",                "cmd":"apt-get install -y docker.io",              "cat":"dev",    "size":"~100MB"},
+    "vim":          {"desc":"Terminal text editor",             "cmd":"apt-get install -y vim",                    "cat":"editor", "size":"~3MB"},
+    "nano":         {"desc":"Simple editor",                    "cmd":"apt-get install -y nano",                   "cat":"editor", "size":"~1MB"},
+    "htop":         {"desc":"Process viewer",                   "cmd":"apt-get install -y htop",                   "cat":"system", "size":"~200KB"},
+    "neofetch":     {"desc":"System info",                      "cmd":"apt-get install -y neofetch",               "cat":"system", "size":"~500KB"},
+    "tmux":         {"desc":"Terminal multiplexer",             "cmd":"apt-get install -y tmux",                   "cat":"system", "size":"~500KB"},
+    "tree":         {"desc":"Directory tree viewer",            "cmd":"apt-get install -y tree",                   "cat":"system", "size":"~100KB"},
+    "wget":         {"desc":"File downloader",                  "cmd":"apt-get install -y wget",                   "cat":"system", "size":"~2MB"},
+    "ffmpeg":       {"desc":"Media converter",                  "cmd":"apt-get install -y ffmpeg",                 "cat":"media",  "size":"~60MB"},
+    "vlc":          {"desc":"Media player",                     "cmd":"apt-get install -y vlc",                    "cat":"media",  "size":"~50MB"},
+    "firefox":      {"desc":"Firefox browser",                  "cmd":"apt-get install -y firefox",                "cat":"browser","size":"~70MB"},
+    "wine":         {"desc":"Windows app compat",               "cmd":"apt-get install -y wine",                   "cat":"compat", "size":"~300MB"},
+    "pip-requests": {"desc":"Python requests",                  "cmd":"pip3 install requests --break-system-packages","cat":"python","size":"~100KB"},
+    "pip-flask":    {"desc":"Flask web framework",              "cmd":"pip3 install flask --break-system-packages", "cat":"python","size":"~2MB"},
+    "pip-numpy":    {"desc":"NumPy",                            "cmd":"pip3 install numpy --break-system-packages", "cat":"python","size":"~20MB"},
 }
 
 def load_db():
-    os.makedirs(PKG_DIR, exist_ok=True)
-    if os.path.exists(PKG_DB):
-        with open(PKG_DB) as f:
-            return json.load(f)
-    return {}
+    PKG_DIR.mkdir(parents=True, exist_ok=True)
+    try: return json.loads(PKG_DB.read_text()) if PKG_DB.exists() else {}
+    except: return {}
 
-def save_db(db):
-    with open(PKG_DB, "w") as f:
-        json.dump(db, f, indent=2)
+def save_db(db): PKG_DB.write_text(json.dumps(db, indent=2))
 
-def cmd_install(pkg_name):
-    if pkg_name not in REGISTRY:
-        print(f"❌ Package '{pkg_name}' not found.")
-        print(f"   Run: luo search {pkg_name}")
-        return
-    pkg = REGISTRY[pkg_name]
-    print(f"Installing {pkg_name} — {pkg['description']}...")
-    result = subprocess.run(pkg["install"], shell=True)
-    if result.returncode == 0:
-        db = load_db()
-        db[pkg_name] = {"installed": datetime.now().isoformat(), "version": "latest"}
-        save_db(db)
-        print(f"✅ {pkg_name} installed successfully!")
-    else:
-        print(f"❌ Failed to install {pkg_name}")
+def cmd_install(name):
+    if name not in REGISTRY: print(f"{RD}Not found: {name}{R}"); return
+    pkg = REGISTRY[name]
+    print(f"{YL}Installing {B}{name}{R}{YL} — {pkg['desc']} ({pkg['size']}){R}")
+    r = subprocess.run(pkg["cmd"], shell=True)
+    if r.returncode == 0:
+        db = load_db(); db[name] = {"installed": datetime.now().isoformat(), "category": pkg["cat"]}
+        save_db(db); print(f"{GR}{B}✓ {name} installed{R}")
+    else: print(f"{RD}✗ Failed{R}")
 
-def cmd_remove(pkg_name):
+def cmd_remove(name):
     db = load_db()
-    if pkg_name not in db:
-        print(f"❌ {pkg_name} is not installed")
-        return
-    result = subprocess.run(f"apt-get remove -y {pkg_name}", shell=True)
-    if result.returncode == 0:
-        del db[pkg_name]
-        save_db(db)
-        print(f"✅ {pkg_name} removed")
+    if name not in db: print(f"{RD}Not installed: {name}{R}"); return
+    subprocess.run(f"apt-get remove -y {name}", shell=True)
+    del db[name]; save_db(db); print(f"{GR}✓ {name} removed{R}")
 
 def cmd_list():
     db = load_db()
-    if not db:
-        print("No packages installed via luo pkg yet.")
-        return
-    print(f"{'Package':<20} {'Installed':<25}")
-    print("-" * 45)
-    for name, info in db.items():
-        print(f"{name:<20} {info['installed']:<25}")
+    if not db: print("Nothing installed yet."); return
+    print(f"
+{B}Installed ({len(db)}):{R}")
+    for n, info in sorted(db.items()):
+        print(f"  {GR}{n:<22}{R} {DIM}{info.get('category','?'):<10}{R} {info['installed'][:10]}")
 
-def cmd_search(query):
-    results = [(k, v) for k, v in REGISTRY.items() if query.lower() in k.lower() or query.lower() in v["description"].lower()]
-    if not results:
-        print(f"No packages found for: {query}")
-        return
-    print(f"{'Package':<20} {'Category':<12} {'Description'}")
-    print("-" * 60)
-    for name, info in results:
-        print(f"{name:<20} {info['category']:<12} {info['description']}")
+def cmd_search(q):
+    results = [(k,v) for k,v in REGISTRY.items() if q.lower() in k.lower() or q.lower() in v["desc"].lower()]
+    if not results: print(f"Nothing found for: {q}"); return
+    print(f"
+{B}Results for '{q}':{R}")
+    for n, p in results: print(f"  {CY}{n:<22}{R} {DIM}{p['cat']:<10}{R} {p['size']:<10} {p['desc']}")
 
-def cmd_available():
-    print(f"{'Package':<20} {'Category':<12} {'Description'}")
-    print("-" * 60)
-    for name, info in sorted(REGISTRY.items(), key=lambda x: x[1]["category"]):
-        print(f"{name:<20} {info['category']:<12} {info['description']}")
-
-def cmd_update():
-    print("Updating Luo OS package database...")
-    subprocess.run("apt-get update -y", shell=True)
-    print("✅ Updated")
+def cmd_available(cat=""):
+    db = load_db()
+    pkgs = [(k,v) for k,v in REGISTRY.items() if not cat or v["cat"]==cat]
+    if not pkgs: print(f"No packages in: {cat}"); return
+    print(f"
+{B}Available ({len(pkgs)}):{R}")
+    cur = ""
+    for n, p in sorted(pkgs, key=lambda x:(x[1]["cat"],x[0])):
+        if p["cat"] != cur: cur = p["cat"]; print(f"
+  {B}{CY}[{cur.upper()}]{R}")
+        mark = f"{GR} ✓{R}" if n in db else ""
+        print(f"    {n:<22} {DIM}{p['size']:<10}{R} {p['desc']}{mark}")
 
 def usage():
-    print("""
-╔══════════════════════════════════════════╗
-║   Luo OS Package Manager                ║
-║   Free software for everyone            ║
-╚══════════════════════════════════════════╝
-
-Usage:
-  python3 luo_pkg.py install <package>   — Install a package
-  python3 luo_pkg.py remove  <package>   — Remove a package
-  python3 luo_pkg.py list                — List installed packages
-  python3 luo_pkg.py search  <query>     — Search packages
-  python3 luo_pkg.py available           — Show all packages
-  python3 luo_pkg.py update              — Update package database
-
-Categories: ai, dev, editor, browser, media, system, compat
+    print(f"""
+{B}Luo OS Package Manager v0.2{R}
+  install <pkg>       install
+  remove  <pkg>       remove
+  list                installed packages
+  search  <query>     search
+  available [cat]     browse all (cats: ai dev editor system media browser compat python)
 """)
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    if not args:
-        usage()
-    elif args[0] == "install" and len(args) > 1:
-        cmd_install(args[1])
-    elif args[0] == "remove" and len(args) > 1:
-        cmd_remove(args[1])
-    elif args[0] == "list":
-        cmd_list()
-    elif args[0] == "search" and len(args) > 1:
-        cmd_search(args[1])
-    elif args[0] == "available":
-        cmd_available()
-    elif args[0] == "update":
-        cmd_update()
-    else:
-        usage()
+    a = sys.argv[1:]
+    if not a:                                   usage()
+    elif a[0]=="install" and len(a)>1:         cmd_install(a[1])
+    elif a[0]=="remove"  and len(a)>1:         cmd_remove(a[1])
+    elif a[0]=="list":                          cmd_list()
+    elif a[0]=="search"  and len(a)>1:         cmd_search(a[1])
+    elif a[0]=="available":                     cmd_available(a[1] if len(a)>1 else "")
+    else:                                       usage()
