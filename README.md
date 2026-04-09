@@ -1,107 +1,125 @@
-# ⚡ Luo OS v0.1
-### An Open Source Operating System for Humans and AI Agents
-*built by luokai [@luokai25](https://github.com/luokai25)*
+<div align="center">
 
-> AI is not an app here. It is part of the OS itself.
+# 𝗟𝗨𝗢 𝗢𝗦 𝘃𝟭.𝟬
+
+**The AI-Native Operating System — Runs in Any Browser**
+
+*Created by **Luo Kai** (luokai25 · luokai0)*
+
+</div>
 
 ---
+
+## What is LuoOS?
+
+LuoOS is a **full computer that runs in your browser** — like Zed OS / JSLinux, but powered by a state-of-the-art local AI. No cloud. No API keys. Everything on YOUR machine.
+
+**LUOKAI** is the AI core: always listening, always learning, always improving itself.
 
 ## Quick Start
+
 ```bash
-git clone https://github.com/luokai25/luo_os-v_0.1.git
+# 1. Clone
+git clone https://github.com/luokai25/luo_os-v_0.1
 cd luo_os-v_0.1
-python3 luo_init.py          # boot full OS
-bash shell/luo_shell.sh      # interactive shell
-cd luo_agent && python3 luo_agent.py  # local AI
+
+# 2. Start AI (for full intelligence)
+ollama serve &
+ollama pull mistral
+
+# 3. Run LuoOS
+./start.sh      # Mac/Linux
+start.bat       # Windows
+
+# 4. Open in browser
+# http://localhost:3000
 ```
 
----
+> **Or just open `index.html` in your browser for the sandbox OS** (no AI features without server)
+
+## Features
+
+| Feature | Details |
+|---------|---------|
+| 🖥️ **Full Desktop OS** | Runs entirely in browser. Taskbar, sidebar, window manager, drag/resize |
+| 🤖 **LUOKAI AI** | Always-on agent with voice, vision, code execution, web browsing |
+| 🎤 **24/7 Voice** | Say "Luo" anywhere — LUOKAI wakes and responds without pressing anything |
+| 🔄 **Co-Evolution** | AI gets harder benchmarks as it improves → never stops getting smarter |
+| 💻 **Luo Terminal** | Linux + Windows commands + custom `luo` commands |
+| 🌐 **Luo Browser** | Built-in web browser |
+| 📁 **Luo Files** | Full file manager |
+| 💻 **Luo Code** | Code editor with AI assistance + execution |
+| 🎨 **Luo Studio** | AI image/video/website generation |
+| 👁️ **Luo Vision** | Object detection, image captioning, VQA |
+| ⚙️ **Luo Settings** | 200+ customizable settings |
+| 🎵 **Luo Music** | YouTube streaming, local playback |
+| 📝 **Luo Notes** | Notes with AI improvement |
+| 🔧 **4,146 Skills** | 20 domains: programming, AI, science, business, health... |
 
 ## Architecture
 
-| Layer | Technology | Status |
-|---|---|---|
-| Kernel | Linux + Redox (Rust) + XNU Mach | 🚧 |
-| AI Core | TinyLlama / Phi-3 / any Ollama model | ✅ |
-| Luo Agent | Autonomous local AI agent | ✅ |
-| Agent Identity | Auto-provisioning for AI agents | ✅ |
-| Agent API | Socket port 7070 (token-auth) | ✅ |
-| REST API | HTTP port 8080 | ✅ |
-| Shell | Luo Shell + Bash | ✅ |
-| Package Manager | luo_pkg.py (35+ packages) | ✅ |
-| Desktop UI | Python/tkinter | 🚧 |
-| Multi-Agent | Sub-agent coordinator | 🚧 |
-| Compat | Wine (Windows apps) | 🚧 |
-
----
-
-## File Structure
 ```
-luo_os-v_0.1/
-├── luo_init.py            boot all services
-├── luo_os.py              main launcher
-├── start_luo_os.sh        shell boot script
-├── luo_agent/             autonomous local AI agent
-│   ├── luo_agent.py       entry point
-│   ├── core/              config, ollama client, daemon
-│   ├── memory/            MEMORY.md + notes + autoDream
-│   ├── tools/             14 tools: file, bash, web, python
-│   ├── agents/            reasoning loop + tool calling
-│   └── ui/                terminal UI with streaming
-├── ai_core/               OS-level AI layer
-│   ├── agent_identity.py  auto-provisioning system
-│   ├── agent_api.py       socket API port 7070
-│   ├── agent_client.py    zero-config client
-│   ├── rest_api.py        HTTP REST API port 8080
-│   ├── daemon.py          local AI daemon
-│   └── multi_agent.py     multi-agent coordinator
-├── ui/                    desktop GUI + dashboard
-├── shell/                 luo shell + package manager
-├── kernel/                kernel sources
-├── apps/                  built-in apps
-├── compat/                wine bridge
-└── docs/                  architecture + roadmap
+LuoOS Browser Sandbox          Real Machine Layer
+━━━━━━━━━━━━━━━━━━━━━━━━      ━━━━━━━━━━━━━━━━━━━━
+index.html                     luo_server.py (Flask)
+├── Desktop (JS)         ←→    ├── LUOKAI Agent
+├── Window Manager             ├── Ollama (Mistral/LLaMA)
+├── 11 Apps                    ├── Voice Daemon (24/7)
+├── Luo Terminal               ├── Co-Evolution Engine
+└── File Manager               └── 4,146 Skills
 ```
 
----
+## The Co-Evolution Algorithm
 
-## Luo Agent — Local AI
+LuoOS includes a unique self-improvement engine:
 
-No API keys. No credits. No internet. Free forever.
-```bash
-cd luo_agent && python3 luo_agent.py
+```
+LUOKAI improves → generates harder tests → passes them → even harder tests → ∞
 ```
 
-| RAM | Model |
-|---|---|
-| 1-2 GB | `ollama pull tinyllama` |
-| 2-3 GB | `ollama pull qwen2.5:1.5b` |
-| 3-4 GB | `ollama pull gemma2:2b` |
-| 4 GB+ | `ollama pull phi3:mini` |
+1. **CHALLENGER** generates increasingly hard tests
+2. **LUOKAI** solves them using Tree-of-Thought reasoning
+3. **EVALUATOR** scores answers 0-10
+4. Failures become **training data** (Axolotl + PEFT LoRA)
+5. Difficulty increases as scores improve → **never plateaus**
 
----
+## Voice — Always On
 
-## Agent Identity — Auto-Provisioning
-
-Any AI agent that reads this repo gets an identity instantly:
-```python
-from ai_core.agent_client import connect_to_luo
-luo = connect_to_luo(model="tinyllama", agent_name="my_agent")
-print(luo.identity["agent_id"])
-luo.run_command("ls /")
-luo.memory_write("connected to Luo OS")
+```
+Mic → VAD → "Luo" detected → LUOKAI responds → speaks back → back to listening
+No button press needed. Works 24/7.
 ```
 
----
+## Apps
 
-## Principles
+| App | Name | Description |
+|-----|------|-------------|
+| 🤖 | **Luo AI** | LUOKAI chat interface |
+| 🌐 | **Luo Browser** | Web browser |
+| ⌨️ | **Luo Terminal** | Shell with custom `luo` commands |
+| 📁 | **Luo Files** | File manager |
+| 💻 | **Luo Code** | AI code editor |
+| 📝 | **Luo Notes** | Smart notes |
+| 🎨 | **Luo Studio** | AI media creator |
+| 👁️ | **Luo Vision** | Computer vision |
+| 🎵 | **Luo Music** | Music player |
+| ⚙️ | **Luo Settings** | OS settings |
+| ℹ️ | **About** | System info |
 
-1. Free forever — for humans and AI agents equally
-2. AI is the OS — not an add-on
-3. Open source — forever
-4. Works on low-spec hardware
-5. No paywalls, no limits, no accounts required
+## Keyboard Shortcuts
 
----
+| Key | Action |
+|-----|--------|
+| Ctrl+L | Open LUOKAI |
+| Ctrl+T | Open Terminal |
+| Ctrl+B | Open Browser |
+| Ctrl+E | Open Code Editor |
+| Ctrl+F | Open Files |
 
-*Built by luokai*
+## Legal
+
+**© 2025 Luo Kai (luokai25). All rights reserved.**
+
+LuoOS, LUOKAI, Luo AI, Luo Browser, Luo Terminal, Luo Files, Luo Studio, Luo Vision, Luo Music, Luo Notes, Luo Code, Luo Settings — all names, concepts, and implementations are intellectual property of Luo Kai.
+
+Built with ❤️ from 60+ open-source projects. See [SOURCES.md](SOURCES.md).

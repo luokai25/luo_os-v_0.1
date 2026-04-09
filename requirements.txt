@@ -1,17 +1,37 @@
-# Luo OS — Python Dependencies
-# Install: pip install -r requirements.txt
+# LuoOS Core
+flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.31.0
 
-# Terminal UI
-textual>=0.47.0
+# LUOKAI AI
+# Ollama runs separately: https://ollama.ai
 
-# Vector memory
-chromadb>=0.4.0
+# Voice (24/7 always-on)
+pyaudio>=0.2.13
+SpeechRecognition>=3.10.0
+pyttsx3>=2.90
+edge-tts>=6.1.9          # high quality TTS
+openai-whisper>=20231117  # offline STT
 
-# Process management
-supervisor>=4.2.0
+# Desktop control
+pyautogui>=0.9.54
+Pillow>=10.0.0
+psutil>=5.9.0
 
-# AI / agent frameworks
-langchain-core>=0.1.0
+# Image generation (optional, needs GPU for speed)
+# diffusers>=0.25.0
+# torch>=2.1.0
+# transformers>=4.36.0
 
-# Utilities (stdlib only — no extra deps needed for core)
-# All other deps use Python stdlib: json, socket, subprocess, threading, pathlib
+# YOLO vision (optional)
+# ultralytics>=8.1.0
+
+# Browser automation
+# playwright>=1.40.0    # run: playwright install
+
+# Media playback
+# yt-dlp>=2024.1.1       # YouTube streaming
+
+# Web
+beautifulsoup4>=4.12.0
+lxml>=4.9.0

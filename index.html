@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>LuoOS — by Luo Kai</title>
+<style>
+/* ═══ RESET ═════════════════════════════════════════════════════════ */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{
+  /* Dark theme (default) */
+  --bg-deep:#020408;--bg-desktop:#060c14;--bg-panel:#0a1220;--bg-glass:rgba(10,18,32,.92);
+  --bg-card:#0d1a2a;--bg-input:#0a1628;--bg-hover:rgba(0,200,255,.06);
+  --border:#1a2d45;--border-bright:#00c8ff33;
+  --accent:#00c8ff;--accent2:#7c3aed;--accent3:#00ff9d;--accent-red:#ff4d6d;
+  --text:#e2f0ff;--text2:#8fa8c8;--text3:#3a5272;
+  --font-main:"JetBrains Mono",ui-monospace,monospace;
+  --font-ui:system-ui,-apple-system,sans-serif;
+  --taskbar-h:52px;--sidebar-w:64px;
+  --shadow:0 8px 32px rgba(0,0,0,.6);
+  --glow:0 0 20px rgba(0,200,255,.25);
+  --radius:14px;--radius-sm:8px;
+}
+.theme-light{
+  --bg-deep:#f0f4f8;--bg-desktop:#e8eef5;--bg-panel:#ffffff;--bg-glass:rgba(255,255,255,.95);
+  --bg-card:#f5f8fc;--bg-input:#edf2f7;--bg-hover:rgba(0,100,200,.06);
+  --border:#d0dce8;--border-bright:#0088cc44;
+  --accent:#0066cc;--accent3:#00aa66;--text:#1a2840;--text2:#4a6080;--text3:#90a8c0;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text);font-family:var(--font-ui);font-size:14px}
+
+/* ═══ WALLPAPER ════════════════════════════════════════════════════ */
+#wallpaper{
+  position:fixed;inset:0;z-index:0;
+  background:var(--bg-desktop);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+#wallpaper-text{
+  font-size:min(22vw,300px);font-weight:900;letter-spacing:-0.04em;
+  color:transparent;
+  background:linear-gradient(135deg,#00c8ff08 0%,#7c3aed10 50%,#00ff9d06 100%);
+  -webkit-background-clip:text;background-clip:text;
+  user-select:none;pointer-events:none;
+  text-shadow:none;
+  filter:drop-shadow(0 0 80px #00c8ff15);
+  font-family:var(--font-ui);
+}
+
+/* Window-like shadows around "LUO" text */
+#wallpaper::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 30%, rgba(0,200,255,.04) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 80% 70%, rgba(124,58,237,.05) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 50% 10%, rgba(0,255,157,.03) 0%, transparent 50%),
+    radial-gradient(ellipse 30% 50% at 10% 80%, rgba(0,200,255,.03) 0%, transparent 50%),
+    radial-gradient(ellipse 45% 35% at 90% 20%, rgba(124,58,237,.04) 0%, transparent 50%);
+  pointer-events:none;
+}
+
+/* ═══ DESKTOP ICONS ════════════════════════════════════════════════ */
+#desktop{
+  position:fixed;
+  top:0;left:var(--sidebar-w);
+  width:calc(100% - var(--sidebar-w));
+  height:calc(100% - var(--taskbar-h));
+  display:flex;flex-wrap:wrap;align-content:flex-start;
+  padding:20px;gap:8px;
+  z-index:1;pointer-events:none;
+}
+.desk-icon{
+  width:84px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:10px 6px;border-radius:var(--radius-sm);cursor:pointer;
+  transition:all .2s;pointer-events:auto;
+  user-select:none;
+}
+.desk-icon:hover{background:var(--bg-hover);transform:translateY(-2px)}
+.desk-icon:active{transform:scale(.95)}
+.desk-icon svg{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+.desk-icon span{font-size:11px;color:var(--text);text-align:center;
+  text-shadow:0 1px 4px rgba(0,0,0,.8);line-height:1.3;
+  word-break:break-word;max-width:80px}
+
+/* ═══ SIDEBAR ══════════════════════════════════════════════════════ */
+#sidebar{
+  position:fixed;left:0;top:0;bottom:var(--taskbar-h);
+  width:var(--sidebar-w);z-index:100;
+  background:var(--bg-glass);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:center;
+  padding:8px 0;gap:4px;backdrop-filter:blur(20px);
+}
+.sb-btn{
+  width:44px;height:44px;border-radius:12px;border:none;background:none;
+  color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:20px;transition:all .2s;position:relative;
+}
+.sb-btn:hover,.sb-btn.active{background:var(--bg-hover);color:var(--accent);
+  box-shadow:0 0 12px rgba(0,200,255,.2)}
+.sb-sep{width:32px;height:1px;background:var(--border);margin:4px 0}
+.sb-tooltip{
+  position:absolute;left:54px;background:var(--bg-card);border:1px solid var(--border);
+  padding:4px 10px;border-radius:6px;font-size:11px;color:var(--text);
+  white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;
+}
+.sb-btn:hover .sb-tooltip{opacity:1}
+#sb-luokai-status{
+  width:10px;height:10px;border-radius:50%;background:#555;
+  position:absolute;bottom:8px;right:8px;border:2px solid var(--bg-panel);
+}
+#sb-luokai-status.on{background:var(--accent3);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ═══ TASKBAR ══════════════════════════════════════════════════════ */
+#taskbar{
+  position:fixed;bottom:0;left:0;width:100%;height:var(--taskbar-h);
+  background:var(--bg-glass);border-top:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;
+  z-index:200;backdrop-filter:blur(20px);
+}
+#tb-start{
+  padding:0 16px;height:36px;border-radius:10px;border:1px solid var(--border);
+  background:linear-gradient(135deg,var(--accent)22,var(--accent2)11);
+  color:var(--accent);cursor:pointer;font-weight:700;font-family:var(--font-main);
+  font-size:13px;letter-spacing:2px;transition:all .2s;
+}
+#tb-start:hover{background:linear-gradient(135deg,var(--accent)33,var(--accent2)22);
+  box-shadow:var(--glow)}
+#tb-apps{display:flex;gap:4px;flex:1;overflow:hidden}
+.tb-app{
+  padding:0 12px;height:36px;border-radius:8px;border:1px solid var(--border2,var(--border));
+  background:var(--bg-card);color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;
+  transition:all .2s;
+}
+.tb-app.active{border-color:var(--accent)44;color:var(--text);
+  background:linear-gradient(135deg,var(--accent)11,transparent)}
+.tb-app:hover{background:var(--bg-hover)}
+#tb-right{display:flex;align-items:center;gap:10px;margin-left:auto}
+#tb-clock{font-family:var(--font-main);font-size:13px;color:var(--text2);
+  text-align:right;line-height:1.3}
+#tb-clock small{display:block;font-size:10px;color:var(--text3)}
+
+/* ═══ WINDOW SYSTEM ════════════════════════════════════════════════ */
+#window-container{
+  position:fixed;left:var(--sidebar-w);top:0;
+  width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));
+  z-index:50;pointer-events:none;
+}
+.window{
+  position:absolute;background:var(--bg-glass);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;overflow:hidden;
+  backdrop-filter:blur(20px);pointer-events:auto;
+  min-width:320px;min-height:240px;
+  animation:winOpen .2s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes winOpen{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}
+.window.minimized{display:none}
+.window.maximized{top:0!important;left:0!important;width:100%!important;height:100%!important;border-radius:0!important}
+.window-header{
+  display:flex;align-items:center;padding:0 12px;height:40px;
+  background:var(--bg-card);border-bottom:1px solid var(--border);
+  cursor:move;user-select:none;gap:8px;flex-shrink:0;
+}
+.window-btns{display:flex;gap:6px;flex-shrink:0}
+.wbtn{width:13px;height:13px;border-radius:50%;border:none;cursor:pointer;transition:filter .15s}
+.wbtn.close{background:#ff5f57}.wbtn.min{background:#febc2e}.wbtn.max{background:#28c840}
+.wbtn:hover{filter:brightness(1.2)}
+.window-title{flex:1;font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px}
+.window-title svg{width:16px;height:16px}
+.window-content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+/* ═══ APP: LUOKAI ASSISTANT ════════════════════════════════════════ */
+.luokai-window .window-content{padding:0}
+.luokai-chat{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.chat-msg{display:flex;gap:10px;animation:msgIn .2s ease}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px)}}
+.chat-msg.user{flex-direction:row-reverse}
+.chat-avatar{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.chat-msg.ai .chat-avatar{background:rgba(0,200,255,.12);color:var(--accent)}
+.chat-msg.user .chat-avatar{background:rgba(124,58,237,.12);color:var(--accent2)}
+.chat-bubble{max-width:78%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6}
+.chat-msg.ai .chat-bubble{background:var(--bg-card);border:1px solid var(--border);color:var(--text)}
+.chat-msg.user .chat-bubble{background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.2);color:var(--text)}
+.luokai-input-row{
+  display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);
+  background:var(--bg-card);
+}
+.luokai-input{
+  flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:10px;
+  padding:8px 12px;color:var(--text);font-family:var(--font-main);font-size:13px;
+  resize:none;height:40px;outline:none;transition:border .2s;
+}
+.luokai-input:focus{border-color:var(--accent)66}
+.luokai-send{
+  width:40px;height:40px;border-radius:10px;border:none;
+  background:var(--accent);color:#000;cursor:pointer;font-size:18px;
+  transition:all .2s;
+}
+.luokai-send:hover{transform:scale(1.05);box-shadow:0 0 12px rgba(0,200,255,.4)}
+.luokai-voice-btn{
+  width:40px;height:40px;border-radius:10px;border:1px solid var(--border);
+  background:none;color:var(--text2);cursor:pointer;font-size:18px;transition:all .2s;
+}
+.luokai-voice-btn.active{border-color:var(--accent3);color:var(--accent3);
+  background:rgba(0,255,157,.1);animation:pulse 1.5s infinite}
+
+/* ═══ APP: TERMINAL ════════════════════════════════════════════════ */
+.term-body{
+  flex:1;background:#010a04;padding:16px;overflow-y:auto;
+  font-family:var(--font-main);font-size:13px;color:#00ff9d;line-height:1.7;
+}
+.term-output{white-space:pre-wrap;word-break:break-all}
+.term-input-row{display:flex;align-items:center;padding:8px 16px;
+  background:#010a04;border-top:1px solid #002a12;gap:8px}
+.term-prompt{color:#00ff9d;font-family:var(--font-main);font-size:13px;white-space:nowrap}
+.term-input{
+  flex:1;background:none;border:none;color:#00ff9d;font-family:var(--font-main);
+  font-size:13px;outline:none;caret-color:#00ff9d;
+}
+.term-error{color:#ff4d6d}.term-info{color:#00c8ff}.term-warn{color:#ffaa00}
+
+/* ═══ APP: FILE MANAGER ════════════════════════════════════════════ */
+.files-toolbar{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  border-bottom:1px solid var(--border);background:var(--bg-card);
+}
+.files-path{
+  flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;
+  padding:5px 10px;color:var(--text2);font-size:12px;font-family:var(--font-main);
+}
+.files-grid{
+  flex:1;display:flex;flex-wrap:wrap;gap:6px;padding:12px;
+  overflow-y:auto;align-content:flex-start;
+}
+.file-item{
+  width:80px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 4px;border-radius:8px;cursor:pointer;transition:all .15s;
+}
+.file-item:hover{background:var(--bg-hover)}
+.file-item-icon{font-size:32px}
+.file-item-name{font-size:10px;color:var(--text2);text-align:center;
+  word-break:break-word;max-width:76px;line-height:1.3}
+
+/* ═══ APP: BROWSER ═════════════════════════════════════════════════ */
+.browser-bar{
+  display:flex;align-items:center;gap:6px;padding:8px 12px;
+  background:var(--bg-card);border-bottom:1px solid var(--border);
+}
+.browser-url{
+  flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;
+  padding:6px 12px;color:var(--text);font-size:13px;outline:none;
+}
+.browser-url:focus{border-color:var(--accent)66}
+.browser-content{flex:1;background:#fff;border:none;width:100%;height:100%}
+.browser-nav-btn{
+  width:30px;height:30px;border-radius:6px;border:none;background:var(--bg-hover);
+  color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.browser-nav-btn:hover{background:var(--bg-card);color:var(--text)}
+
+/* ═══ APP: CODE EDITOR ═════════════════════════════════════════════ */
+.code-toolbar{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:var(--bg-card);border-bottom:1px solid var(--border);
+}
+.code-lang-sel{
+  background:var(--bg-input);border:1px solid var(--border);border-radius:6px;
+  padding:4px 8px;color:var(--text);font-size:12px;
+}
+.code-run-btn{
+  padding:5px 16px;border-radius:6px;border:none;background:var(--accent3);
+  color:#000;cursor:pointer;font-size:12px;font-weight:700;
+}
+.code-editor{
+  flex:1;padding:16px;background:#010a04;color:#00ff9d;
+  font-family:var(--font-main);font-size:13px;border:none;resize:none;
+  outline:none;line-height:1.7;
+}
+.code-output-panel{
+  height:120px;background:#020c08;border-top:1px solid #001a08;
+  padding:10px 16px;font-family:var(--font-main);font-size:12px;
+  color:#00cc66;overflow-y:auto;white-space:pre-wrap;
+}
+
+/* ═══ APP: SETTINGS ════════════════════════════════════════════════ */
+.settings-layout{display:flex;flex:1;overflow:hidden}
+.settings-sidebar{
+  width:180px;border-right:1px solid var(--border);padding:8px;
+  background:var(--bg-card);overflow-y:auto;flex-shrink:0;
+}
+.settings-item{
+  padding:8px 12px;border-radius:8px;cursor:pointer;font-size:13px;
+  color:var(--text2);transition:all .15s;display:flex;align-items:center;gap:8px;
+}
+.settings-item:hover,.settings-item.active{background:var(--bg-hover);color:var(--accent)}
+.settings-content{flex:1;padding:20px;overflow-y:auto}
+.settings-section{margin-bottom:24px}
+.settings-section h3{font-size:12px;color:var(--text3);text-transform:uppercase;
+  letter-spacing:1px;margin-bottom:12px}
+.settings-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--border);
+}
+.settings-row label{font-size:13px;color:var(--text2)}
+.toggle{
+  width:44px;height:24px;border-radius:12px;background:var(--border);
+  border:none;cursor:pointer;position:relative;transition:background .2s;
+}
+.toggle.on{background:var(--accent)}
+.toggle::after{
+  content:'';position:absolute;width:18px;height:18px;border-radius:50%;
+  background:#fff;top:3px;left:3px;transition:transform .2s;
+}
+.toggle.on::after{transform:translateX(20px)}
+
+/* ═══ APP: ABOUT ════════════════════════════════════════════════════ */
+.about-content{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:32px;text-align:center;gap:16px;
+}
+.about-logo{font-size:72px;font-weight:900;color:var(--accent);letter-spacing:-2px;
+  text-shadow:0 0 40px rgba(0,200,255,.3);font-family:var(--font-main)}
+.about-name{font-size:24px;font-weight:700;color:var(--text)}
+.about-tagline{font-size:14px;color:var(--text2);line-height:1.6;max-width:440px}
+.about-badges{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0}
+.badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;
+  background:var(--bg-card);border:1px solid var(--border);color:var(--text2)}
+.about-credits{font-size:12px;color:var(--text3);margin-top:8px;line-height:1.8}
+
+/* ═══ NOTIFICATIONS ════════════════════════════════════════════════ */
+#notif-container{
+  position:fixed;top:16px;right:16px;z-index:9999;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;
+}
+.notif{
+  background:var(--bg-glass);border:1px solid var(--border);border-radius:10px;
+  padding:12px 16px;max-width:300px;backdrop-filter:blur(20px);
+  font-size:13px;animation:notifIn .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events:auto;cursor:pointer;
+}
+@keyframes notifIn{from{opacity:0;transform:translateX(60px)}}
+.notif-title{font-weight:600;color:var(--text);margin-bottom:4px;font-size:12px}
+.notif-body{color:var(--text2);font-size:12px;line-height:1.4}
+.notif.success{border-left:3px solid var(--accent3)}
+.notif.error{border-left:3px solid var(--accent-red)}
+.notif.info{border-left:3px solid var(--accent)}
+.notif.warning{border-left:3px solid #ffaa00}
+
+/* ═══ BOOT SCREEN ══════════════════════════════════════════════════ */
+#boot-screen{
+  position:fixed;inset:0;background:#020408;z-index:99999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;
+}
+#boot-logo{font-size:min(20vw,220px);font-weight:900;color:var(--accent);
+  letter-spacing:-4px;text-shadow:0 0 80px rgba(0,200,255,.4);font-family:var(--font-main)}
+#boot-subtitle{font-size:16px;color:var(--text2);letter-spacing:3px;text-transform:uppercase}
+#boot-bar-container{width:280px;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+#boot-bar{height:100%;background:var(--accent);width:0;border-radius:2px;transition:width .3s}
+#boot-status{font-size:12px;color:var(--text3);font-family:var(--font-main);letter-spacing:1px}
+
+/* ═══ SCROLL ════════════════════════════════════════════════════════ */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+</style>
+</head>
+<body>
+
+<!-- BOOT SCREEN -->
+<div id="boot-screen">
+  <div id="boot-logo">LUO</div>
+  <div id="boot-subtitle">OS · by Luo Kai</div>
+  <div id="boot-bar-container"><div id="boot-bar"></div></div>
+  <div id="boot-status">Initializing kernel...</div>
+</div>
+
+<!-- WALLPAPER -->
+<div id="wallpaper"><div id="wallpaper-text">LUO</div></div>
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <button class="sb-btn active" onclick="openApp('luokai')" title="LUOKAI">
+    🤖<div class="sb-tooltip">LUOKAI AI</div>
+    <div id="sb-luokai-status"></div>
+  </button>
+  <div class="sb-sep"></div>
+  <button class="sb-btn" onclick="openApp('files')">📁<div class="sb-tooltip">Luo Files</div></button>
+  <button class="sb-btn" onclick="openApp('terminal')">⌨️<div class="sb-tooltip">Luo Terminal</div></button>
+  <button class="sb-btn" onclick="openApp('browser')">🌐<div class="sb-tooltip">Luo Browser</div></button>
+  <button class="sb-btn" onclick="openApp('code')">💻<div class="sb-tooltip">Luo Code</div></button>
+  <button class="sb-btn" onclick="openApp('notes')">📝<div class="sb-tooltip">Luo Notes</div></button>
+  <div class="sb-sep"></div>
+  <button class="sb-btn" onclick="openApp('vision')">👁️<div class="sb-tooltip">Luo Vision</div></button>
+  <button class="sb-btn" onclick="openApp('music')">🎵<div class="sb-tooltip">Luo Music</div></button>
+  <button class="sb-btn" onclick="openApp('studio')">🎨<div class="sb-tooltip">Luo Studio</div></button>
+  <div class="sb-sep"></div>
+  <button class="sb-btn" onclick="openApp('settings')">⚙️<div class="sb-tooltip">Settings</div></button>
+  <button class="sb-btn" onclick="openApp('about')">ℹ️<div class="sb-tooltip">About LuoOS</div></button>
+  <div style="flex:1"></div>
+  <button class="sb-btn" onclick="toggleTheme()">🌙<div class="sb-tooltip">Theme</div></button>
+</nav>
+
+<!-- DESKTOP ICONS -->
+<div id="desktop">
+  <!-- Icons rendered by JS -->
+</div>
+
+<!-- WINDOW CONTAINER -->
+<div id="window-container"></div>
+
+<!-- TASKBAR -->
+<footer id="taskbar">
+  <button id="tb-start" onclick="openApp('luokai')">LUO</button>
+  <div id="tb-apps"></div>
+  <div id="tb-right">
+    <div id="tb-voice-indicator" style="font-size:11px;color:#555">🎤 OFF</div>
+    <div id="tb-coevo-indicator" style="font-size:11px;color:#555">🔄 —</div>
+    <div id="tb-clock">
+      <span id="tb-time">--:--</span>
+      <small id="tb-date">---</small>
+    </div>
+  </div>
+</footer>
+
+<!-- NOTIFICATIONS -->
+<div id="notif-container"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  LUO OS — Main JavaScript
+// ═══════════════════════════════════════════════════════════════════
+
+const API = "http://localhost:3000";
+let isDark = true, windows = {}, wZIndex = 100;
+let chatHistory = [], termHistory = [], termHistIdx = -1;
+let voiceActive = false, agentOnline = false;
+
+// ── DESKTOP ICONS ─────────────────────────────────────────────────
+const APPS = [
+  { id:"luokai",  name:"LUOKAI",        desc:"AI Agent", icon:luokaiSVG()    },
+  { id:"browser", name:"Luo Browser",   desc:"Browse",   icon:browserSVG()   },
+  { id:"terminal",name:"Luo Terminal",  desc:"Shell",    icon:termSVG()      },
+  { id:"files",   name:"Luo Files",     desc:"Files",    icon:filesSVG()     },
+  { id:"code",    name:"Luo Code",      desc:"Editor",   icon:codeSVG()      },
+  { id:"notes",   name:"Luo Notes",     desc:"Notes",    icon:notesSVG()     },
+  { id:"studio",  name:"Luo Studio",    desc:"Create",   icon:studioSVG()    },
+  { id:"vision",  name:"Luo Vision",    desc:"AI Vision",icon:visionSVG()    },
+  { id:"music",   name:"Luo Music",     desc:"Music",    icon:musicSVG()     },
+  { id:"settings",name:"Luo Settings",  desc:"System",   icon:settingsSVG()  },
+  { id:"about",   name:"About LuoOS",   desc:"Info",     icon:aboutSVG()     },
+];
+
+// ── SVG ICONS (professional, colored) ────────────────────────────
+function luokaiSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#00c8ff18"/><rect width="52" height="52" rx="14" fill="url(#lg1)" opacity=".8"/><defs><linearGradient id="lg1" x1="0" y1="0" x2="52" y2="52"><stop offset="0" stop-color="#00c8ff"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><circle cx="26" cy="20" r="9" fill="#fff3"/><circle cx="26" cy="20" r="6" fill="#00c8ff"/><path d="M16 38c0-6 4.5-10 10-10s10 4 10 10" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="26" cy="20" r="2" fill="#fff"/></svg>`}
+function browserSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#0d47a1"/><circle cx="26" cy="26" r="16" stroke="#4fc3f7" stroke-width="2" fill="none"/><path d="M10 26h32M26 10c-4 4-6 10-6 16s2 12 6 16M26 10c4 4 6 10 6 16s-2 12-6 16" stroke="#4fc3f7" stroke-width="1.5" fill="none"/></svg>`}
+function termSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a2a1a"/><text x="11" y="32" font-family="monospace" font-size="18" fill="#00ff9d">&gt;_</text><rect x="32" y="24" width="8" height="3" rx="1" fill="#00ff9d" opacity=".7"/></svg>`}
+function filesSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a1a2e"/><rect x="11" y="20" width="30" height="22" rx="3" fill="#4f8fd4"/><rect x="11" y="16" width="14" height="6" rx="2" fill="#6ba3e0"/><path d="M16 28h20M16 33h14" stroke="#fff5" stroke-width="2" stroke-linecap="round"/></svg>`}
+function codeSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a0d2e"/><path d="M20 20l-8 6 8 6" stroke="#9c27b0" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 20l8 6-8 6" stroke="#e040fb" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 17l-4 18" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/></svg>`}
+function notesSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a1500"/><rect x="12" y="12" width="28" height="28" rx="4" fill="#f5c842" opacity=".15"/><rect x="12" y="12" width="28" height="28" rx="4" stroke="#f5c842" stroke-width="1.5" fill="none"/><path d="M18 22h16M18 27h16M18 32h10" stroke="#f5c842" stroke-width="2" stroke-linecap="round"/></svg>`}
+function studioSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a0a1a"/><circle cx="26" cy="26" r="12" fill="none" stroke="#e040fb" stroke-width="2"/><circle cx="26" cy="20" r="3" fill="#ff4081"/><circle cx="32" cy="29" r="3" fill="#ffeb3b"/><circle cx="20" cy="29" r="3" fill="#4caf50"/><circle cx="26" cy="26" r="2" fill="#fff"/></svg>`}
+function visionSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#0a1a1a"/><ellipse cx="26" cy="26" rx="16" ry="10" stroke="#00bcd4" stroke-width="2" fill="none"/><circle cx="26" cy="26" r="5" fill="#00bcd4" opacity=".3"/><circle cx="26" cy="26" r="5" stroke="#00bcd4" stroke-width="1.5" fill="none"/><circle cx="26" cy="26" r="2" fill="#00bcd4"/></svg>`}
+function musicSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a0a2e"/><text x="13" y="36" font-size="26" fill="#a855f7">♪</text><text x="27" y="28" font-size="18" fill="#c084fc">♫</text></svg>`}
+function settingsSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a1a1a"/><circle cx="26" cy="26" r="8" stroke="#888" stroke-width="2" fill="none"/><circle cx="26" cy="26" r="3" fill="#888"/><g stroke="#888" stroke-width="2"><line x1="26" y1="11" x2="26" y2="16"/><line x1="26" y1="36" x2="26" y2="41"/><line x1="11" y1="26" x2="16" y2="26"/><line x1="36" y1="26" x2="41" y2="26"/><line x1="15.5" y1="15.5" x2="19" y2="19"/><line x1="33" y1="33" x2="36.5" y2="36.5"/><line x1="36.5" y1="15.5" x2="33" y2="19"/><line x1="19" y1="33" x2="15.5" y2="36.5"/></g></svg>`}
+function aboutSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#0a0a1a"/><text x="18" y="36" font-size="32" font-weight="900" fill="#00c8ff" font-family="monospace">L</text></svg>`}
+
+// ── INIT ─────────────────────────────────────────────────────────
+function init() {
+  boot();
+  renderDesktop();
+  updateClock();
+  setInterval(updateClock, 1000);
+  checkAgent();
+  setInterval(checkAgent, 8000);
+}
+
+// ── BOOT SEQUENCE ─────────────────────────────────────────────────
+function boot() {
+  const steps = [
+    "Initializing Luo kernel...",
+    "Loading hardware drivers...",
+    "Starting LUOKAI AI core...",
+    "Mounting virtual filesystem...",
+    "Loading 4,146 skills...",
+    "Starting voice daemon...",
+    "Starting co-evolution engine...",
+    "Launching desktop environment...",
+    "LuoOS ready.",
+  ];
+  let i = 0;
+  const bar = document.getElementById("boot-bar");
+  const status = document.getElementById("boot-status");
+  const iv = setInterval(() => {
+    if (i >= steps.length) {
+      clearInterval(iv);
+      const bs = document.getElementById("boot-screen");
+      bs.style.transition = "opacity .5s";
+      bs.style.opacity = "0";
+      setTimeout(() => bs.remove(), 500);
+      notify("LuoOS Ready", "LUOKAI AI is online. Say 'Luo' to begin.", "success");
+      return;
+    }
+    status.textContent = steps[i];
+    bar.style.width = ((i + 1) / steps.length * 100) + "%";
+    i++;
+  }, 250);
+}
+
+// ── DESKTOP ───────────────────────────────────────────────────────
+function renderDesktop() {
+  const d = document.getElementById("desktop");
+  d.innerHTML = APPS.map(app => `
+    <div class="desk-icon" ondblclick="openApp('${app.id}')" title="${app.desc}">
+      ${app.icon}
+      <span>${app.name}</span>
+    </div>`).join("");
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById("tb-time").textContent = now.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+  document.getElementById("tb-date").textContent = now.toLocaleDateString([], {weekday:"short",month:"short",day:"numeric"});
+}
+
+// ── AGENT STATUS ─────────────────────────────────────────────────
+async function checkAgent() {
+  try {
+    const r = await fetch(`${API}/api/status`);
+    if (r.ok) {
+      const d = await r.json();
+      agentOnline = true;
+      document.getElementById("sb-luokai-status").className = "on";
+      document.getElementById("sb-luokai-status").title = `LUOKAI online | Score: ${d.coevo_score || "—"}`;
+      if (d.voice_active) {
+        document.getElementById("tb-voice-indicator").textContent = "🎤 ON";
+        document.getElementById("tb-voice-indicator").style.color = "#00ff9d";
+      }
+      if (d.coevo_score) {
+        document.getElementById("tb-coevo-indicator").textContent = `🔄 ${d.coevo_score.toFixed(1)}`;
+        document.getElementById("tb-coevo-indicator").style.color = "#00c8ff";
+      }
+    }
+  } catch (e) {
+    agentOnline = false;
+    document.getElementById("sb-luokai-status").className = "";
+  }
+}
+
+// ── WINDOW MANAGER ────────────────────────────────────────────────
+function openApp(id) {
+  if (windows[id]) {
+    // Restore if minimized
+    const w = windows[id];
+    if (w.classList.contains("minimized")) w.classList.remove("minimized");
+    w.style.zIndex = ++wZIndex;
+    w.querySelector(".wbtn.close")?.parentElement?.parentElement?.classList.remove("minimized");
+    updateTaskbar();
+    return;
+  }
+  const app = APPS.find(a => a.id === id);
+  if (!app) return;
+
+  const w = document.createElement("div");
+  w.className = `window ${id}-window`;
+  w.id = `win-${id}`;
+  w.style.cssText = getDefaultPos(id);
+  w.style.zIndex = ++wZIndex;
+
+  w.innerHTML = `
+    <div class="window-header">
+      <div class="window-btns">
+        <button class="wbtn close" onclick="closeApp('${id}')"></button>
+        <button class="wbtn min" onclick="minimizeApp('${id}')"></button>
+        <button class="wbtn max" onclick="maximizeApp('${id}')"></button>
+      </div>
+      <div class="window-title">${app.icon} <span>${app.name}</span></div>
+    </div>
+    <div class="window-content">${renderAppContent(id)}</div>`;
+
+  document.getElementById("window-container").appendChild(w);
+  windows[id] = w;
+  makeDraggable(w);
+  makeResizable(w);
+  updateTaskbar();
+
+  // Init app
+  setTimeout(() => initApp(id), 50);
+}
+
+function getDefaultPos(id) {
+  const positions = {
+    luokai:   "width:420px;height:560px;left:40px;top:40px",
+    terminal: "width:680px;height:420px;left:120px;top:80px",
+    files:    "width:640px;height:460px;left:160px;top:60px",
+    browser:  "width:860px;height:560px;left:80px;top:40px",
+    code:     "width:760px;height:520px;left:100px;top:60px",
+    notes:    "width:480px;height:420px;left:200px;top:100px",
+    settings: "width:640px;height:480px;left:120px;top:80px",
+    about:    "width:480px;height:420px;left:200px;top:120px",
+    studio:   "width:700px;height:500px;left:100px;top:60px",
+    vision:   "width:620px;height:480px;left:140px;top:70px",
+    music:    "width:480px;height:380px;left:180px;top:100px",
+  };
+  return positions[id] || "width:600px;height:400px;left:100px;top:80px";
+}
+
+function closeApp(id) {
+  if (!windows[id]) return;
+  windows[id].remove();
+  delete windows[id];
+  updateTaskbar();
+}
+
+function minimizeApp(id) {
+  if (!windows[id]) return;
+  windows[id].classList.add("minimized");
+  updateTaskbar();
+}
+
+function maximizeApp(id) {
+  if (!windows[id]) return;
+  windows[id].classList.toggle("maximized");
+}
+
+function updateTaskbar() {
+  const tb = document.getElementById("tb-apps");
+  tb.innerHTML = Object.entries(windows).map(([id, w]) => {
+    const app = APPS.find(a => a.id === id);
+    const min = w.classList.contains("minimized");
+    return `<button class="tb-app ${min ? "" : "active"}" onclick="${min ? `restoreApp` : `minimizeApp`}('${id}')">
+      ${app ? app.name : id}
+    </button>`;
+  }).join("");
+}
+
+function restoreApp(id) {
+  if (!windows[id]) return;
+  windows[id].classList.remove("minimized");
+  windows[id].style.zIndex = ++wZIndex;
+  updateTaskbar();
+}
+
+// ── APP CONTENT TEMPLATES ─────────────────────────────────────────
+function renderAppContent(id) {
+  switch(id) {
+    case "luokai": return `
+      <div class="luokai-chat" id="luokai-chat">
+        <div class="chat-msg ai">
+          <div class="chat-avatar">🤖</div>
+          <div>
+            <div class="chat-bubble">
+              I'm <strong>LUOKAI</strong>, your AI in LuoOS.<br>
+              I can control the OS, code, browse, generate images, speak 24/7, and learn.<br>
+              <em>What do you need?</em>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="luokai-input-row">
+        <button class="luokai-voice-btn" id="luokai-voice-btn" onclick="toggleVoice()" title="24/7 Voice">🎤</button>
+        <textarea class="luokai-input" id="luokai-input" placeholder="Talk to LUOKAI..." onkeydown="luokaiKey(event)" rows="1"></textarea>
+        <button class="luokai-send" onclick="luokaiSend()">➤</button>
+      </div>`;
+
+    case "terminal": return `
+      <div class="term-body" id="term-body">
+        <div class="term-output term-info">LuoOS Terminal v1.0 — by Luo Kai
+Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
+        <div class="term-output" id="term-output"></div>
+      </div>
+      <div class="term-input-row">
+        <span class="term-prompt">luo@luoos:~$ </span>
+        <input class="term-input" id="term-input" autocomplete="off" onkeydown="termKey(event)" placeholder=""/>
+      </div>`;
+
+    case "files": return `
+      <div class="files-toolbar">
+        <button class="browser-nav-btn" onclick="filesNav(-1)">←</button>
+        <button class="browser-nav-btn" onclick="filesNav(1)">→</button>
+        <button class="browser-nav-btn" onclick="filesUp()">↑</button>
+        <input class="files-path" id="files-path" value="${navigator.userAgent.includes('Win') ? 'C:\\Users' : '~'}" onchange="filesLoad(this.value)"/>
+        <button class="browser-nav-btn" onclick="filesLoad()">↺</button>
+      </div>
+      <div class="files-grid" id="files-grid">
+        <div style="color:var(--text3);font-size:12px;padding:20px">Loading files...</div>
+      </div>`;
+
+    case "browser": return `
+      <div class="browser-bar">
+        <button class="browser-nav-btn" onclick="browserNav('back')">←</button>
+        <button class="browser-nav-btn" onclick="browserNav('fwd')">→</button>
+        <button class="browser-nav-btn" onclick="browserNav('reload')">↺</button>
+        <input class="browser-url" id="browser-url" value="https://google.com" onkeydown="if(event.key==='Enter')browserGo()"/>
+        <button class="browser-nav-btn" onclick="browserGo()">→</button>
+      </div>
+      <iframe class="browser-content" id="browser-frame" src="https://google.com" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>`;
+
+    case "code": return `
+      <div class="code-toolbar">
+        <select class="code-lang-sel" id="code-lang">
+          <option>python</option><option>javascript</option><option>bash</option><option>html</option>
+        </select>
+        <button class="code-run-btn" onclick="codeRun()">▶ Run</button>
+        <button class="browser-nav-btn" onclick="codeAI()">🤖 AI</button>
+        <button class="browser-nav-btn" onclick="codeSave()">💾</button>
+      </div>
+      <textarea class="code-editor" id="code-editor" spellcheck="false">print("Hello from LuoOS!")</textarea>
+      <div class="code-output-panel" id="code-output">Output will appear here...</div>`;
+
+    case "notes": return `
+      <div style="padding:16px;flex:1;display:flex;flex-direction:column;gap:10px">
+        <input placeholder="Note title..." id="note-title" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:14px;outline:none"/>
+        <textarea placeholder="Write your note..." id="note-body" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:13px;resize:none;outline:none;line-height:1.7;font-family:var(--font-ui)"></textarea>
+        <div style="display:flex;gap:8px">
+          <button onclick="noteSave()" style="padding:7px 20px;border-radius:8px;border:none;background:var(--accent);color:#000;cursor:pointer;font-size:12px;font-weight:700">Save</button>
+          <button onclick="noteLoad()" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:12px">Load</button>
+          <button onclick="noteAI()" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--accent);cursor:pointer;font-size:12px">🤖 Improve</button>
+        </div>
+      </div>`;
+
+    case "studio": return `
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px;flex:1">
+        <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Luo Studio — AI Media Creator</div>
+        <textarea id="studio-prompt" placeholder="Describe what you want to create..." style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:13px;resize:none;outline:none"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="studio-type" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px">
+            <option value="image">🎨 Image</option><option value="video">🎬 Video</option>
+            <option value="website">🌐 Website</option><option value="code">💻 Code</option>
+          </select>
+          <select id="studio-style" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px">
+            <option>realistic</option><option>anime</option><option>cyberpunk</option>
+            <option>fantasy</option><option>oil</option><option>digital</option><option>sketch</option>
+          </select>
+          <button onclick="studioCreate()" style="padding:7px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;cursor:pointer;font-weight:700;font-size:13px">✨ Create</button>
+        </div>
+        <div id="studio-output" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:var(--text2);min-height:60px">Output will appear here...</div>
+      </div>`;
+
+    case "vision": return `
+      <div style="padding:16px;flex:1;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Luo Vision — AI Image Analysis</div>
+        <div id="vision-drop" style="border:2px dashed var(--border);border-radius:12px;padding:40px;text-align:center;cursor:pointer;color:var(--text2)" onclick="document.getElementById('vision-file').click()">
+          🖼️<br>Drop image or click to select<br><input type="file" id="vision-file" accept="image/*" style="display:none" onchange="visionLoad(this)"/>
+        </div>
+        <img id="vision-preview" style="display:none;max-height:200px;border-radius:10px;border:1px solid var(--border)"/>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="vision-btns" style="display:none">
+          <button onclick="visionRun('detect')" class="code-run-btn">🔍 Detect</button>
+          <button onclick="visionRun('caption')" class="code-run-btn" style="background:var(--accent2)">📝 Caption</button>
+          <button onclick="visionRun('classify')" class="code-run-btn" style="background:#9c27b0">🏷️ Classify</button>
+        </div>
+        <div id="vision-output" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:var(--text2)">Upload an image to analyze...</div>
+      </div>`;
+
+    case "music": return `
+      <div style="padding:24px;text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+        <div style="font-size:60px">🎵</div>
+        <div style="font-size:16px;font-weight:700">Luo Music</div>
+        <input id="music-query" placeholder="Song, artist, or URL..." style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none;text-align:center"/>
+        <div style="display:flex;gap:12px">
+          <button onclick="musicPlay()" style="padding:10px 28px;border-radius:10px;border:none;background:var(--accent3);color:#000;cursor:pointer;font-size:14px;font-weight:700">▶ Play</button>
+          <button onclick="musicYT()" style="padding:10px 20px;border-radius:10px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:13px">YouTube</button>
+        </div>
+        <div id="music-status" style="font-size:12px;color:var(--text3)">Ask LUOKAI to play anything</div>
+      </div>`;
+
+    case "settings": return `
+      <div class="settings-layout">
+        <div class="settings-sidebar">
+          ${[["🖥️","Appearance"],["🤖","LUOKAI AI"],["🎤","Voice"],["🔄","Evolution"],["ℹ️","System"],["🔒","Privacy"],["🎨","Themes"],["🌐","Network"]].map(([i,n])=>`<div class="settings-item" onclick="settingsTab('${n}')">${i} ${n}</div>`).join("")}
+        </div>
+        <div class="settings-content" id="settings-content">
+          <div class="settings-section">
+            <h3>Appearance</h3>
+            <div class="settings-row"><label>Dark Mode</label><button class="toggle on" id="tog-dark" onclick="toggleTheme()"></button></div>
+            <div class="settings-row"><label>Wallpaper Text Shadow</label><button class="toggle on" id="tog-shadow" onclick="toggleSetting('shadow',this)"></button></div>
+            <div class="settings-row"><label>Animations</label><button class="toggle on" id="tog-anim" onclick="toggleSetting('anim',this)"></button></div>
+            <div class="settings-row"><label>Blur Effects</label><button class="toggle on" id="tog-blur" onclick="toggleSetting('blur',this)"></button></div>
+          </div>
+          <div class="settings-section">
+            <h3>LUOKAI AI</h3>
+            <div class="settings-row"><label>Always-On Voice</label><button class="toggle" id="tog-voice" onclick="toggleVoiceFromSettings()"></button></div>
+            <div class="settings-row"><label>Co-Evolution Engine</label><button class="toggle" id="tog-coevo" onclick="toggleCoevo()"></button></div>
+            <div class="settings-row"><label>Auto-Learn from Internet</label><button class="toggle on" onclick="toggleSetting('autolearn',this)"></button></div>
+            <div class="settings-row"><label>Ollama URL</label>
+              <input value="http://localhost:11434" style="width:200px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px"/>
+            </div>
+            <div class="settings-row"><label>Model</label>
+              <select style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
+                <option>mistral</option><option>llama3</option><option>phi3</option>
+                <option>qwen2</option><option>deepseek-coder</option><option>codellama</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3>System Info</h3>
+            <div class="settings-row"><label>OS Name</label><span style="color:var(--accent);font-size:13px">LuoOS v1.0</span></div>
+            <div class="settings-row"><label>Creator</label><span style="color:var(--text2);font-size:13px">Luo Kai (luokai25)</span></div>
+            <div class="settings-row"><label>AI Core</label><span style="color:var(--text2);font-size:13px">LUOKAI v1.0</span></div>
+            <div class="settings-row"><label>License</label><span style="color:var(--text2);font-size:13px">Open Source — All rights Luo Kai © 2025</span></div>
+            <div class="settings-row"><label>Skills Loaded</label><span style="color:var(--accent3);font-size:13px" id="st-skills">4,146</span></div>
+            <div class="settings-row"><label>Memory</label><span style="color:var(--text2);font-size:13px" id="st-mem">—</span></div>
+          </div>
+        </div>
+      </div>`;
+
+    case "about": return `
+      <div class="about-content">
+        <div class="about-logo">LUO</div>
+        <div class="about-name">LuoOS — The AI-Native Operating System</div>
+        <div class="about-tagline">A full computer in a sandbox, powered by LUOKAI — the most capable local AI agent. Built from 60+ open-source frameworks. All rights reserved to Luo Kai.</div>
+        <div class="about-badges">
+          ${["LuoOS v1.0","LUOKAI AI","4,146 Skills","24/7 Voice","Co-Evolution","Open Source","No Cloud","No API Keys"].map(b=>`<span class="badge">${b}</span>`).join("")}
+        </div>
+        <div class="about-credits">
+          Created by <strong style="color:var(--accent)">Luo Kai</strong> (luokai25 · luokai0)<br>
+          LUOKAI Agent • LuoOS • Luo Desktop • Luo Gate<br>
+          All intellectual property © Luo Kai 2025. All rights reserved.<br>
+          <span style="color:var(--text3)">Built with ❤️ from 60+ open-source projects</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">
+          github.com/luokai25 | github.com/luokai0
+        </div>
+      </div>`;
+
+    default: return `<div style="padding:32px;color:var(--text2);text-align:center">🚧 ${id} — Coming soon</div>`;
+  }
+}
+
+// ── APP INIT ──────────────────────────────────────────────────────
+function initApp(id) {
+  if (id === "terminal") {
+    document.getElementById("term-input")?.focus();
+  }
+  if (id === "luokai") {
+    document.getElementById("luokai-input")?.focus();
+  }
+  if (id === "files") {
+    filesLoad("~");
+  }
+  if (id === "settings") {
+    // Update live stats
+    checkAgent().then(() => {
+      document.getElementById("st-mem") && fetch(`${API}/api/status`).then(r=>r.json()).then(d=>{
+        const m = document.getElementById("st-mem");
+        if (m) m.textContent = `${d.memory || 0} entries`;
+        const s = document.getElementById("st-skills");
+        if (s) s.textContent = `${d.skills || 4146}`;
+      }).catch(()=>{});
+    });
+  }
+}
+
+// ── LUOKAI CHAT ───────────────────────────────────────────────────
+function luokaiKey(e) {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); luokaiSend(); }
+}
+
+async function luokaiSend() {
+  const input = document.getElementById("luokai-input");
+  const msg   = input?.value?.trim();
+  if (!msg) return;
+  input.value = "";
+  input.style.height = "auto";
+
+  addChatMsg("user", msg);
+
+  // Thinking indicator
+  const thinkId = "think-" + Date.now();
+  addChatMsg("ai", "...", thinkId);
+
+  try {
+    const r = await fetch(`${API}/api/chat`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({message: msg}),
+    });
+    const d = await r.json();
+    document.getElementById(thinkId)?.remove();
+    addChatMsg("ai", d.response || d.error || "No response");
+  } catch(e) {
+    document.getElementById(thinkId)?.remove();
+    addChatMsg("ai", `⚠️ LUOKAI offline. Start server: python luo_server.py\n\nFallback: ${localFallback(msg)}`);
+  }
+}
+
+function localFallback(msg) {
+  const tl = msg.toLowerCase();
+  if (tl.includes("time")) return `It's ${new Date().toLocaleTimeString()}`;
+  if (tl.includes("date")) return `Today is ${new Date().toLocaleDateString()}`;
+  if (tl.includes("hello") || tl.includes("hi")) return "LUOKAI online. Start python luo_server.py for full AI.";
+  return "Start luo_server.py to enable LUOKAI AI.";
+}
+
+function addChatMsg(role, text, id) {
+  const chat = document.getElementById("luokai-chat");
+  if (!chat) return;
+  const div = document.createElement("div");
+  div.className = `chat-msg ${role}`;
+  if (id) div.id = id;
+  const formatted = text
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, `<code style="background:var(--bg-card);padding:1px 5px;border-radius:4px">$1</code>`)
+    .replace(/\n/g, "<br>");
+  div.innerHTML = `<div class="chat-avatar">${role==="ai"?"🤖":"👤"}</div><div><div class="chat-bubble">${formatted}</div></div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ── VOICE ─────────────────────────────────────────────────────────
+async function toggleVoice() {
+  const btn = document.getElementById("luokai-voice-btn");
+  if (!voiceActive) {
+    try {
+      const r = await fetch(`${API}/api/voice/start`, {method:"POST"});
+      const d = await r.json();
+      if (d.ok) {
+        voiceActive = true;
+        btn?.classList.add("active");
+        document.getElementById("tb-voice-indicator").textContent = "🎤 ON";
+        document.getElementById("tb-voice-indicator").style.color = "#00ff9d";
+        notify("Voice Active", "Say 'Luo' to wake LUOKAI anytime", "success");
+        addChatMsg("ai", "👂 Always-on voice activated! Say **'Luo'** or **'LUOKAI'** anywhere and I'll respond.");
+      }
+    } catch(e) {
+      notify("Voice Error", "Start luo_server.py first", "error");
+    }
+  } else {
+    await fetch(`${API}/api/voice/stop`, {method:"POST"}).catch(()=>{});
+    voiceActive = false;
+    btn?.classList.remove("active");
+    document.getElementById("tb-voice-indicator").textContent = "🎤 OFF";
+    document.getElementById("tb-voice-indicator").style.color = "#555";
+    addChatMsg("ai", "🔇 Voice deactivated.");
+  }
+}
+
+async function toggleVoiceFromSettings() {
+  await toggleVoice();
+  const tog = document.getElementById("tog-voice");
+  if (tog) tog.className = voiceActive ? "toggle on" : "toggle";
+}
+
+async function toggleCoevo() {
+  try {
+    const r = await fetch(`${API}/api/evolution/start`, {method:"POST"});
+    const d = await r.json();
+    if (d.ok) {
+      notify("Evolution Started", "LUOKAI will now continuously improve itself", "info");
+      const tog = document.getElementById("tog-coevo");
+      if (tog) tog.className = "toggle on";
+    }
+  } catch(e) {
+    notify("Error", "Start luo_server.py first", "error");
+  }
+}
+
+// ── TERMINAL ─────────────────────────────────────────────────────
+const TERM_CMDS = {
+  help: ()=>`LuoOS Terminal Commands:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+File System:
+  ls [path]          list files
+  cd [path]          change directory
+  cat [file]         show file content
+  mkdir [dir]        create directory
+  rm [file]          remove file
+  pwd                print working dir
+  cp [src] [dst]     copy file
+  mv [src] [dst]     move/rename file
+
+System:
+  clear              clear terminal
+  date               show date/time
+  whoami             current user
+  ps                 list processes
+  uptime             system uptime
+  neofetch           system info (luo style)
+  uname              OS info
+
+Network:
+  ping [host]        ping host
+  curl [url]         fetch URL
+
+LuoOS Commands:
+  luo [query]        ask LUOKAI AI
+  luo apps           list installed apps
+  luo open [app]     open app
+  luo status         LUOKAI status
+  luo skills         list skills
+  luo evolve         start co-evolution
+  luo voice on/off   toggle 24/7 voice
+  luo search [q]     web search
+  luo run [file]     run Python file
+  luo build [type]   build website/app
+  luo img [prompt]   generate image
+
+Python: python -c "code"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+
+  neofetch: ()=>`
+      ██╗     ██╗   ██╗ ██████╗
+      ██║     ██║   ██║██╔═══██╗      OS: LuoOS v1.0
+      ██║     ██║   ██║██║   ██║      AI: LUOKAI v1.0
+      ██║     ██║   ██║██║   ██║      Creator: Luo Kai
+      ███████╗╚██████╔╝╚██████╔╝      Skills: 4,146
+      ╚══════╝ ╚═════╝  ╚═════╝       Voice: Always-On
+                                      Evolution: Active
+                                      Shell: Luo Terminal
+  `,
+  date:    ()=>new Date().toString(),
+  whoami:  ()=>"luokai",
+  pwd:     ()=>"/home/luokai",
+  uname:   ()=>"LuoOS 1.0.0-luokai x86_64 LuoKernel",
+  uptime:  ()=>{const s=Math.floor(performance.now()/1000);return`up ${Math.floor(s/3600)}h ${Math.floor(s%3600/60)}m`;},
+  clear:   ()=>"CLEAR",
+  ps:      ()=>"PID   NAME\n1     luo_kernel\n2     luokai_agent\n3     luo_server\n4     luo_voice_daemon\n5     coevo_engine\n6     luo_terminal",
+};
+
+let termCwd = "~";
+
+async function termRun(cmd) {
+  if (!cmd.trim()) return "";
+  termHistory.unshift(cmd);
+  termHistIdx = -1;
+  const [c, ...args] = cmd.trim().split(/\s+/);
+
+  // Built-in
+  if (TERM_CMDS[c]) {
+    const r = TERM_CMDS[c](args);
+    return r === "CLEAR" ? null : r;
+  }
+
+  // luo commands
+  if (c === "luo") {
+    const sub = args[0]?.toLowerCase();
+    if (!sub) return "Usage: luo [query]";
+    if (sub === "apps")   return APPS.map(a=>a.name).join("\n");
+    if (sub === "open")   { openApp(args[1]||"luokai"); return `Opening ${args[1]}...`; }
+    if (sub === "status") {
+      try { const r=await fetch(`${API}/api/status`); const d=await r.json(); return JSON.stringify(d,null,2); }
+      catch { return "LUOKAI offline — start luo_server.py"; }
+    }
+    if (sub === "voice")  { await toggleVoice(); return `Voice ${voiceActive?"on":"off"}`; }
+    if (sub === "evolve") { await toggleCoevo(); return "Evolution engine started"; }
+    if (sub === "skills") return `4,146 skills loaded across 20 domains`;
+    // Ask LUOKAI
+    const query = args.join(" ");
+    try {
+      const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:query})});
+      const d = await r.json();
+      return d.response || "No response";
+    } catch { return localFallback(query); }
+  }
+
+  // ls
+  if (c === "ls") {
+    try {
+      const r = await fetch(`${API}/api/fs/ls`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:args[0]||termCwd})});
+      const d = await r.json();
+      if (d.ok) return d.items.map(i=>`${i.type==="dir"?"\x1b[34m":"\x1b[0m"}${i.name}`).join("  ") || "(empty)";
+    } catch {}
+    return `luo@luoos:${termCwd}$ (offline - cannot list filesystem)`;
+  }
+
+  // cd
+  if (c === "cd") { termCwd = args[0] || "~"; return `Changed to: ${termCwd}`; }
+
+  // cat
+  if (c === "cat") {
+    try {
+      const r = await fetch(`${API}/api/fs/read`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:args[0]})});
+      const d = await r.json();
+      if (d.ok) return d.content;
+      return d.error;
+    } catch { return "Cannot read file (server offline)"; }
+  }
+
+  // python
+  if (c === "python" || c === "python3") {
+    const code = args.slice(args.indexOf("-c")+1).join(" ").replace(/^"|"$/g,"");
+    if (code) {
+      try {
+        const r = await fetch(`${API}/api/execute`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,language:"python"})});
+        const d = await r.json();
+        return d.output;
+      } catch { return "Python execution requires luo_server.py"; }
+    }
+    return "Interactive Python: luo run python";
+  }
+
+  // Fallback — send to LUOKAI AI
+  try {
+    const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:`terminal command: ${cmd}`})});
+    const d = await r.json();
+    return d.response || `Command not found: ${c}`;
+  } catch {
+    return `Command not found: ${c}\nType 'help' for available commands`;
+  }
+}
+
+function termPrint(text, cls="") {
+  const out = document.getElementById("term-output");
+  if (!out) return;
+  const div = document.createElement("div");
+  div.className = `term-output ${cls}`;
+  div.innerHTML = escHtml(text || "").replace(/\n/g,"<br>");
+  out.appendChild(div);
+  const body = document.getElementById("term-body");
+  if (body) body.scrollTop = body.scrollHeight;
+}
+
+async function termKey(e) {
+  const input = e.target;
+  if (e.key === "Enter") {
+    const cmd = input.value.trim();
+    input.value = "";
+    const prompt = `luo@luoos:${termCwd}$ ${cmd}`;
+    termPrint(prompt, "term-info");
+    if (cmd) {
+      const result = await termRun(cmd);
+      if (result === null) {
+        document.getElementById("term-output").innerHTML = "";
+      } else if (result !== undefined) {
+        termPrint(result);
+      }
+    }
+  } else if (e.key === "ArrowUp") {
+    termHistIdx = Math.min(termHistIdx+1, termHistory.length-1);
+    input.value = termHistory[termHistIdx] || "";
+  } else if (e.key === "ArrowDown") {
+    termHistIdx = Math.max(termHistIdx-1, -1);
+    input.value = termHistory[termHistIdx] || "";
+  }
+}
+
+// ── FILE MANAGER ─────────────────────────────────────────────────
+let filesCwd = "~", filesStack = [];
+
+async function filesLoad(path) {
+  path = path || filesCwd;
+  const pathEl = document.getElementById("files-path");
+  const grid   = document.getElementById("files-grid");
+  if (pathEl) pathEl.value = path;
+  if (grid) grid.innerHTML = `<div style="color:var(--text3);font-size:12px;padding:20px">Loading...</div>`;
+
+  try {
+    const r = await fetch(`${API}/api/fs/ls`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path})});
+    const d = await r.json();
+    if (d.ok) {
+      filesCwd = d.path;
+      if (pathEl) pathEl.value = filesCwd;
+      if (grid) grid.innerHTML = d.items.map(i=>`
+        <div class="file-item" ondblclick="filesOpen('${d.path}/${i.name}','${i.type}')">
+          <div class="file-item-icon">${i.type==="dir"?"📁":getFileIcon(i.name)}</div>
+          <div class="file-item-name">${i.name}</div>
+        </div>`).join("") || `<div style="color:var(--text3);padding:20px;font-size:12px">(empty)</div>`;
+    }
+  } catch {
+    if (grid) grid.innerHTML = `<div style="color:var(--text3);padding:20px;font-size:12px">Server offline — start luo_server.py</div>`;
+  }
+}
+
+function getFileIcon(name) {
+  const ext = name.split(".").pop()?.toLowerCase();
+  const icons = {py:"🐍",js:"📜",html:"🌐",css:"🎨",json:"📋",md:"📝",txt:"📄",png:"🖼️",jpg:"🖼️",gif:"🎞️",mp4:"🎬",mp3:"🎵",pdf:"📕",zip:"📦",sh:"⚙️"};
+  return icons[ext] || "📄";
+}
+
+function filesOpen(path, type) {
+  if (type === "dir") {
+    filesStack.push(filesCwd);
+    filesLoad(path);
+  } else {
+    openApp("code");
+    setTimeout(async()=>{
+      try {
+        const r = await fetch(`${API}/api/fs/read`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path})});
+        const d = await r.json();
+        const ed = document.getElementById("code-editor");
+        if (d.ok && ed) ed.value = d.content;
+      } catch {}
+    }, 200);
+  }
+}
+
+function filesNav(dir) {
+  if (dir === -1 && filesStack.length) filesLoad(filesStack.pop());
+}
+
+function filesUp() {
+  const up = filesCwd.split("/").slice(0,-1).join("/") || "/";
+  filesStack.push(filesCwd);
+  filesLoad(up);
+}
+
+// ── BROWSER ───────────────────────────────────────────────────────
+function browserGo() {
+  const urlInput = document.getElementById("browser-url");
+  const frame    = document.getElementById("browser-frame");
+  let url        = urlInput?.value?.trim() || "";
+  if (!url.startsWith("http")) url = "https://" + url;
+  if (frame) frame.src = url;
+}
+
+function browserNav(action) {
+  const frame = document.getElementById("browser-frame");
+  if (!frame) return;
+  if (action === "back")   frame.contentWindow?.history?.back();
+  if (action === "fwd")    frame.contentWindow?.history?.forward();
+  if (action === "reload") frame.contentWindow?.location?.reload();
+}
+
+// ── CODE EDITOR ───────────────────────────────────────────────────
+async function codeRun() {
+  const code   = document.getElementById("code-editor")?.value || "";
+  const lang   = document.getElementById("code-lang")?.value || "python";
+  const output = document.getElementById("code-output");
+  if (output) output.textContent = "Running...";
+  try {
+    const r = await fetch(`${API}/api/execute`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,language:lang})});
+    const d = await r.json();
+    if (output) output.textContent = d.output || "(no output)";
+  } catch {
+    if (output) output.textContent = "Server offline. Start: python luo_server.py";
+  }
+}
+
+async function codeAI() {
+  const code = document.getElementById("code-editor")?.value || "";
+  const lang = document.getElementById("code-lang")?.value || "python";
+  const msg  = `Improve this ${lang} code, fix bugs, add comments:\n\`\`\`${lang}\n${code}\n\`\`\``;
+  try {
+    const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})});
+    const d = await r.json();
+    const match = d.response?.match(/```\w*\n?([\s\S]+?)```/);
+    if (match) {
+      const ed = document.getElementById("code-editor");
+      if (ed) ed.value = match[1];
+    }
+    notify("AI Code", d.response?.substring(0,80)+"...", "info");
+  } catch {
+    notify("Error","Start luo_server.py","error");
+  }
+}
+
+function codeSave() {
+  const code = document.getElementById("code-editor")?.value || "";
+  const blob = new Blob([code], {type:"text/plain"});
+  const a    = document.createElement("a");
+  a.href     = URL.createObjectURL(blob);
+  a.download = "luo_code.py";
+  a.click();
+}
+
+// ── STUDIO ────────────────────────────────────────────────────────
+async function studioCreate() {
+  const prompt = document.getElementById("studio-prompt")?.value?.trim();
+  const type   = document.getElementById("studio-type")?.value;
+  const style  = document.getElementById("studio-style")?.value;
+  const out    = document.getElementById("studio-output");
+  if (!prompt) { notify("Studio","Enter a prompt first","warning"); return; }
+  if (out) out.textContent = "Creating...";
+  const msg = `${type === "image" ? "generate image of" : `create a ${type} for`}: ${prompt} in ${style} style`;
+  try {
+    const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})});
+    const d = await r.json();
+    if (out) out.textContent = d.response;
+    notify("Studio","Creation complete!","success");
+  } catch { if (out) out.textContent = "Server offline"; }
+}
+
+// ── VISION ────────────────────────────────────────────────────────
+let visionFile = null;
+
+function visionLoad(input) {
+  const file = input.files[0];
+  if (!file) return;
+  visionFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById("vision-preview");
+    if (prev) { prev.src = e.target.result; prev.style.display = "block"; }
+    const btns = document.getElementById("vision-btns");
+    if (btns) btns.style.display = "flex";
+  };
+  reader.readAsDataURL(file);
+}
+
+async function visionRun(task) {
+  if (!visionFile) return;
+  const out = document.getElementById("vision-output");
+  if (out) out.textContent = `Running ${task}...`;
+  const msg = `${task} this image: ${visionFile.name}`;
+  try {
+    const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})});
+    const d = await r.json();
+    if (out) out.textContent = d.response;
+  } catch { if (out) out.textContent = "Server offline"; }
+}
+
+// ── MUSIC ─────────────────────────────────────────────────────────
+async function musicPlay() {
+  const q = document.getElementById("music-query")?.value?.trim();
+  if (!q) return;
+  const st = document.getElementById("music-status");
+  if (st) st.textContent = `Finding: ${q}...`;
+  try {
+    const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:`play ${q}`})});
+    const d = await r.json();
+    if (st) st.textContent = d.response || "Playing...";
+  } catch { if (st) st.textContent = "Server offline"; }
+}
+
+function musicYT() {
+  const q = document.getElementById("music-query")?.value?.trim() || "music";
+  window.open(`https://youtube.com/results?search_query=${encodeURIComponent(q)}`,"_blank");
+}
+
+// ── NOTES ─────────────────────────────────────────────────────────
+function noteSave() {
+  const title = document.getElementById("note-title")?.value || "Note";
+  const body  = document.getElementById("note-body")?.value || "";
+  const notes = JSON.parse(localStorage.getItem("luo-notes") || "{}");
+  notes[title] = {body, time: new Date().toISOString()};
+  localStorage.setItem("luo-notes", JSON.stringify(notes));
+  notify("Note Saved", title, "success");
+}
+
+function noteLoad() {
+  const notes = JSON.parse(localStorage.getItem("luo-notes") || "{}");
+  const keys  = Object.keys(notes);
+  if (!keys.length) { notify("Notes","No notes saved yet","info"); return; }
+  const title = keys[0];
+  const input = document.getElementById("note-title");
+  const body  = document.getElementById("note-body");
+  if (input) input.value = title;
+  if (body)  body.value  = notes[title].body;
+}
+
+async function noteAI() {
+  const body = document.getElementById("note-body");
+  if (!body?.value) return;
+  try {
+    const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:`Improve this text: ${body.value}`})});
+    const d = await r.json();
+    if (body) body.value = d.response || body.value;
+    notify("AI","Note improved!","success");
+  } catch { notify("Error","Server offline","error"); }
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────────
+function settingsTab(name) {
+  document.querySelectorAll(".settings-item").forEach(el => el.classList.toggle("active", el.textContent.includes(name)));
+}
+
+function toggleSetting(key, btn) {
+  btn.className = btn.className === "toggle on" ? "toggle" : "toggle on";
+  localStorage.setItem(`luo-setting-${key}`, btn.className.includes("on") ? "1" : "0");
+}
+
+// ── THEME ─────────────────────────────────────────────────────────
+function toggleTheme() {
+  isDark = !isDark;
+  document.body.classList.toggle("theme-light", !isDark);
+  const tog = document.getElementById("tog-dark");
+  if (tog) tog.className = isDark ? "toggle on" : "toggle";
+  localStorage.setItem("luo-theme", isDark ? "dark" : "light");
+}
+
+// ── DRAGGABLE WINDOWS ─────────────────────────────────────────────
+function makeDraggable(win) {
+  const hdr = win.querySelector(".window-header");
+  let dx=0, dy=0, x1=0, y1=0;
+  hdr.onmousedown = e => {
+    if (e.target.classList.contains("wbtn")) return;
+    win.style.zIndex = ++wZIndex;
+    x1=e.clientX; y1=e.clientY;
+    document.onmousemove = mv => {
+      dx=x1-mv.clientX; dy=y1-mv.clientY; x1=mv.clientX; y1=mv.clientY;
+      const newTop  = Math.max(0, win.offsetTop-dy);
+      const newLeft = Math.max(0, win.offsetLeft-dx);
+      win.style.top  = newTop+"px";
+      win.style.left = newLeft+"px";
+    };
+    document.onmouseup = () => { document.onmousemove=null; document.onmouseup=null; };
+  };
+}
+
+function makeResizable(win) {
+  const handle = document.createElement("div");
+  handle.style.cssText="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:se-resize;z-index:10";
+  win.appendChild(handle);
+  let startX,startY,startW,startH;
+  handle.onmousedown = e => {
+    startX=e.clientX; startY=e.clientY;
+    startW=win.offsetWidth; startH=win.offsetHeight;
+    document.onmousemove = mv => {
+      win.style.width  = Math.max(320,startW+(mv.clientX-startX))+"px";
+      win.style.height = Math.max(240,startH+(mv.clientY-startY))+"px";
+    };
+    document.onmouseup = () => { document.onmousemove=null; document.onmouseup=null; };
+  };
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────
+function notify(title, body, type="info") {
+  const c = document.getElementById("notif-container");
+  if (!c) return;
+  const n = document.createElement("div");
+  n.className = `notif ${type}`;
+  n.innerHTML = `<div class="notif-title">${title}</div><div class="notif-body">${body}</div>`;
+  n.onclick = () => n.remove();
+  c.appendChild(n);
+  setTimeout(() => { n.style.opacity="0"; n.style.transform="translateX(60px)"; n.style.transition="all .3s"; setTimeout(()=>n.remove(),300); }, 4000);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────
+function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+
+// ── KEYBOARD SHORTCUTS ────────────────────────────────────────────
+document.addEventListener("keydown", e => {
+  if (e.ctrlKey && e.key === "l") { e.preventDefault(); openApp("luokai"); }
+  if (e.ctrlKey && e.key === "t") { e.preventDefault(); openApp("terminal"); }
+  if (e.ctrlKey && e.key === "b") { e.preventDefault(); openApp("browser"); }
+  if (e.ctrlKey && e.key === "e") { e.preventDefault(); openApp("code"); }
+  if (e.ctrlKey && e.key === "f") { e.preventDefault(); openApp("files"); }
+});
+
+// ── LOAD SAVED THEME ─────────────────────────────────────────────
+const savedTheme = localStorage.getItem("luo-theme");
+if (savedTheme === "light") { isDark = false; document.body.classList.add("theme-light"); }
+
+// ── START ─────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
