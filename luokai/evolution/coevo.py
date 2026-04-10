@@ -1,32 +1,42 @@
 #!/usr/bin/env python3
 """
 LUOKAI Co-Evolution Engine
-===========================
+==========================
 Your algorithm idea, fully implemented:
 
-  LUOKAI gets better → generates harder benchmarks → 
+  LUOKAI gets better → generates harder benchmarks →
   harder benchmarks make LUOKAI better → repeat forever
 
 Three competing systems:
   1. CHALLENGER  — generates increasingly hard tests
-  2. LUOKAI      — tries to pass them, learns from failures  
+  2. LUOKAI      — tries to pass them, learns from failures
   3. EVALUATOR   — scores performance, decides training targets
 
 This creates a GAN-like self-improving loop that NEVER STOPS.
 The stronger LUOKAI gets, the harder CHALLENGER makes the tests.
 The better the tests, the stronger LUOKAI becomes.
 
-Components absorbed from zips:
-  - DSPy (prompt optimization + evaluation)
-  - Tree-of-Thought (multi-path reasoning for challenger)
-  - Axolotl/PEFT (fine-tuning LUOKAI on failures)
-  - DeepEval (hallucination, faithfulness scoring)
-  - UniLM Diff-Transformer (attention mechanism for evaluation)
+Components:
+  - Benchmark Library: Curated challenges across domains
+  - Tree-of-Thought: Multi-path reasoning for solutions
+  - Adaptive Difficulty: Scales based on performance
+  - Training Data Export: For fine-tuning on failures
+
+Created by Luo Kai (luokai25) — Enhanced by Claude Code
 """
 import json, time, threading, random, hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import List, Dict, Optional, Callable
+
+# Import benchmark library
+try:
+    from luokai.evolution.benchmarks import BenchmarkLibrary, Challenge
+    BENCHMARKS_AVAILABLE = True
+except ImportError:
+    BENCHMARKS_AVAILABLE = False
+    BenchmarkLibrary = None
+    Challenge = None
 
 class CoEvoEngine:
     """The co-evolution engine. Both AI and benchmarks improve together."""
