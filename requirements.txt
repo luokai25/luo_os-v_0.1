@@ -1,37 +1,46 @@
-# LuoOS Core
+# ═══════════════════════════════════════════════════════════════════
+# Luo OS Dependencies
+# ═══════════════════════════════════════════════════════════════════
+
+# ── Core ───────────────────────────────────────────────────────────
 flask>=3.0.0
 flask-cors>=4.0.0
 requests>=2.31.0
 
-# LUOKAI AI
-# Ollama runs separately: https://ollama.ai
+# ── Vector Memory (RAG) ────────────────────────────────────────────
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
 
-# Voice (24/7 always-on)
+# ── Rich Terminal UI ───────────────────────────────────────────────
+textual>=0.47.0
+rich>=13.0.0
+
+# ── Voice Interface ────────────────────────────────────────────────
 pyaudio>=0.2.13
 SpeechRecognition>=3.10.0
 pyttsx3>=2.90
-edge-tts>=6.1.9          # high quality TTS
-openai-whisper>=20231117  # offline STT
+edge-tts>=6.1.9
+# openai-whisper>=20231117  # Optional: offline STT
 
-# Desktop control
+# ── Desktop Control ────────────────────────────────────────────────
 pyautogui>=0.9.54
 Pillow>=10.0.0
 psutil>=5.9.0
 
-# Image generation (optional, needs GPU for speed)
-# diffusers>=0.25.0
-# torch>=2.1.0
-# transformers>=4.36.0
-
-# YOLO vision (optional)
-# ultralytics>=8.1.0
-
-# Browser automation
-# playwright>=1.40.0    # run: playwright install
-
-# Media playback
-# yt-dlp>=2024.1.1       # YouTube streaming
-
-# Web
+# ── Web Scraping ───────────────────────────────────────────────────
 beautifulsoup4>=4.12.0
 lxml>=4.9.0
+
+# ── Optional: AI/ML ────────────────────────────────────────────────
+# torch>=2.1.0
+# transformers>=4.36.0
+# diffusers>=0.25.0
+
+# ── Optional: Vision ───────────────────────────────────────────────
+# ultralytics>=8.1.0
+
+# ── Optional: Browser Automation ────────────────────────────────────
+# playwright>=1.40.0
+
+# ── Optional: Media ────────────────────────────────────────────────
+# yt-dlp>=2024.1.1

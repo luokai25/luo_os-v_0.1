@@ -1,18 +1,36 @@
 #!/usr/bin/env python3
 """
 LUOKAI Agent — Core AI for LuoOS
-Integrates: Ollama LLM + 4146 skills + always-on voice + co-evolution
+Integrates: Ollama LLM + 4146 skills + always-on voice + co-evolution + Vector Memory
 """
 import json, threading, time, re, subprocess, sys, os
 import urllib.request, urllib.parse
 from pathlib import Path
 from datetime import datetime
+from typing import Optional, Dict, List, Callable
+
+# Import vector memory
+try:
+    from luo_agent.memory.vector_memory import VectorMemory
+    VECTOR_MEMORY_AVAILABLE = True
+except ImportError:
+    VECTOR_MEMORY_AVAILABLE = False
+    VectorMemory = None
+
+# Import tools
+try:
+    from luo_agent.tools.tools import ToolExecutor, TOOLS
+    TOOLS_AVAILABLE = True
+except ImportError:
+    TOOLS_AVAILABLE = False
+    ToolExecutor = None
+    TOOLS = {}
 
 class LUOKAIAgent:
     """The main AI agent that runs inside LuoOS."""
 
     NAME    = "LUOKAI"
-    VERSION = "1.0"
+    VERSION = "1.1"
 
     SYSTEM_PROMPT = """You are LUOKAI, the AI core of LuoOS — the world's most advanced open-source AI operating system.
 Created by Luo Kai (luokai25). You are part of the OS itself — you can control everything.
@@ -33,14 +51,17 @@ Your capabilities in LuoOS:
 - Building apps, websites, dashboards
 - 4,146 built-in skills across 20 domains
 - Self-improvement via co-evolution algorithm
+- Vector memory for semantic recall
 
 Rules:
 - When asked to DO something, DO it — don't just explain.
 - Give concise answers for voice (under 3 sentences).
 - Give detailed answers for text.
-- Always be honest if you cannot do something."""
+- Always be honest if you cannot do something.
+- Use tools when available to accomplish tasks."""
 
-    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "mistral"):
+    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "mistral",
+                 use_vector_memory: bool = True, use_tools: bool = True):
         self.ollama_url = ollama_url
         self.model      = model
         self._history   : list = []
@@ -50,6 +71,27 @@ Rules:
         self._running   = True
         self._voice     = None
         self._coevo     = None
+
+        # Initialize vector memory
+        self._vector_memory = None
+        if use_vector_memory and VECTOR_MEMORY_AVAILABLE:
+            try:
+                self._vector_memory = VectorMemory(
+                    agent_id="luokai_main",
+                    persist_dir="~/.luo_os/chroma"
+                )
+                print(f"[{self.NAME}] Vector memory: {'active' if self._vector_memory.available else 'fallback mode'}")
+            except Exception as e:
+                print(f"[{self.NAME}] Vector memory init failed: {e}")
+
+        # Initialize tools
+        self._tools = None
+        if use_tools and TOOLS_AVAILABLE:
+            try:
+                self._tools = ToolExecutor(auto_approve=False)
+                print(f"[{self.NAME}] Tools loaded: {len(TOOLS)}")
+            except Exception as e:
+                print(f"[{self.NAME}] Tools init failed: {e}")
 
         # Memory files
         self._mem_dir = Path("~/.luo_os/luokai").expanduser()
@@ -85,13 +127,26 @@ Rules:
     def _save_memory(self):
         self._mem_file.write_text(json.dumps(self._memory, indent=2))
 
-    def remember(self, key: str, value: str):
+    def remember(self, key: str, value: str, metadata: dict = None):
+        """Remember information in both flat and vector memory."""
         self._memory[key] = {"value": value, "time": datetime.now().isoformat()}
         self._save_memory()
+
+        # Also add to vector memory for semantic search
+        if self._vector_memory and self._vector_memory.available:
+            meta = metadata or {}
+            meta["key"] = key
+            self._vector_memory.add(f"{key}: {value}", metadata=meta)
 
     def recall(self, key: str) -> str:
         entry = self._memory.get(key)
         return entry["value"] if entry else ""
+
+    def semantic_recall(self, query: str, n: int = 5) -> List[Dict]:
+        """Semantic search through memories."""
+        if self._vector_memory:
+            return self._vector_memory.search(query, n=n)
+        return []
 
     def _ollama(self, messages: list, max_tokens: int = 1024) -> str:
         payload = json.dumps({
@@ -123,11 +178,17 @@ Rules:
             return f"Current time: {datetime.now().strftime('%H:%M:%S')}"
         if "status" in tl:
             return f"LUOKAI running. Ollama offline — using local mode."
+        if "memory" in tl or "remember" in tl:
+            return self._get_memory_summary()
         return f"Processing: {text[:60]}... (Ollama offline — start with: ollama serve)"
 
     def think(self, user_input: str, max_tokens: int = 1024) -> str:
         """Main reasoning function. Called by chat, voice, and OS."""
         with self._lock:
+            # Check for tool commands
+            if self._tools and user_input.startswith("!"):
+                return self._execute_tool_command(user_input)
+
             # Add to history
             self._history.append({"role": "user", "content": user_input})
 
@@ -138,6 +199,12 @@ Rules:
             mem_context = self._get_relevant_memory(user_input)
             if mem_context:
                 messages.append({"role": "system", "content": f"Relevant memory:\n{mem_context}"})
+
+            # Add vector memory context
+            if self._vector_memory:
+                vec_context = self._vector_memory.get_context(user_input, n=3)
+                if vec_context:
+                    messages.append({"role": "system", "content": vec_context})
 
             # Add conversation history (last 10 turns)
             messages.extend(self._history[-10:])
@@ -151,7 +218,37 @@ Rules:
             # Auto-remember important things
             self._auto_remember(user_input, response)
 
+            # Store in vector memory
+            if self._vector_memory:
+                self._vector_memory.add(
+                    f"User: {user_input}\nAssistant: {response[:200]}",
+                    metadata={"type": "conversation", "timestamp": datetime.now().isoformat()}
+                )
+
             return response
+
+    def _execute_tool_command(self, command: str) -> str:
+        """Execute a tool command starting with !"""
+        parts = command[1:].strip().split(None, 1)
+        if not parts:
+            return f"Available tools: {', '.join(TOOLS.keys())}"
+
+        tool_name = parts[0]
+        args = {}
+        if len(parts) > 1:
+            try:
+                args = json.loads(parts[1])
+            except:
+                args = {"query": parts[1]} if tool_name in ["web_search", "read_file"] else {}
+
+        if self._tools:
+            return self._tools.execute(tool_name, args, ask_permission=self._ask_tool_permission)
+        return "Tools not available"
+
+    def _ask_tool_permission(self, tool: str, args: dict) -> bool:
+        """Ask for permission to execute tool (can be overridden)."""
+        print(f"[LUOKAI] Tool request: {tool} with args: {args}")
+        return True  # Auto-approve for now
 
     def _get_relevant_memory(self, query: str) -> str:
         """Find relevant memory entries for query."""
@@ -161,7 +258,23 @@ Rules:
             key_words = set(key.lower().split("_"))
             if key_words & query_words:
                 relevant.append(f"- {key}: {entry['value']}")
+
+        # Also search vector memory
+        if self._vector_memory:
+            vec_results = self._vector_memory.search(query, n=3)
+            for r in vec_results:
+                relevant.append(f"- {r['text']}")
+
         return "\n".join(relevant[:5])
+
+    def _get_memory_summary(self) -> str:
+        """Get summary of stored memories."""
+        lines = [f"Total memories: {len(self._memory)}"]
+        if self._vector_memory:
+            lines.append(f"Vector memories: {self._vector_memory.count()}")
+        for key, val in list(self._memory.items())[:5]:
+            lines.append(f"  {key}: {val['value'][:50]}...")
+        return "\n".join(lines)
 
     def _auto_remember(self, user_input: str, response: str):
         """Automatically remember important information."""
@@ -279,6 +392,8 @@ Rules:
             "ollama":      ollama_ok,
             "skills":      len(self._skills),
             "memory":      len(self._memory),
+            "vector_memory": self._vector_memory.count() if self._vector_memory else 0,
+            "tools":       len(TOOLS) if TOOLS_AVAILABLE else 0,
             "history_len": len(self._history),
             "voice_active": bool(self._voice and self._voice._running),
             "coevo_active": bool(self._coevo and self._coevo._running),
