@@ -285,6 +285,48 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   color:#00cc66;overflow-y:auto;white-space:pre-wrap;
 }
 
+/* ═══ APP: VS CODE ══════════════════════════════════════════════════ */
+.vscode-wrap{display:flex;flex-direction:column;flex:1;overflow:hidden;background:var(--bg-deep)}
+.vscode-toolbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 12px;background:#1e1e2e;border-bottom:1px solid #2a2a3e;
+  flex-shrink:0;gap:8px;
+}
+.vscode-tb-btn{
+  padding:4px 12px;border-radius:6px;border:1px solid var(--border);
+  background:var(--bg-card);color:var(--text2);cursor:pointer;font-size:11px;
+  transition:all .15s;display:inline-flex;align-items:center;gap:4px;
+}
+.vscode-tb-btn:hover{background:var(--bg-hover);color:var(--text)}
+.vscode-tb-btn.danger{border-color:#ff4d6d44;color:#ff4d6d}
+.vscode-tb-btn.danger:hover{background:#ff4d6d18}
+.vscode-panel{flex:1;display:flex;overflow:hidden}
+.vscode-iframe{width:100%;height:100%;border:none;background:#1e1e1e}
+.vscode-splash{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:40px;text-align:center;background:var(--bg-desktop);
+}
+.vscode-spinner{
+  width:40px;height:40px;border:3px solid var(--border);
+  border-top-color:#0065a9;border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.vscode-install-btn{
+  padding:12px 32px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,#0065a9,#0078d4);
+  color:#fff;cursor:pointer;font-size:14px;font-weight:700;
+  transition:all .2s;box-shadow:0 4px 16px rgba(0,101,169,.4);
+}
+.vscode-install-btn:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,101,169,.5)}
+.vscode-install-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.vscode-install-log{
+  margin-top:16px;padding:12px 16px;background:#0a0a0a;border-radius:8px;
+  font-family:var(--font-main);font-size:11px;color:#00ff9d;
+  text-align:left;width:100%;max-width:420px;max-height:140px;
+  overflow-y:auto;white-space:pre-wrap;border:1px solid #1a2a1a;
+}
+
 /* ═══ APP: SETTINGS ════════════════════════════════════════════════ */
 .settings-layout{display:flex;flex:1;overflow:hidden}
 .settings-sidebar{
@@ -392,6 +434,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <button class="sb-btn" onclick="openApp('terminal')">⌨️<div class="sb-tooltip">Luo Terminal</div></button>
   <button class="sb-btn" onclick="openApp('browser')">🌐<div class="sb-tooltip">Luo Browser</div></button>
   <button class="sb-btn" onclick="openApp('code')">💻<div class="sb-tooltip">Luo Code</div></button>
+  <button class="sb-btn" onclick="openApp('vscode')" title="Luo VS Code" style="position:relative">
+    <svg viewBox="0 0 28 28" width="28" height="28"><path d="M21 7l-6.5 6.5L9.5 9 7 11l4.5 3.5L7 18l2.5 2 7-4 6.5 6.5 1.5-.9V7.9L21 7z" fill="#4fc3f7"/></svg>
+    <div class="sb-tooltip">Luo VS Code</div>
+  </button>
   <button class="sb-btn" onclick="openApp('notes')">📝<div class="sb-tooltip">Luo Notes</div></button>
   <div class="sb-sep"></div>
   <button class="sb-btn" onclick="openApp('vision')">👁️<div class="sb-tooltip">Luo Vision</div></button>
@@ -446,6 +492,7 @@ const APPS = [
   { id:"terminal",name:"Luo Terminal",  desc:"Shell",    icon:termSVG()      },
   { id:"files",   name:"Luo Files",     desc:"Files",    icon:filesSVG()     },
   { id:"code",    name:"Luo Code",      desc:"Editor",   icon:codeSVG()      },
+  { id:"vscode",  name:"Luo VS Code",   desc:"VS Code",  icon:vscodeSVG()    },
   { id:"notes",   name:"Luo Notes",     desc:"Notes",    icon:notesSVG()     },
   { id:"studio",  name:"Luo Studio",    desc:"Create",   icon:studioSVG()    },
   { id:"vision",  name:"Luo Vision",    desc:"AI Vision",icon:visionSVG()    },
@@ -460,6 +507,7 @@ function browserSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="5
 function termSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a2a1a"/><text x="11" y="32" font-family="monospace" font-size="18" fill="#00ff9d">&gt;_</text><rect x="32" y="24" width="8" height="3" rx="1" fill="#00ff9d" opacity=".7"/></svg>`}
 function filesSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a1a2e"/><rect x="11" y="20" width="30" height="22" rx="3" fill="#4f8fd4"/><rect x="11" y="16" width="14" height="6" rx="2" fill="#6ba3e0"/><path d="M16 28h20M16 33h14" stroke="#fff5" stroke-width="2" stroke-linecap="round"/></svg>`}
 function codeSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a0d2e"/><path d="M20 20l-8 6 8 6" stroke="#9c27b0" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 20l8 6-8 6" stroke="#e040fb" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 17l-4 18" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/></svg>`}
+function vscodeSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#0065a9"/><path d="M38 13L26 24.5 16.5 17 13 19.5l8 6.5-8 6.5 3.5 2.5 9.5-7L38 39l3-1.5V14.5L38 13z" fill="white" opacity="0.95"/><path d="M38 13l-12 11.5L16.5 17 13 19.5l8 6.5-8 6.5 3.5 2.5 9.5-7L38 39V13z" fill="#ffffffcc"/></svg>`}
 function notesSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a1500"/><rect x="12" y="12" width="28" height="28" rx="4" fill="#f5c842" opacity=".15"/><rect x="12" y="12" width="28" height="28" rx="4" stroke="#f5c842" stroke-width="1.5" fill="none"/><path d="M18 22h16M18 27h16M18 32h10" stroke="#f5c842" stroke-width="2" stroke-linecap="round"/></svg>`}
 function studioSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#1a0a1a"/><circle cx="26" cy="26" r="12" fill="none" stroke="#e040fb" stroke-width="2"/><circle cx="26" cy="20" r="3" fill="#ff4081"/><circle cx="32" cy="29" r="3" fill="#ffeb3b"/><circle cx="20" cy="29" r="3" fill="#4caf50"/><circle cx="26" cy="26" r="2" fill="#fff"/></svg>`}
 function visionSVG(){return`<svg viewBox="0 0 52 52"><rect width="52" height="52" rx="14" fill="#0a1a1a"/><ellipse cx="26" cy="26" rx="16" ry="10" stroke="#00bcd4" stroke-width="2" fill="none"/><circle cx="26" cy="26" r="5" fill="#00bcd4" opacity=".3"/><circle cx="26" cy="26" r="5" stroke="#00bcd4" stroke-width="1.5" fill="none"/><circle cx="26" cy="26" r="2" fill="#00bcd4"/></svg>`}
@@ -598,6 +646,7 @@ function getDefaultPos(id) {
     files:    "width:640px;height:460px;left:160px;top:60px",
     browser:  "width:860px;height:560px;left:80px;top:40px",
     code:     "width:760px;height:520px;left:100px;top:60px",
+    vscode:   "width:1000px;height:680px;left:60px;top:30px",
     notes:    "width:480px;height:420px;left:200px;top:100px",
     settings: "width:640px;height:480px;left:120px;top:80px",
     about:    "width:480px;height:420px;left:200px;top:120px",
@@ -711,6 +760,62 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
       </div>
       <textarea class="code-editor" id="code-editor" spellcheck="false">print("Hello from LuoOS!")</textarea>
       <div class="code-output-panel" id="code-output">Output will appear here...</div>`;
+
+    case "vscode": return `
+      <div class="vscode-wrap" id="vscode-wrap">
+        <!-- Toolbar -->
+        <div class="vscode-toolbar" id="vscode-toolbar">
+          <div style="display:flex;align-items:center;gap:8px">
+            <svg viewBox="0 0 20 20" width="18" height="18"><path d="M15 4.5L9.5 9.5 6.5 7 5 8l3.5 2.5L5 13l1.5 1 4-2.5L15 17l1-.6V5.1L15 4.5z" fill="#4fc3f7"/></svg>
+            <span style="font-size:12px;font-weight:600;color:var(--text)">Luo VS Code</span>
+            <span style="font-size:11px;color:var(--text3)" id="vscode-status-badge">● checking...</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="vscode-tb-btn" onclick="vscodOpenExternal()" title="Open in new tab">⬡ New Tab</button>
+            <button class="vscode-tb-btn" onclick="vscodeRefresh()" title="Reload">↺ Reload</button>
+            <button class="vscode-tb-btn danger" onclick="vscodeStop()" id="vscode-stop-btn" style="display:none">■ Stop</button>
+          </div>
+        </div>
+        <!-- State panels (only one visible at a time) -->
+        <div class="vscode-panel" id="vscode-panel-loading">
+          <div class="vscode-splash">
+            <div class="vscode-spinner"></div>
+            <div style="font-size:15px;font-weight:600;color:var(--text);margin-top:18px">Starting VS Code…</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:6px">code-server is launching on port 8080</div>
+          </div>
+        </div>
+        <div class="vscode-panel" id="vscode-panel-install" style="display:none">
+          <div class="vscode-splash">
+            <svg viewBox="0 0 80 80" width="72" height="72" style="margin-bottom:16px"><rect width="80" height="80" rx="18" fill="#0065a9"/><path d="M58 20L40 36.5 26 26 21 30l13 10-13 10 5 4 15-10.5L58 60l4-2.5V22.5L58 20z" fill="white"/></svg>
+            <div style="font-size:17px;font-weight:700;color:var(--text)">VS Code not installed</div>
+            <div style="font-size:13px;color:var(--text2);margin:8px 0 20px;max-width:340px;text-align:center;line-height:1.6">
+              code-server brings the full VS Code experience to your browser.<br>Shared workspace syncs with Luo Files.
+            </div>
+            <button class="vscode-install-btn" onclick="vscodeInstall()" id="vscode-install-btn">
+              ⬇ Install VS Code (code-server)
+            </button>
+            <div style="font-size:11px;color:var(--text3);margin-top:12px">Downloads latest release • ~50MB • Takes ~2 min</div>
+            <div class="vscode-install-log" id="vscode-install-log" style="display:none"></div>
+          </div>
+        </div>
+        <div class="vscode-panel" id="vscode-panel-frame" style="display:none">
+          <iframe
+            id="vscode-iframe"
+            src="about:blank"
+            class="vscode-iframe"
+            allow="clipboard-read; clipboard-write"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+          ></iframe>
+        </div>
+        <div class="vscode-panel" id="vscode-panel-error" style="display:none">
+          <div class="vscode-splash">
+            <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+            <div style="font-size:15px;font-weight:600;color:var(--text)">Connection failed</div>
+            <div style="font-size:12px;color:var(--text3);margin:8px 0 18px" id="vscode-error-msg">Could not reach code-server</div>
+            <button class="vscode-tb-btn" onclick="vscodeInit()" style="padding:9px 22px;font-size:13px">Try Again</button>
+          </div>
+        </div>
+      </div>`;
 
     case "notes": return `
       <div style="padding:16px;flex:1;display:flex;flex-direction:column;gap:10px">
@@ -841,6 +946,9 @@ function initApp(id) {
   }
   if (id === "files") {
     filesLoad("~");
+  }
+  if (id === "vscode") {
+    vscodeInit();
   }
   if (id === "settings") {
     // Update live stats
@@ -1422,6 +1530,131 @@ function notify(title, body, type="info") {
 // ── UTILS ─────────────────────────────────────────────────────────
 function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
 
+// ── VS CODE / code-server ─────────────────────────────────────────
+const VSCODE_URL = "http://localhost:8080";
+const VSCODE_PASS = "luoos2024";
+
+function _vsPanel(name) {
+  ["loading","install","frame","error"].forEach(p => {
+    const el = document.getElementById(`vscode-panel-${p}`);
+    if (el) el.style.display = p === name ? "flex" : "none";
+  });
+}
+
+function _vsBadge(text, color) {
+  const el = document.getElementById("vscode-status-badge");
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = color || "var(--text3)";
+}
+
+async function vscodeInit() {
+  _vsPanel("loading");
+  _vsBadge("● checking…", "var(--text3)");
+  try {
+    const res = await fetch(`${API}/api/vscode/status`);
+    const d   = await res.json();
+    if (!d.installed) {
+      _vsPanel("install");
+      _vsBadge("● not installed", "#ff4d6d");
+      return;
+    }
+    if (!d.running) {
+      // Try to start it
+      _vsBadge("● starting…", "#f5c842");
+      const sr = await fetch(`${API}/api/vscode/start`, {method:"POST"});
+      const sd = await sr.json();
+      if (!sd.ok && !sd.running) {
+        _vsPanel("error");
+        document.getElementById("vscode-error-msg").textContent = sd.msg || "Failed to start code-server";
+        _vsBadge("● error", "#ff4d6d");
+        return;
+      }
+    }
+    // Load iframe
+    _vsPanel("frame");
+    const iframe = document.getElementById("vscode-iframe");
+    const stopBtn = document.getElementById("vscode-stop-btn");
+    if (stopBtn) stopBtn.style.display = "inline-flex";
+    // Build authed URL — code-server accepts ?password= on first load
+    const url = `${VSCODE_URL}/?password=${encodeURIComponent(VSCODE_PASS)}`;
+    iframe.src = url;
+    _vsBadge("● running", "#00ff9d");
+    iframe.onload = () => _vsBadge("● running", "#00ff9d");
+    iframe.onerror = () => { _vsPanel("error"); _vsBadge("● error", "#ff4d6d"); };
+  } catch(err) {
+    _vsPanel("error");
+    document.getElementById("vscode-error-msg").textContent = "Server offline — start luo_server.py first";
+    _vsBadge("● offline", "#ff4d6d");
+  }
+}
+
+async function vscodeInstall() {
+  const btn = document.getElementById("vscode-install-btn");
+  const log  = document.getElementById("vscode-install-log");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Installing…"; }
+  if (log)  { log.style.display = "block"; log.textContent = "Starting install…\n"; }
+
+  try {
+    const res = await fetch(`${API}/api/vscode/install`, {method:"POST"});
+    const d   = await res.json();
+    if (d.ok) {
+      if (log) log.textContent += `Install running (PID ${d.pid})\nThis takes ~2 minutes…\n`;
+      // Poll until code-server appears
+      let attempts = 0;
+      const poll = setInterval(async () => {
+        attempts++;
+        if (log) log.textContent += ".";
+        try {
+          const sr = await fetch(`${API}/api/vscode/status`);
+          const sd = await sr.json();
+          if (sd.installed) {
+            clearInterval(poll);
+            if (log) log.textContent += "\n✅ Installed! Starting VS Code…\n";
+            setTimeout(vscodeInit, 1500);
+          }
+        } catch {}
+        if (attempts > 60) {
+          clearInterval(poll);
+          if (log) log.textContent += "\n⚠️ Timeout. Try: bash vscode/install_code_server.sh\n";
+          if (btn) { btn.disabled = false; btn.textContent = "⬇ Retry Install"; }
+        }
+      }, 3000);
+    } else {
+      if (log) log.textContent += `Error: ${d.msg}\n`;
+      if (btn) { btn.disabled = false; btn.textContent = "⬇ Retry Install"; }
+    }
+  } catch(err) {
+    if (log) log.textContent += `Network error: ${err.message}\n`;
+    if (btn) { btn.disabled = false; btn.textContent = "⬇ Retry Install"; }
+  }
+}
+
+function vscodeRefresh() {
+  const iframe = document.getElementById("vscode-iframe");
+  if (iframe && iframe.src !== "about:blank") {
+    iframe.src = iframe.src; // reload
+  } else {
+    vscodeInit();
+  }
+}
+
+function vscodOpenExternal() {
+  window.open(`${VSCODE_URL}/?password=${encodeURIComponent(VSCODE_PASS)}`, "_blank");
+}
+
+async function vscodeStop() {
+  try {
+    await fetch(`${API}/api/vscode/stop`, {method:"POST"});
+    const iframe = document.getElementById("vscode-iframe");
+    if (iframe) iframe.src = "about:blank";
+    const stopBtn = document.getElementById("vscode-stop-btn");
+    if (stopBtn) stopBtn.style.display = "none";
+    _vsPanel("install");
+    _vsBadge("● stopped", "#ff4d6d");
+  } catch {}
+}
+
 // ── KEYBOARD SHORTCUTS ────────────────────────────────────────────
 document.addEventListener("keydown", e => {
   if (e.ctrlKey && e.key === "l") { e.preventDefault(); openApp("luokai"); }
@@ -1429,6 +1662,7 @@ document.addEventListener("keydown", e => {
   if (e.ctrlKey && e.key === "b") { e.preventDefault(); openApp("browser"); }
   if (e.ctrlKey && e.key === "e") { e.preventDefault(); openApp("code"); }
   if (e.ctrlKey && e.key === "f") { e.preventDefault(); openApp("files"); }
+  if (e.ctrlKey && e.key === "v") { e.preventDefault(); openApp("vscode"); }
 });
 
 // ── LOAD SAVED THEME ─────────────────────────────────────────────

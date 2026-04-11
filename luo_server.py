@@ -10,7 +10,7 @@ Enhanced with:
 - Multi-model support
 - Real skills library
 """
-import sys, json, time, threading, subprocess
+import sys, json, time, threading, subprocess, os, signal
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context
 from flask_cors import CORS
@@ -19,6 +19,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 app     = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
+
+# ── VS Code / code-server Configuration ─────────────────────────────
+VSCODE_PORT      = 8080
+VSCODE_PASSWORD  = "luoos2024"
+VSCODE_WORKSPACE = Path.home() / "luo_workspace"
+VSCODE_CONFIG    = Path.home() / ".config" / "code-server" / "config.yaml"
+VSCODE_PID_FILE  = Path("/tmp/luo-code-server.pid")
+VSCODE_LOG_FILE  = Path("/tmp/luo-code-server.log")
+_vscode_proc     = None   # subprocess handle
 
 # ── Configuration ───────────────────────────────────────────────────────
 USE_REACT_AGENT = True  # Use enhanced ReAct agent
@@ -292,6 +301,144 @@ def fs_ls():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
+# ── VS Code / code-server API ────────────────────────────────────────
+
+def _vscode_is_running():
+    """Check if code-server is listening on its port."""
+    import socket
+    try:
+        with socket.create_connection(("127.0.0.1", VSCODE_PORT), timeout=1):
+            return True
+    except OSError:
+        return False
+
+def _ensure_vscode_config():
+    """Write config.yaml if missing."""
+    VSCODE_CONFIG.parent.mkdir(parents=True, exist_ok=True)
+    VSCODE_WORKSPACE.mkdir(parents=True, exist_ok=True)
+    if not VSCODE_CONFIG.exists():
+        VSCODE_CONFIG.write_text(
+            f"bind-addr: 127.0.0.1:{VSCODE_PORT}\n"
+            f"auth: password\n"
+            f"password: {VSCODE_PASSWORD}\n"
+            f"cert: false\n"
+        )
+
+def _vscode_autostart():
+    """Try to auto-start code-server if installed."""
+    global _vscode_proc
+    if _vscode_is_running():
+        print("✅ code-server already running")
+        return
+    if not _find_code_server():
+        print("⚠️  code-server not installed — VS Code app will show install prompt")
+        return
+    _ensure_vscode_config()
+    try:
+        log = open(VSCODE_LOG_FILE, "a")
+        _vscode_proc = subprocess.Popen(
+            ["code-server", "--config", str(VSCODE_CONFIG), str(VSCODE_WORKSPACE)],
+            stdout=log, stderr=log, start_new_session=True
+        )
+        VSCODE_PID_FILE.write_text(str(_vscode_proc.pid))
+        print(f"🖥️  code-server started (PID {_vscode_proc.pid}) on port {VSCODE_PORT}")
+    except Exception as e:
+        print(f"⚠️  code-server auto-start failed: {e}")
+
+def _find_code_server():
+    """Return path to code-server binary, or None."""
+    import shutil
+    return shutil.which("code-server")
+
+@app.route("/api/vscode/status")
+def vscode_status():
+    running  = _vscode_is_running()
+    installed = _find_code_server() is not None
+    return jsonify({
+        "ok":        True,
+        "running":   running,
+        "installed": installed,
+        "port":      VSCODE_PORT,
+        "url":       f"http://localhost:{VSCODE_PORT}",
+        "workspace": str(VSCODE_WORKSPACE),
+        "password":  VSCODE_PASSWORD,
+    })
+
+@app.route("/api/vscode/start", methods=["POST"])
+def vscode_start():
+    global _vscode_proc
+    if _vscode_is_running():
+        return jsonify({"ok": True, "running": True, "msg": "Already running",
+                        "url": f"http://localhost:{VSCODE_PORT}"})
+    if not _find_code_server():
+        return jsonify({"ok": False, "running": False,
+                        "msg": "code-server not installed. Run: bash vscode/install_code_server.sh"})
+    _ensure_vscode_config()
+    try:
+        log = open(VSCODE_LOG_FILE, "a")
+        _vscode_proc = subprocess.Popen(
+            ["code-server", "--config", str(VSCODE_CONFIG), str(VSCODE_WORKSPACE)],
+            stdout=log, stderr=log, start_new_session=True
+        )
+        VSCODE_PID_FILE.write_text(str(_vscode_proc.pid))
+        # Wait up to 8 seconds for it to bind
+        for _ in range(16):
+            time.sleep(0.5)
+            if _vscode_is_running():
+                return jsonify({"ok": True, "running": True,
+                                "msg": "code-server started",
+                                "url": f"http://localhost:{VSCODE_PORT}",
+                                "pid": _vscode_proc.pid})
+        return jsonify({"ok": True, "running": False,
+                        "msg": "Started but still initializing — try again in a moment",
+                        "url": f"http://localhost:{VSCODE_PORT}"})
+    except Exception as e:
+        return jsonify({"ok": False, "running": False, "msg": str(e)})
+
+@app.route("/api/vscode/stop", methods=["POST"])
+def vscode_stop():
+    global _vscode_proc
+    stopped = False
+    # Kill our tracked process
+    if _vscode_proc:
+        try:
+            _vscode_proc.terminate()
+            _vscode_proc.wait(timeout=5)
+            stopped = True
+        except Exception:
+            try: _vscode_proc.kill()
+            except Exception: pass
+        _vscode_proc = None
+    # Also kill by PID file
+    if VSCODE_PID_FILE.exists():
+        try:
+            pid = int(VSCODE_PID_FILE.read_text().strip())
+            os.kill(pid, signal.SIGTERM)
+            stopped = True
+        except Exception: pass
+        VSCODE_PID_FILE.unlink(missing_ok=True)
+    return jsonify({"ok": True, "stopped": stopped,
+                    "msg": "code-server stopped" if stopped else "Was not running"})
+
+@app.route("/api/vscode/install", methods=["POST"])
+def vscode_install():
+    """Trigger install script in background."""
+    script = Path(__file__).parent / "vscode" / "install_code_server.sh"
+    if not script.exists():
+        return jsonify({"ok": False, "msg": "Install script not found"})
+    try:
+        proc = subprocess.Popen(
+            ["bash", str(script)],
+            stdout=open("/tmp/code-server-install.log","w"),
+            stderr=subprocess.STDOUT,
+            start_new_session=True
+        )
+        return jsonify({"ok": True, "msg": "Install started in background",
+                        "pid": proc.pid,
+                        "log": "/tmp/code-server-install.log"})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)})
+
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"
@@ -305,5 +452,7 @@ if __name__ == "__main__":
     print("  LuoOS Server")
     print("  http://localhost:3000")
     print("="*60 + "\n")
+    # Auto-start code-server in background
+    threading.Thread(target=_vscode_autostart, daemon=True).start()
     threading.Thread(target=lambda: (time.sleep(2), webbrowser.open("http://localhost:3000")), daemon=True).start()
     app.run(host="0.0.0.0", port=3000, debug=False, threaded=True)
