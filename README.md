@@ -516,3 +516,181 @@ Built with ❤️ by **Luo Kai**
 *The OS that thinks.*
 
 </div>
+
+---
+
+## 🧠 luo_memory — Living Cell Memory System
+
+> *"Not a memory module. A memory organism."*
+
+luo_memory is a biologically-inspired, living memory architecture for luo_os agents. Unlike traditional memory systems that store and retrieve data like a database, luo_memory is built from **autonomous cells** — each one always alive, always signaling, always evolving.
+
+The design is grounded in neuroscience: each cell maps to a specific brain region and replicates its behavior in software. Together, they form a memory organism that is greater than the sum of its parts.
+
+---
+
+### Architecture — The Eight Luo-Cells
+
+Each luo-cell is an `asyncio` coroutine running permanently in the background. Cells communicate through a signal bus — they fire spontaneously when their internal thresholds are crossed, not only when called.
+
+| Cell | Brain Analog | Role |
+|------|-------------|------|
+| `EpisodicCell` | Hippocampus | Stores every event verbatim with timestamp and session context. Never summarizes. Never discards. |
+| `SemanticCell` | Cerebral Cortex | Promotes repeated episodes into permanent facts when a concept appears 3+ times across sessions. |
+| `SkillCell` | Cerebellum | Observes tool execution chains and crystallizes successful ones into reusable named skills. |
+| `WorkingCell` | Prefrontal Cortex | In-session scratchpad (12-slot buffer). Auto-flushes to EpisodicCell at session end. |
+| `DecayCell` | Ebbinghaus Curve | Always ticking. Weakens cold synaptic connections using the forgetting curve formula. |
+| `DreamCell` | Hippocampal Replay | Activates on system idle. Replays recent episodes and promotes patterns to SemanticCell. |
+| `ImportanceCell` | Amygdala | Scores incoming events for high importance (errors, decisions, breakthroughs) and boosts their decay resistance. |
+| `AssociativeCell` | Spreading Activation | Maintains a concept graph. Activating one memory spreads activation to linked concepts. |
+
+---
+
+### What Makes a Luo-Cell Alive
+
+A traditional software module waits to be called. A luo-cell lives independently:
+
+```
+LuoCell
+  ├── internal state      — own memory, not shared dict (like cytoplasm)
+  ├── spontaneous firing  — signals neighbors unprompted (like neurotransmitters)
+  ├── lifespan + death    — born strong, weakened by disuse, retired at zero strength
+  ├── Hebbian plasticity  — connections strengthen when two cells co-fire (fire together, wire together)
+  ├── self-repair         — detects corruption and broadcasts repair request to neighbors
+  └── division            — splits into child cell when load exceeds capacity
+```
+
+Connection weights between cells are stored in a persistent SQLite synapse table. Over thousands of sessions, the network develops its own association map — not one you programmed, but one that emerged from actual use patterns.
+
+---
+
+### Composite Retrieval Score
+
+Every memory recall is ranked by a brain-inspired composite score:
+
+```
+score = (0.55 × semantic_similarity)
+      + (0.20 × recency_decay)
+      + (0.15 × importance_tag)
+      + (0.10 × access_count)
+```
+
+This means frequently-accessed, recently-seen, emotionally-tagged memories surface first — exactly as they do in human recall.
+
+---
+
+### Quick Start
+
+```python
+from luo_agent.memory import LuoMemory
+import asyncio
+
+async def main():
+    mem = LuoMemory()
+    await mem.start()
+
+    # store a memory verbatim
+    await mem.store("user prefers Python over Bash for automation tasks")
+
+    # load hot context at session start (inject into system prompt)
+    context = await mem.wake_up()
+    print(context)
+
+    # recall by keyword
+    results = await mem.recall("Python preference")
+
+    # track tool use for skill crystallization
+    await mem.tool_executed("bash", args={"cmd": "ls"}, success=True)
+    await mem.task_completed(goal="list project files", success=True)
+
+    # trigger dream consolidation manually
+    await mem.dream()
+
+    # inspect network
+    print(mem.status())
+
+    await mem.stop()
+
+asyncio.run(main())
+```
+
+For non-async contexts:
+
+```python
+from luo_agent.memory import LuoMemorySync
+
+mem = LuoMemorySync()
+mem.start()
+mem.store("the agent fixed a memory leak in session 14")
+context = mem.wake_up()
+mem.stop()
+```
+
+CLI interface:
+
+```bash
+cd luo_agent/memory
+python3 luo_memory.py status    # network status
+python3 luo_memory.py wake      # print hot context
+python3 luo_memory.py store "text to remember"
+python3 luo_memory.py recall "query"
+python3 luo_memory.py facts     # all semantic facts
+python3 luo_memory.py skills    # all crystallized skills
+python3 luo_memory.py dream     # trigger consolidation
+```
+
+---
+
+### File Structure
+
+```
+luo_agent/memory/
+├── luo_cell.py          # LuoCell base class + LuoCellNetwork + SynapseTable
+├── luo_cells.py         # All 8 specialized cell implementations
+├── luo_memory.py        # Public API (LuoMemory + LuoMemorySync + CLI)
+├── __init__.py          # Module exports
+├── MEMORY.md            # L0 hot context (loaded at agent startup)
+├── palace/              # Persistent palace storage
+│   ├── luo_agent/       # Wing: agent task memory
+│   ├── user/            # Wing: user goals and preferences
+│   └── skills/          # Wing: crystallized skill storage
+└── chroma_db/           # Reserved for vector embedding index (v1.1)
+```
+
+---
+
+### Design Principles
+
+1. **Verbatim storage** — nothing is summarized or extracted away. The human brain lossy-compresses; luo_memory does not. Every word is stored exactly as given.
+2. **Zero API cost** — runs entirely on local SQLite. No Ollama calls during normal operation. DreamCell consolidation is the only optional LLM step.
+3. **Always alive** — cells run as asyncio background tasks. There is no main loop that calls them. They exist, they observe, they fire.
+4. **Emergent intelligence** — the Hebbian synapse table means the system develops its own association map through use. You do not program it; it learns.
+5. **Drop-in compatible** — `LuoMemorySync` wraps the async API for use anywhere in luo_os without requiring the caller to manage an event loop.
+
+---
+
+### Integration with luo_agent
+
+luo_memory integrates directly with the existing luo_agent reasoning loop:
+
+```python
+# in luo_agent/agents/agent.py — add at session start:
+from luo_agent.memory import LuoMemory
+mem = LuoMemory()
+await mem.start()
+system_context = await mem.wake_up()
+
+# inject context into system prompt
+system_prompt = base_system_prompt + "\n\n" + system_context
+
+# after each tool call:
+await mem.tool_executed(tool_name, args=tool_args, success=True)
+
+# after each exchange:
+await mem.store(f"User: {user_msg}\nAgent: {agent_response}")
+
+# at session end:
+await mem.task_completed(goal=session_goal, success=True)
+await mem.stop()
+```
+
