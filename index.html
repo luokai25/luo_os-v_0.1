@@ -957,7 +957,11 @@ function initApp(id) {
         const m = document.getElementById("st-mem");
         if (m) m.textContent = `${d.memory || 0} entries`;
         const s = document.getElementById("st-skills");
-        if (s) s.textContent = `${d.skills || 4146}`;
+        if (s) {
+          fetch(`${API}/api/skills/stats`).then(r=>r.json()).then(sd=>{
+            if(sd.total) s.textContent = `${sd.total.toLocaleString()}`;
+          }).catch(()=>{ if(s) s.textContent = `${d.skills || 4146}`; });
+        }
       }).catch(()=>{});
     });
   }
@@ -1155,7 +1159,19 @@ async function termRun(cmd) {
     }
     if (sub === "voice")  { await toggleVoice(); return `Voice ${voiceActive?"on":"off"}`; }
     if (sub === "evolve") { await toggleCoevo(); return "Evolution engine started"; }
-    if (sub === "skills") return `4,146 skills loaded across 20 domains`;
+    if (sub === "skills") {
+      fetch(`${API}/api/skills`).then(r=>r.json()).then(d=>{
+        if(d.ok && d.domains){
+          const total = Object.values(d.domains).reduce((a,b)=>a+b.count,0);
+          let out = `${total.toLocaleString()} skills across ${Object.keys(d.domains).length} domains\n\n`;
+          Object.entries(d.domains).forEach(([k,v])=>{
+            out += `  ${v.label.padEnd(36)} ${String(v.count).padStart(4)} skills\n`;
+          });
+          termPrint(out, "term-info");
+        }
+      }).catch(()=>termPrint("4,146 skills loaded across 20 domains"));
+      return "";
+    }
     // Ask LUOKAI
     const query = args.join(" ");
     try {

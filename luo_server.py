@@ -250,23 +250,76 @@ def recall_memory():
 
 @app.route("/api/skills", methods=["GET"])
 def list_skills():
-    """List available skills."""
+    """All domains with skill counts."""
     try:
-        from luokai.skills import list_all_skills, SKILL_COUNT
-        return jsonify({"skills": list_all_skills(), "count": SKILL_COUNT})
+        from luokai.skills import all_domains, skills_stats
+        return jsonify({"domains": all_domains(), "stats": skills_stats(), "ok": True})
     except Exception as e:
-        return jsonify({"skills": {}, "count": 0, "error": str(e)})
+        return jsonify({"domains": {}, "ok": False, "error": str(e)})
+
+@app.route("/api/skills/search", methods=["GET", "POST"])
+def skills_search():
+    """Search skills. GET ?q=query  or  POST {query: str, limit: int}"""
+    try:
+        from luokai.skills import search_skills
+        if request.method == "POST":
+            body  = request.json or {}
+            q     = body.get("query", body.get("q", ""))
+            limit = int(body.get("limit", 20))
+        else:
+            q     = request.args.get("q", "")
+            limit = int(request.args.get("limit", 20))
+        results = search_skills(q, limit=limit)
+        return jsonify({"results": results, "count": len(results), "query": q, "ok": True})
+    except Exception as e:
+        return jsonify({"results": [], "ok": False, "error": str(e)})
+
+@app.route("/api/skills/domain/<domain_key>", methods=["GET"])
+def skills_by_domain(domain_key):
+    """All skills in a specific domain."""
+    try:
+        from luokai.skills import list_domain
+        skills = list_domain(domain_key)
+        return jsonify({"skills": skills, "count": len(skills), "domain": domain_key, "ok": True})
+    except Exception as e:
+        return jsonify({"skills": [], "ok": False, "error": str(e)})
+
+@app.route("/api/skills/get/<slug>", methods=["GET"])
+def skill_detail(slug):
+    """Full skill content by slug (lazy-loads markdown body)."""
+    try:
+        from luokai.skills import get_skill
+        skill = get_skill(slug, with_content=True)
+        if not skill:
+            return jsonify({"ok": False, "error": f"Skill '{slug}' not found"}), 404
+        return jsonify({"skill": skill, "ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/skills/stats", methods=["GET"])
+def skills_stats_route():
+    """Skills engine statistics."""
+    try:
+        from luokai.skills import skills_stats
+        return jsonify({"ok": True, **skills_stats()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
 @app.route("/api/skills/<skill_name>", methods=["POST"])
 def execute_skill(skill_name):
-    """Execute a skill."""
-    data = request.json or {}
+    """Legacy: execute/invoke a skill by name (backwards compat)."""
     try:
-        from luokai.skills import registry
-        result = registry.execute(skill_name, **data)
-        return jsonify({"result": result, "ok": True})
+        from luokai.skills import get_skill, search_skills
+        skill = get_skill(skill_name, with_content=True)
+        if not skill:
+            # Try search as fallback
+            results = search_skills(skill_name, limit=1)
+            skill   = results[0] if results else None
+        if not skill:
+            return jsonify({"error": f"Skill '{skill_name}' not found", "ok": False}), 404
+        return jsonify({"result": skill.get("content", skill.get("description", "")), "skill": skill, "ok": True})
     except Exception as e:
-        return jsonify({"error": str(e), "ok": False}, 400)
+        return jsonify({"error": str(e), "ok": False})
 
 @app.route("/api/fs/read", methods=["POST"])
 def fs_read():
