@@ -200,6 +200,14 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
             except Exception as e:
                 print(f"[{self.NAME}] Tools init failed: {e}")
 
+        # Initialize skills library
+        self._skills = None
+        try:
+            from luokai.skills import get_library
+            self._skills = get_library()
+        except Exception as e:
+            print(f"[{self.NAME}] Skills init failed: {e}")
+
         # Memory persistence
         self._mem_dir = Path("~/.luo_os/luokai").expanduser()
         self._mem_dir.mkdir(parents=True, exist_ok=True)
@@ -209,6 +217,7 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
         print(f"[{self.NAME}] v{self.VERSION} initialized")
         print(f"[{self.NAME}] Model: {self.model}")
         print(f"[{self.NAME}] Tools: {len(TOOLS) if TOOLS_AVAILABLE else 0}")
+        print(f"[{self.NAME}] Skills: {self._skills.stats()['total']:,}" if self._skills else f"[{self.NAME}] Skills: off")
         print(f"[{self.NAME}] Vector Memory: {'active' if self._vector_memory and self._vector_memory.available else 'off'}")
 
     # ── Model Management ───────────────────────────────────────────────
