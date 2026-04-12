@@ -522,6 +522,119 @@ def vscode_install():
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)})
 
+# ── Brain API ─────────────────────────────────────────────────────────
+
+def _get_brain():
+    a = active_agent
+    if a and hasattr(a, "_brain") and a._brain:
+        return a._brain
+    return None
+
+@app.route("/api/brain/status", methods=["GET"])
+def brain_status():
+    brain = _get_brain()
+    if not brain:
+        return jsonify({"ok": False, "error": "Brain not initialized"})
+    return jsonify({"ok": True, **brain.status()})
+
+@app.route("/api/brain/memory/store", methods=["POST"])
+def brain_memory_store():
+    body = request.json or {}
+    content = body.get("content", "")
+    if not content:
+        return jsonify({"ok": False, "error": "content required"})
+    brain = _get_brain()
+    if not brain:
+        return jsonify({"ok": False, "error": "brain offline"})
+    brain.store(content, role=body.get("role","observation"),
+                importance=float(body.get("importance",0.5)))
+    return jsonify({"ok": True, "stored": content[:80]})
+
+@app.route("/api/brain/memory/recall", methods=["GET", "POST"])
+def brain_memory_recall():
+    if request.method == "POST":
+        body = request.json or {}
+        query = body.get("query", "")
+        limit = int(body.get("limit", 8))
+    else:
+        query = request.args.get("q", "")
+        limit = int(request.args.get("limit", 8))
+    brain = _get_brain()
+    if not brain:
+        return jsonify({"ok": False, "results": [], "error": "brain offline"})
+    results = brain.recall(query=query, limit=limit)
+    return jsonify({"ok": True, "results": results, "count": len(results), "query": query})
+
+@app.route("/api/brain/memory/wake", methods=["GET"])
+def brain_wake():
+    brain = _get_brain()
+    if not brain or not brain.memory:
+        return jsonify({"ok": False, "context": "", "error": "brain/memory offline"})
+    try:
+        ctx = brain.memory.wake_up(max_tokens=1000)
+        return jsonify({"ok": True, "context": ctx})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/brain/memory/dream", methods=["POST"])
+def brain_dream():
+    brain = _get_brain()
+    if not brain or not brain.memory:
+        return jsonify({"ok": False, "error": "brain/memory offline"})
+    try:
+        brain.memory.dream()
+        return jsonify({"ok": True, "msg": "Dream consolidation triggered"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/brain/goals", methods=["GET"])
+def brain_goals():
+    brain = _get_brain()
+    if not brain:
+        return jsonify({"ok": False, "goals": [], "error": "brain offline"})
+    return jsonify({"ok": True, "goals": brain.get_goals()})
+
+@app.route("/api/brain/goals", methods=["POST"])
+def brain_set_goal():
+    body = request.json or {}
+    desc = body.get("description", "")
+    if not desc:
+        return jsonify({"ok": False, "error": "description required"})
+    brain = _get_brain()
+    if not brain:
+        return jsonify({"ok": False, "error": "brain offline"})
+    brain.set_goal(desc, priority=int(body.get("priority", 5)))
+    return jsonify({"ok": True, "set": desc})
+
+@app.route("/api/brain/skills/learned", methods=["GET"])
+def brain_learned_skills():
+    brain = _get_brain()
+    if not brain:
+        return jsonify({"ok": False, "skills": [], "error": "brain offline"})
+    return jsonify({"ok": True, "skills": brain.get_learned_skills()})
+
+@app.route("/api/brain/fact", methods=["POST"])
+def brain_learn_fact():
+    body = request.json or {}
+    key, value = body.get("key",""), body.get("value","")
+    if not key or not value:
+        return jsonify({"ok": False, "error": "key and value required"})
+    brain = _get_brain()
+    if not brain:
+        return jsonify({"ok": False, "error": "brain offline"})
+    brain.learn_fact(key, value, float(body.get("confidence", 0.9)))
+    return jsonify({"ok": True, "learned": {key: value}})
+
+@app.route("/api/brain/coevo/stats", methods=["GET"])
+def brain_coevo_stats():
+    brain = _get_brain()
+    if not brain or not brain.coevo:
+        return jsonify({"ok": False, "error": "coevo offline"})
+    try:
+        return jsonify({"ok": True, **brain.coevo.stats()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"
@@ -530,12 +643,18 @@ def cors(r):
     return r
 
 if __name__ == "__main__":
-    import webbrowser
+    import atexit, webbrowser
     print("\n" + "="*60)
     print("  LuoOS Server")
     print("  http://localhost:3000")
     print("="*60 + "\n")
-    # Auto-start code-server in background
+
+    def _shutdown():
+        brain = _get_brain()
+        if brain:
+            brain.shutdown()
+    atexit.register(_shutdown)
+
     threading.Thread(target=_vscode_autostart, daemon=True).start()
     threading.Thread(target=lambda: (time.sleep(2), webbrowser.open("http://localhost:3000")), daemon=True).start()
     app.run(host="0.0.0.0", port=3000, debug=False, threaded=True)

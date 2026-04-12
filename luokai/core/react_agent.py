@@ -208,6 +208,15 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
         except Exception as e:
             print(f"[{self.NAME}] Skills init failed: {e}")
 
+        # ── Boot the LUOKAI Brain (wires luo_memory, coevo, kairos, ToT, self-improver)
+        self._brain = None
+        try:
+            from luokai.core.brain import LuokaiBrain
+            self._brain = LuokaiBrain(agent=self, ollama_url=self.ollama_url)
+            self._brain.boot()
+        except Exception as e:
+            print(f"[{self.NAME}] Brain boot failed: {e}")
+
         # Memory persistence
         self._mem_dir = Path("~/.luo_os/luokai").expanduser()
         self._mem_dir.mkdir(parents=True, exist_ok=True)
@@ -219,6 +228,7 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
         print(f"[{self.NAME}] Tools: {len(TOOLS) if TOOLS_AVAILABLE else 0}")
         print(f"[{self.NAME}] Skills: {self._skills.stats()['total']:,}" if self._skills else f"[{self.NAME}] Skills: off")
         print(f"[{self.NAME}] Vector Memory: {'active' if self._vector_memory and self._vector_memory.available else 'off'}")
+        # brain status printed by LuokaiBrain.boot() itself
 
     # ── Model Management ───────────────────────────────────────────────
 
@@ -349,6 +359,16 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
             # Build context
             messages = self._build_context_messages(user_input)
 
+            # ── Brain pre-think: inject living memory + kairos alerts + associations
+            _t0 = time.time()
+            if self._brain:
+                try:
+                    brain_ctx = self._brain.pre_think(user_input)
+                    if brain_ctx:
+                        messages.insert(1, {"role": "system", "content": brain_ctx})
+                except Exception as _be:
+                    pass  # brain errors never block the agent
+
             # Check if this is a complex task requiring planning
             if self._needs_planning(user_input):
                 self._state = AgentState.PLANNING
@@ -367,6 +387,20 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
 
             # Auto-remember important things
             self._auto_remember(user_input, response)
+
+            # ── Brain post-think: store exchange, log to self-improver, skill tracking
+            if self._brain:
+                try:
+                    _duration = (time.time() - _t0) * 1000
+                    self._brain.post_think(
+                        user_input=user_input,
+                        response=response,
+                        tools_used=[],
+                        success=True,
+                        duration_ms=_duration,
+                    )
+                except Exception:
+                    pass
 
             self._state = AgentState.IDLE
             return response
@@ -411,6 +445,18 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
             mem_context = self._vector_memory.get_context(user_input, n=5)
             if mem_context:
                 messages.append({"role": "system", "content": mem_context})
+
+        # Add active goals from brain (if brain is up but pre_think hasn't run yet)
+        if self._brain and self._brain.memory:
+            try:
+                goals = self._brain.get_goals()
+                if goals:
+                    goal_lines = [f"  [{g.get('priority',5)}] {g.get('description','')}"
+                                  for g in goals[:3]]
+                    messages.append({"role": "system",
+                                     "content": "[active goals]\n" + "\n".join(goal_lines)})
+            except Exception:
+                pass
 
         # Add session summary if exists
         if self._session_summary:
@@ -534,6 +580,23 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
 
         self._history.append({"role": "assistant", "content": final_answer})
         self._auto_remember(user_input, final_answer)
+
+        # ── Brain post-think for tool-using path
+        if self._brain:
+            try:
+                # Extract tool names from scratchpad
+                import re as _re
+                _tools_used = _re.findall(r'Action: ([\w_]+)', "\n".join(scratchpad))
+                _duration = (time.time() - _t0) * 1000 if "_t0" in dir() else 0.0
+                self._brain.post_think(
+                    user_input=user_input,
+                    response=final_answer,
+                    tools_used=_tools_used,
+                    success=True,
+                    duration_ms=_duration,
+                )
+            except Exception:
+                pass
 
         self._state = AgentState.IDLE
         return final_answer
@@ -733,7 +796,9 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
             "memory_entries": len(self._memory),
             "vector_memory_count": self._vector_memory.count() if self._vector_memory else 0,
             "tools_available": len(TOOLS) if TOOLS_AVAILABLE else 0,
+            "skills_available": self._skills.stats()["total"] if self._skills else 0,
             "current_plan": self._current_plan.goal if self._current_plan else None,
+            "brain": self._brain.status() if self._brain else None,
         }
 
     def clear_history(self):
