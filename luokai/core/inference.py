@@ -150,6 +150,10 @@ class LuokaiInference:
         self._facts: Dict[str, str] = {}
         self._load_facts()
 
+        # Data loader (conversation + coding datasets)
+        self._data_loader = None
+        self._init_data_loader()
+
         print(f"[LuokaiInference v{self.VERSION}] "
               f"{len(self._skills_index):,} skills · "
               f"{len(self._patterns)} patterns · "
@@ -199,6 +203,15 @@ class LuokaiInference:
             self._facts = {r[0]: r[1] for r in rows}
         except Exception:
             pass
+
+    def _init_data_loader(self):
+        """Initialize the data loader with conversation datasets."""
+        try:
+            from luokai.data import get_loader
+            self._data_loader = get_loader()
+        except Exception as e:
+            print(f"[LuokaiInference] Data loader not available: {e}")
+            self._data_loader = None
 
     # ── Main generate ─────────────────────────────────────────────────
 
@@ -272,11 +285,47 @@ class LuokaiInference:
                 if result:
                     return f"**{math_expr.group().strip()}** = **{result}**"
 
+        # ── Sales / persuasion patterns ──────────────────────────────
+        if intent in ("general", "help") and self._data_loader:
+            sales_terms = ["buy", "price", "cost", "discount", "offer", "deal",
+                           "purchase", "recommend", "suggest", "best", "compare"]
+            if any(t in query.lower() for t in sales_terms):
+                best = self._data_loader.get_best_response(query)
+                if best:
+                    return best
+
+        # ── Task-oriented patterns ────────────────────────────────────
+        if self._data_loader:
+            task_terms = ["cancel", "order", "booking", "reserve", "support",
+                          "problem", "issue", "fix", "reset", "password", "login",
+                          "account", "subscription", "refund", "track"]
+            if any(t in query.lower() for t in task_terms):
+                hits = self._data_loader.search_task(query, limit=1)
+                if hits:
+                    turns = hits[0].get("turns", [])
+                    q_lower = query.lower()
+                    for i, t in enumerate(turns):
+                        if t.get("role") == "user":
+                            t_words = set(t.get("content","").lower().split())
+                            q_words = set(q_lower.split())
+                            if len(t_words & q_words) >= 2 and i+1 < len(turns):
+                                return turns[i+1].get("content","")
+
         # ── Skills search ─────────────────────────────────────────────
         if intent in ("skill_find", "search", "code", "reason", "general"):
             skill_response = self._skill_response(query)
             if skill_response:
                 return skill_response
+
+        # ── Coding data lookup ────────────────────────────────────────
+        if intent == "code" and self._data_loader:
+            coding_hits = self._data_loader.search_coding(query, limit=1)
+            if coding_hits:
+                hit = coding_hits[0]
+                q_text = hit.get("question", "")
+                a_text = hit.get("answer", "")
+                if a_text and len(a_text) > 30:
+                    return f"**{q_text}**\n\n{a_text}"
 
         # ── Facts lookup ──────────────────────────────────────────────
         fact_response = self._fact_response(query)
@@ -365,6 +414,15 @@ class LuokaiInference:
         if len(scored) > 3:
             lines.append(f"*...and {len(scored)-3} more related skills in my library.*")
 
+        # Enrich with real conversation example if available
+        if self._data_loader:
+            coding_hits = self._data_loader.search_coding(" ".join(terms[:3]), limit=1)
+            if coding_hits:
+                hit = coding_hits[0]
+                lines.append(f"\n**Example from practice:**")
+                lines.append(f"Q: {hit.get('question','')}")
+                lines.append(f"A: {hit.get('answer','')[:200]}...")
+
         lines.append(f"\n*Type `skills {terms[0]}` in the terminal for the full list.*")
         return "\n".join(lines)
 
@@ -448,6 +506,17 @@ class LuokaiInference:
 
     def _status_response(self) -> str:
         """Report LUOKAI's current status."""
+        data_stats = ""
+        if self._data_loader:
+            s = self._data_loader.stats()
+            data_stats = (
+                f"  📊 Training data:\n"
+                f"     Sales conversations: {s.get('sales_conversations',0):,}\n"
+                f"     Coding Q&A pairs:    {s.get('coding_qa_pairs',0):,}\n"
+                f"     Daily dialogues:     {s.get('daily_dialogs',0):,}\n"
+                f"     Task dialogs:        {s.get('task_dialogs',0):,}\n"
+                f"     Total data entries:  {s.get('total',0):,}\n"
+            )
         return (
             f"**LUOKAI Status**\n\n"
             f"  🧠 Inference Engine:  v{self.VERSION} — operational\n"
@@ -455,8 +524,9 @@ class LuokaiInference:
             f"  💾 Known facts:       {len(self._facts)} semantic entries\n"
             f"  🔄 Learned patterns:  {len(self._patterns)} interaction patterns\n"
             f"  💬 Session messages:  {len(self._session)}\n"
+            f"{data_stats}"
             f"  🕐 Time:             {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            f"All systems nominal. I am fully independent — no external model required."
+            f"All systems nominal. Running on real training data. Fully independent."
         )
 
     def _contextual_response(self, query: str, intent: str, ctx: List[str]) -> str:
@@ -516,6 +586,13 @@ class LuokaiInference:
                         if s.get('description'):
                             lines.append(f"    {s['description'][:100]}")
                     lines.append("")
+
+            # Try data loader for real conversation match
+            if self._data_loader:
+                best = self._data_loader.get_best_response(query)
+                if best:
+                    lines.append(f"**From my training data:**\n{best[:400]}")
+                    return "\n".join(lines)
 
             lines.append(
                 f"I'm still learning about this specific topic through co-evolution. "
