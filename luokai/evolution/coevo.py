@@ -66,10 +66,9 @@ class CoEvoEngine:
         "summarization":    2,
     }
 
-    def __init__(self, data_dir: str = "~/.luo_os/coevo", ollama_url: str = "http://localhost:11434"):
+    def __init__(self, data_dir: str = "~/.luo_os/coevo"):
         self.data_dir   = Path(data_dir).expanduser()
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        self.ollama_url = ollama_url
 
         self.log_file    = self.data_dir / "coevo_log.jsonl"
         self.state_file  = self.data_dir / "coevo_state.json"
@@ -109,32 +108,17 @@ class CoEvoEngine:
     def _save_state(self):
         self.state_file.write_text(json.dumps(self._state, indent=2))
 
-    def _ollama(self, prompt: str, system: str = "", model: str = "mistral", max_tokens: int = 512) -> str:
-        """Call Ollama for generation."""
-        import urllib.request, json
+    def _ollama(self, prompt: str, system: str = "", model: str = "luokai", max_tokens: int = 512) -> str:
+        """Generate using LUOKAI's native inference engine."""
+        from luokai.core.inference import get_inference
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
-
-        payload = json.dumps({
-            "model":   model,
-            "messages": messages,
-            "stream":  False,
-            "options": {"num_predict": max_tokens, "temperature": 0.7},
-        }).encode()
-
         try:
-            req = urllib.request.Request(
-                f"{self.ollama_url}/api/chat",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=60) as r:
-                data = json.loads(r.read())
-                return data.get("message", {}).get("content", "").strip()
+            return get_inference().generate(messages, max_tokens=max_tokens)
         except Exception as e:
-            return f"[OFFLINE] {e}"
+            return f"[INFERENCE ERROR] {e}"
 
     # ══════════════════════════════════════════════════════
     #  CHALLENGER SYSTEM — generates test challenges

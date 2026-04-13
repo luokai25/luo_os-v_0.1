@@ -54,7 +54,6 @@ except ImportError:
 @dataclass
 class AgentConfig:
     """Configuration for the enhanced agent."""
-    ollama_url: str = "http://localhost:11434"
     model: str = None  # Auto-detect if None
     use_react: bool = True
     use_tot_for_complex: bool = True
@@ -87,7 +86,7 @@ class EnhancedLUOKAIAgent:
         # Initialize model manager
         self.model_manager = None
         if MODEL_MANAGER_AVAILABLE:
-            self.model_manager = ModelManager(self.config.ollama_url)
+            self.model_manager = ModelManager("luokai-native")
             if not self.config.model:
                 self.config.model = self.model_manager.select_best_model()
 
@@ -97,8 +96,7 @@ class EnhancedLUOKAIAgent:
             try:
                 agent_class = StreamingReActAgent if self.config.use_streaming else ReActAgent
                 self.react_agent = agent_class(
-                    ollama_url=self.config.ollama_url,
-                    model=self.config.model,
+                                        model=self.config.model,
                     streaming=self.config.use_streaming
                 )
                 print(f"[EnhancedLUOKAI] ReAct agent initialized (model: {self.config.model})")
@@ -110,8 +108,7 @@ class EnhancedLUOKAIAgent:
         if not self.react_agent:
             try:
                 self.basic_agent = LUOKAIAgent(
-                    ollama_url=self.config.ollama_url,
-                    model=self.config.model or "mistral"
+                                        model=self.config.model or "mistral"
                 )
                 print(f"[EnhancedLUOKAI] Basic agent initialized")
             except Exception as e:
@@ -122,8 +119,7 @@ class EnhancedLUOKAIAgent:
         if self.config.use_tot_for_complex:
             try:
                 self.tot = TreeOfThought(
-                    ollama_url=self.config.ollama_url,
-                    model=self.config.model or "mistral"
+                                        model=self.config.model or "mistral"
                 )
                 print("[EnhancedLUOKAI] Tree of Thought initialized")
             except Exception as e:
@@ -135,8 +131,7 @@ class EnhancedLUOKAIAgent:
             try:
                 self.self_improve = SelfImprovementEngine(
                     data_dir=Path(self.config.data_dir) / "self_improve",
-                    ollama_url=self.config.ollama_url,
-                    model=self.config.model or "mistral"
+                                        model=self.config.model or "mistral"
                 )
                 print("[EnhancedLUOKAI] Self-improvement initialized")
             except Exception as e:
@@ -147,8 +142,7 @@ class EnhancedLUOKAIAgent:
         if self.config.use_mcp and MCP_AVAILABLE:
             try:
                 self.mcp_client = MCPClient(
-                    ollama_url=self.config.ollama_url,
-                    model=self.config.model or "mistral"
+                                        model=self.config.model or "mistral"
                 )
                 print("[EnhancedLUOKAI] MCP client initialized")
             except Exception as e:
@@ -264,8 +258,7 @@ class EnhancedLUOKAIAgent:
         try:
             final_answer, path = solve_with_tot(
                 problem=user_input,
-                ollama_url=self.config.ollama_url,
-                model=self.config.model or "mistral"
+                                model=self.config.model or "mistral"
             )
             return final_answer
         except Exception as e:
@@ -393,12 +386,11 @@ import hashlib
 
 
 def create_enhanced_agent(
-    ollama_url: str = "http://localhost:11434",
     model: str = None,
     **kwargs
 ) -> EnhancedLUOKAIAgent:
     """Factory function to create an enhanced agent."""
-    config = AgentConfig(ollama_url=ollama_url, model=model, **kwargs)
+    config = AgentConfig(model=model, **kwargs)
     return EnhancedLUOKAIAgent(config)
 
 

@@ -73,13 +73,10 @@ class SelfImprovementEngine:
     def __init__(
         self,
         data_dir: str = "~/.luo_os/self_improve",
-        ollama_url: str = "http://localhost:11434",
-        model: str = "mistral"
     ):
         self.data_dir = Path(data_dir).expanduser()
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        self.ollama_url = ollama_url
-        self.model = model
+        self.model = "luokai-1.0"
 
         # Data files
         self.interactions_file = self.data_dir / "interactions.jsonl"
@@ -462,12 +459,10 @@ class SelfImprovementEngine:
 
 
 def create_self_improve_engine(
-    data_dir: str = "~/.luo_os/self_improve",
-    ollama_url: str = "http://localhost:11434",
-    model: str = "mistral"
+    data_dir: str = "~/.luo_os/self_improve"
 ) -> SelfImprovementEngine:
     """Create a self-improvement engine."""
-    return SelfImprovementEngine(data_dir=data_dir, ollama_url=ollama_url, model=model)
+    return SelfImprovementEngine(data_dir=data_dir)
 
 
 if __name__ == "__main__":

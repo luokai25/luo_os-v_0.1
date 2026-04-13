@@ -77,8 +77,7 @@ class MCPClient:
         result = client.call_tool("filesystem", "read_file", {"path": "test.txt"})
     """
 
-    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "mistral"):
-        self.ollama_url = ollama_url
+    def __init__(self, model: str = "mistral"):
         self.model = model
         self.servers: Dict[str, MCPServer] = {}
         self._lock = threading.Lock()
@@ -389,7 +388,7 @@ Respond with ONLY the JSON array or NONE."""
 
         try:
             req = urllib.request.Request(
-                f"{self.ollama_url}/api/chat",
+                "luokai://inference",
                 data=json.dumps(payload).encode(),
                 headers={"Content-Type": "application/json"}
             )
@@ -453,9 +452,9 @@ MCP_SERVER_CONFIGS = {
 }
 
 
-def create_mcp_client(ollama_url: str = "http://localhost:11434", model: str = "mistral") -> MCPClient:
+def create_mcp_client(model: str = "mistral") -> MCPClient:
     """Create an MCP client."""
-    return MCPClient(ollama_url=ollama_url, model=model)
+    return MCPClient(model=model)
 
 
 if __name__ == "__main__":

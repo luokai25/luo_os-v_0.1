@@ -152,15 +152,13 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
 
     def __init__(
         self,
-        ollama_url: str = "http://localhost:11434",
-        model: str = None,  # Auto-detect best available
+        model: str = "luokai-1.0",
         use_vector_memory: bool = True,
         use_tools: bool = True,
         streaming: bool = True,
         max_context_tokens: int = 8192,
         temperature: float = 0.7,
     ):
-        self.ollama_url = ollama_url
         self.model = model
         self.streaming = streaming
         self.max_context_tokens = max_context_tokens
@@ -177,9 +175,8 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
         self._context: List[Dict] = []
         self._session_summary: str = ""
 
-        # Initialize model
-        self._available_models = self._list_models()
-        self.model = model or self._select_best_model()
+        # LUOKAI uses his own inference engine
+        self._available_models = [self.model]
 
         # Initialize vector memory
         self._vector_memory = None
@@ -212,7 +209,7 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
         self._brain = None
         try:
             from luokai.core.brain import LuokaiBrain
-            self._brain = LuokaiBrain(agent=self, ollama_url=self.ollama_url)
+            self._brain = LuokaiBrain(agent=self)
             self._brain.boot()
         except Exception as e:
             print(f"[{self.NAME}] Brain boot failed: {e}")
@@ -230,106 +227,25 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
         print(f"[{self.NAME}] Vector Memory: {'active' if self._vector_memory and self._vector_memory.available else 'off'}")
         # brain status printed by LuokaiBrain.boot() itself
 
-    # ── Model Management ───────────────────────────────────────────────
+    # ── LUOKAI Mind — independent intelligence ──────────────────────────
 
-    def _list_models(self) -> List[str]:
-        """List available models from Ollama."""
-        try:
-            with urllib.request.urlopen(f"{self.ollama_url}/api/tags", timeout=5) as r:
-                data = json.loads(r.read())
-                return [m["name"] for m in data.get("models", [])]
-        except Exception:
-            return []
-
-    def _select_best_model(self) -> str:
-        """Select the best available model based on preferences."""
-        # Model preferences in order of quality for general tasks
-        preferences = [
-            # Llama 3.1 models (best open models currently)
-            "llama3.1:70b", "llama3.1:405b", "llama3.1:8b", "llama3.1",
-            # Llama 3 models
-            "llama3:70b", "llama3:8b", "llama3",
-            # Mistral models
-            "mistral:7b", "mistral", "mixtral:8x7b", "mixtral",
-            # Gemma 2
-            "gemma2:27b", "gemma2:9b", "gemma2",
-            # Qwen models
-            "qwen2.5:72b", "qwen2.5:32b", "qwen2.5:14b", "qwen2.5:7b", "qwen2.5",
-            # Code models
-            "codellama:34b", "codellama:13b", "codellama:7b", "codellama",
-            "deepseek-coder:33b", "deepseek-coder:6.7b", "deepseek-coder",
-            # Smaller capable models
-            "phi3:14b", "phi3:3.8b", "phi3",
-            "tinyllama",
-        ]
-
-        for pref in preferences:
-            for model in self._available_models:
-                if pref in model.lower() or model.lower() in pref:
-                    return model
-
-        # Default fallback
-        return "mistral"
-
-    # ── Ollama Communication ───────────────────────────────────────────
-
-    def _call_ollama(
+    def _call_luokai(
         self,
         messages: List[Dict],
         max_tokens: int = 1024,
         stream: bool = None
     ) -> str:
-        """Call Ollama API."""
-        if stream is None:
-            stream = self.streaming
-
-        payload = {
-            "model": self.model,
-            "messages": messages,
-            "stream": stream,
-            "options": {
-                "num_predict": max_tokens,
-                "temperature": self.temperature,
-                "num_ctx": self.max_context_tokens,
-            }
-        }
-
-        try:
-            req = urllib.request.Request(
-                f"{self.ollama_url}/api/chat",
-                data=json.dumps(payload).encode(),
-                headers={"Content-Type": "application/json"},
-            )
-
+        """Generate response using LUOKAI's own mind. No external model."""
+        if self._mind:
             if stream:
-                return self._stream_response(req)
-            else:
-                with urllib.request.urlopen(req, timeout=120) as r:
-                    data = json.loads(r.read())
-                    return data.get("message", {}).get("content", "").strip()
-        except Exception as e:
-            return f"[ERROR] Ollama unavailable: {e}"
+                return self._mind.generate_stream(messages, max_tokens)
+            return self._mind.generate(messages, max_tokens)
+        # Absolute fallback — mind not loaded yet
+        user_msg = next((m["content"] for m in reversed(messages) if m.get("role")=="user"), "")
+        return f"LUOKAI processing: {user_msg[:80]} (mind initializing...)"
 
-    def _stream_response(self, req) -> Generator[str, None, None]:
-        """Stream response tokens."""
-        full_response = ""
-        try:
-            with urllib.request.urlopen(req, timeout=120) as r:
-                for line in r:
-                    try:
-                        chunk = json.loads(line.decode().strip())
-                        token = chunk.get("message", {}).get("content", "")
-                        if token:
-                            full_response += token
-                            yield token
-                        if chunk.get("done"):
-                            break
-                    except json.JSONDecodeError:
-                        continue
-        except Exception as e:
-            yield f"[ERROR] {e}"
-
-        return full_response
+    # All internal callers use _call_ollama name — alias to mind
+    _call_ollama = _call_luokai
 
     # ── ReAct Reasoning ─────────────────────────────────────────────────
 
@@ -778,27 +694,21 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
 
     def status(self) -> Dict:
         """Get agent status."""
-        ollama_ok = False
-        try:
-            urllib.request.urlopen(f"{self.ollama_url}/api/tags", timeout=2)
-            ollama_ok = True
-        except Exception:
-            pass
-
         return {
-            "name": self.NAME,
-            "version": self.VERSION,
-            "model": self.model,
-            "available_models": self._available_models,
-            "ollama_online": ollama_ok,
-            "state": self._state.value,
-            "history_length": len(self._history),
-            "memory_entries": len(self._memory),
+            "name":               self.NAME,
+            "version":            self.VERSION,
+            "model":              "luokai-mind-v1",
+            "independent":        True,
+            "external_model":     None,
+            "state":              self._state.value,
+            "history_length":     len(self._history),
+            "memory_entries":     len(self._memory),
             "vector_memory_count": self._vector_memory.count() if self._vector_memory else 0,
-            "tools_available": len(TOOLS) if TOOLS_AVAILABLE else 0,
-            "skills_available": self._skills.stats()["total"] if self._skills else 0,
-            "current_plan": self._current_plan.goal if self._current_plan else None,
-            "brain": self._brain.status() if self._brain else None,
+            "tools_available":    len(TOOLS) if TOOLS_AVAILABLE else 0,
+            "skills_available":   self._skills.stats()["total"] if self._skills else 0,
+            "current_plan":       self._current_plan.goal if self._current_plan else None,
+            "mind":               self._mind.status() if self._mind else None,
+            "brain":              self._brain.status() if self._brain else None,
         }
 
     def clear_history(self):
@@ -862,15 +772,13 @@ class StreamingReActAgent(ReActAgent):
 # ── Factory function ───────────────────────────────────────────────────
 
 def create_agent(
-    model: str = None,
-    ollama_url: str = "http://localhost:11434",
     streaming: bool = True,
     **kwargs
 ) -> ReActAgent:
-    """Factory function to create the appropriate agent."""
+    """Create LUOKAI — fully independent, no external model."""
     if streaming:
-        return StreamingReActAgent(ollama_url=ollama_url, model=model, **kwargs)
-    return ReActAgent(ollama_url=ollama_url, model=model, streaming=False, **kwargs)
+        return StreamingReActAgent(**kwargs)
+    return ReActAgent(streaming=False, **kwargs)
 
 
 # ── CLI Test ───────────────────────────────────────────────────────────

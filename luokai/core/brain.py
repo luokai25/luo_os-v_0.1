@@ -114,9 +114,8 @@ class LuokaiBrain:
 
     VERSION = "1.0.0"
 
-    def __init__(self, agent=None, ollama_url: str = "http://localhost:11434"):
+    def __init__(self, agent=None):
         self.agent      = agent          # back-reference to ReActAgent
-        self.ollama_url = ollama_url
 
         # subsystem handles
         self.memory:   Optional[object] = None   # LuoMemorySync
@@ -165,7 +164,7 @@ class LuokaiBrain:
         if not _coevo_cls:
             return
         try:
-            self.coevo = _coevo_cls(ollama_url=self.ollama_url)
+            self.coevo = _coevo_cls()
             # Register callback: every cycle result feeds into memory
             self.coevo.on_cycle(self._on_coevo_cycle)
             # Start background loop (non-blocking, every 10 min)
@@ -197,7 +196,7 @@ class LuokaiBrain:
         if not _tot_cls:
             return
         try:
-            self.tot = _tot_cls(ollama_url=self.ollama_url)
+            self.tot = _tot_cls()
             print("[brain] ✅ tree-of-thought: multi-path reasoning ready")
         except Exception as e:
             print(f"[brain] ❌ tot boot failed: {e}")

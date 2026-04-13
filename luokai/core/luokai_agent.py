@@ -60,9 +60,8 @@ Rules:
 - Always be honest if you cannot do something.
 - Use tools when available to accomplish tasks."""
 
-    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = "mistral",
+    def __init__(self, model: str = "mistral",
                  use_vector_memory: bool = True, use_tools: bool = True):
-        self.ollama_url = ollama_url
         self.model      = model
         self._history   : list = []
         self._memory    = {}
@@ -155,171 +154,11 @@ Rules:
             "stream":  False,
             "options": {"num_predict": max_tokens, "temperature": 0.7, "num_ctx": 8192},
         }).encode()
+        from luokai.core.inference import get_inference
         try:
-            req = urllib.request.Request(
-                f"{self.ollama_url}/api/chat",
-                data=payload,
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=120) as r:
-                data = json.loads(r.read())
-                return data.get("message", {}).get("content", "").strip()
+            return get_inference().generate(messages)
         except Exception as e:
-            return self._local_fallback(messages[-1]["content"] if messages else "")
-
-    def _local_fallback(self, text: str) -> str:
-        """Offline response when Ollama not available."""
-        tl = text.lower()
-        if any(w in tl for w in ["hello", "hi", "hey"]):
-            return "LUOKAI online. What do you need?"
-        if "screenshot" in tl:
-            return self._take_screenshot()
-        if "time" in tl:
-            return f"Current time: {datetime.now().strftime('%H:%M:%S')}"
-        if "status" in tl:
-            return f"LUOKAI running. Ollama offline — using local mode."
-        if "memory" in tl or "remember" in tl:
-            return self._get_memory_summary()
-        return f"Processing: {text[:60]}... (Ollama offline — start with: ollama serve)"
-
-    def think(self, user_input: str, max_tokens: int = 1024) -> str:
-        """Main reasoning function. Called by chat, voice, and OS."""
-        with self._lock:
-            # Check for tool commands
-            if self._tools and user_input.startswith("!"):
-                return self._execute_tool_command(user_input)
-
-            # Add to history
-            self._history.append({"role": "user", "content": user_input})
-
-            # Build message list with system prompt + history
-            messages = [{"role": "system", "content": self.SYSTEM_PROMPT}]
-
-            # Add relevant memory
-            mem_context = self._get_relevant_memory(user_input)
-            if mem_context:
-                messages.append({"role": "system", "content": f"Relevant memory:\n{mem_context}"})
-
-            # Add vector memory context
-            if self._vector_memory:
-                vec_context = self._vector_memory.get_context(user_input, n=3)
-                if vec_context:
-                    messages.append({"role": "system", "content": vec_context})
-
-            # Add conversation history (last 10 turns)
-            messages.extend(self._history[-10:])
-
-            # Get response
-            response = self._ollama(messages, max_tokens)
-
-            # Add to history
-            self._history.append({"role": "assistant", "content": response})
-
-            # Auto-remember important things
-            self._auto_remember(user_input, response)
-
-            # Store in vector memory
-            if self._vector_memory:
-                self._vector_memory.add(
-                    f"User: {user_input}\nAssistant: {response[:200]}",
-                    metadata={"type": "conversation", "timestamp": datetime.now().isoformat()}
-                )
-
-            return response
-
-    def _execute_tool_command(self, command: str) -> str:
-        """Execute a tool command starting with !"""
-        parts = command[1:].strip().split(None, 1)
-        if not parts:
-            return f"Available tools: {', '.join(TOOLS.keys())}"
-
-        tool_name = parts[0]
-        args = {}
-        if len(parts) > 1:
-            try:
-                args = json.loads(parts[1])
-            except:
-                args = {"query": parts[1]} if tool_name in ["web_search", "read_file"] else {}
-
-        if self._tools:
-            return self._tools.execute(tool_name, args, ask_permission=self._ask_tool_permission)
-        return "Tools not available"
-
-    def _ask_tool_permission(self, tool: str, args: dict) -> bool:
-        """Ask for permission to execute tool (can be overridden)."""
-        print(f"[LUOKAI] Tool request: {tool} with args: {args}")
-        return True  # Auto-approve for now
-
-    def _get_relevant_memory(self, query: str) -> str:
-        """Find relevant memory entries for query."""
-        query_words = set(query.lower().split())
-        relevant    = []
-        for key, entry in self._memory.items():
-            key_words = set(key.lower().split("_"))
-            if key_words & query_words:
-                relevant.append(f"- {key}: {entry['value']}")
-
-        # Also search vector memory
-        if self._vector_memory:
-            vec_results = self._vector_memory.search(query, n=3)
-            for r in vec_results:
-                relevant.append(f"- {r['text']}")
-
-        return "\n".join(relevant[:5])
-
-    def _get_memory_summary(self) -> str:
-        """Get summary of stored memories."""
-        lines = [f"Total memories: {len(self._memory)}"]
-        if self._vector_memory:
-            lines.append(f"Vector memories: {self._vector_memory.count()}")
-        for key, val in list(self._memory.items())[:5]:
-            lines.append(f"  {key}: {val['value'][:50]}...")
-        return "\n".join(lines)
-
-    def _auto_remember(self, user_input: str, response: str):
-        """Automatically remember important information."""
-        patterns = [
-            (r"my name is (\w+)", "user_name"),
-            (r"i (?:am|work as) a?n? ([\w\s]+)", "user_role"),
-            (r"i (?:live|am based) in ([\w\s]+)", "user_location"),
-            (r"my (?:favorite|preferred) (\w+) is ([\w\s]+)", None),
-        ]
-        text = user_input.lower()
-        for pattern, key in patterns:
-            m = re.search(pattern, text)
-            if m:
-                if key:
-                    self.remember(key, m.group(1))
-                elif len(m.groups()) >= 2:
-                    self.remember(f"user_{m.group(1)}", m.group(2))
-
-    # ── OS ACTIONS ─────────────────────────────────────────────────
-    def _take_screenshot(self) -> str:
-        try:
-            from PIL import ImageGrab
-            ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
-            path = str(Path.home() / f"Desktop/luo_screenshot_{ts}.png")
-            ImageGrab.grab().save(path)
-            return f"Screenshot saved: {path}"
-        except ImportError:
-            try:
-                import subprocess
-                ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
-                path = str(Path.home() / f"luo_screenshot_{ts}.png")
-                subprocess.run(["scrot", path], capture_output=True)
-                return f"Screenshot: {path}"
-            except:
-                return "Screenshot: install Pillow or scrot"
-
-    def execute_command(self, cmd: str, timeout: int = 30) -> str:
-        try:
-            r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
-            out = r.stdout.strip() or r.stderr.strip() or "(no output)"
-            return out[:2000]
-        except subprocess.TimeoutExpired:
-            return f"[TIMEOUT after {timeout}s]"
-        except Exception as e:
-            return f"[ERROR] {e}"
+            return f"[Inference error: {e}]"
 
     def run_python(self, code: str) -> str:
         import tempfile, os
@@ -366,7 +205,7 @@ Rules:
     def start_evolution(self, interval: int = 600):
         """Start continuous self-improvement."""
         from luokai.evolution.coevo import CoEvoEngine
-        self._coevo = CoEvoEngine(ollama_url=self.ollama_url)
+        self._coevo = CoEvoEngine()
 
         def on_cycle(result):
             score = result.get("ai_score", 5)
@@ -381,7 +220,7 @@ Rules:
     def status(self) -> dict:
         ollama_ok = False
         try:
-            urllib.request.urlopen(f"{self.ollama_url}/api/tags", timeout=2)
+            None  # LUOKAI is always online - native inference
             ollama_ok = True
         except: pass
 

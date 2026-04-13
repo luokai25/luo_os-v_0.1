@@ -81,21 +81,18 @@ class TreeOfThought:
     Uses branch-and-bound to prune low-value paths.
 
     Usage:
-        tot = TreeOfThought(ollama_url="http://localhost:11434")
+        tot = TreeOfThought()
         result = tot.solve("What is the best sorting algorithm for nearly-sorted data?")
     """
 
     def __init__(
         self,
-        ollama_url: str = "http://localhost:11434",
-        model: str = "mistral",
         max_depth: int = 5,
         max_branches: int = 3,
         beam_width: int = 3,
         temperature: float = 0.7
     ):
-        self.ollama_url = ollama_url
-        self.model = model
+        self.model = "luokai-1.0"
         self.max_depth = max_depth
         self.max_branches = max_branches
         self.beam_width = beam_width
@@ -381,28 +378,15 @@ Provide the final answer, synthesizing the insights from all steps:"""
         return thought_id
 
     def _call_llm(self, prompt: str, max_tokens: int = 512) -> str:
-        """Call the LLM."""
-        payload = {
-            "model": self.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "stream": False,
-            "options": {
-                "num_predict": max_tokens,
-                "temperature": self.temperature
-            }
-        }
-
+        """Generate using LUOKAI's native inference engine."""
+        from luokai.core.inference import get_inference
         try:
-            req = urllib.request.Request(
-                f"{self.ollama_url}/api/chat",
-                data=json.dumps(payload).encode(),
-                headers={"Content-Type": "application/json"}
+            return get_inference().generate(
+                [{"role": "user", "content": prompt}],
+                max_tokens=max_tokens
             )
-            with urllib.request.urlopen(req, timeout=60) as r:
-                data = json.loads(r.read())
-                return data.get("message", {}).get("content", "").strip()
         except Exception as e:
-            return f"[Error: {e}]"
+            return f"[Inference error: {e}]"
 
     def visualize(self) -> str:
         """Generate a text visualization of the thought tree."""
@@ -443,17 +427,10 @@ Provide the final answer, synthesizing the insights from all steps:"""
 # Convenience function
 def solve_with_tot(
     problem: str,
-    ollama_url: str = "http://localhost:11434",
-    model: str = "mistral",
     approaches: List[str] = None
 ) -> Tuple[str, ReasoningPath]:
-    """
-    Solve a problem using Tree of Thought reasoning.
-
-    Returns:
-        Tuple of (final_answer, reasoning_path)
-    """
-    tot = TreeOfThought(ollama_url=ollama_url, model=model)
+    """Solve a problem using Tree of Thought reasoning."""
+    tot = TreeOfThought()
     path = tot.solve(problem, approaches=approaches)
     return path.final_answer, path
 
