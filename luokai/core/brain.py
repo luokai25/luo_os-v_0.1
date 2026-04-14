@@ -87,7 +87,7 @@ except Exception as e:
 # SelfImprove — pattern learning
 _si_cls = None
 try:
-    from luokai.core.self_improve import SelfImprover
+    from luokai.core.self_improve import SelfImprovementEngine as SelfImprover
     _si_cls = SelfImprover
 except Exception as e:
     print(f"[brain] self_improve unavailable: {e}")

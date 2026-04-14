@@ -214,6 +214,14 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
         except Exception as e:
             print(f"[{self.NAME}] Brain boot failed: {e}")
 
+        # LUOKAI's mind — the native inference engine
+        self._mind = None
+        try:
+            from luokai.core.inference import get_inference
+            self._mind = get_inference()
+        except Exception as e:
+            print(f"[{self.NAME}] Mind init failed: {e}")
+
         # Memory persistence
         self._mem_dir = Path("~/.luo_os/luokai").expanduser()
         self._mem_dir.mkdir(parents=True, exist_ok=True)
@@ -235,14 +243,22 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
         max_tokens: int = 1024,
         stream: bool = None
     ) -> str:
-        """Generate response using LUOKAI's own mind. No external model."""
+        """Generate response using LUOKAI's own inference engine. No external model."""
         if self._mind:
-            if stream:
-                return self._mind.generate_stream(messages, max_tokens)
-            return self._mind.generate(messages, max_tokens)
-        # Absolute fallback — mind not loaded yet
-        user_msg = next((m["content"] for m in reversed(messages) if m.get("role")=="user"), "")
-        return f"LUOKAI processing: {user_msg[:80]} (mind initializing...)"
+            return self._mind.generate(
+                messages,
+                max_tokens=max_tokens,
+                temperature=self.temperature
+            )
+        # Fallback — try to get engine fresh
+        try:
+            from luokai.core.inference import get_inference
+            self._mind = get_inference()
+            return self._mind.generate(messages, max_tokens=max_tokens)
+        except Exception as e:
+            user_msg = next((m["content"] for m in reversed(messages) if m.get("role")=="user"), "")
+            return (f"I received: '{user_msg[:60]}'. "
+                    f"LUOKAI inference starting up — try again in a moment.")
 
     # All internal callers use _call_ollama name — alias to mind
     _call_ollama = _call_luokai
@@ -275,8 +291,28 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
             # Build context
             messages = self._build_context_messages(user_input)
 
-            # ── Brain pre-think: inject living memory + kairos alerts + associations
+            # ── Fast path: simple conversational queries → direct to _mind ─────
+            # Skip the full ReAct loop for conversational/knowledge queries
             _t0 = time.time()
+            if self._mind and self._is_simple_query(user_input):
+                response = self._mind.generate(
+                    messages, max_tokens=max_tokens, temperature=self.temperature
+                )
+                self._history.append({"role": "assistant", "content": response})
+                self._auto_remember(user_input, response)
+                if self._brain:
+                    try:
+                        self._brain.post_think(
+                            user_input=user_input, response=response,
+                            tools_used=[], success=True,
+                            duration_ms=(time.time()-_t0)*1000
+                        )
+                    except Exception:
+                        pass
+                self._state = AgentState.IDLE
+                return response
+
+            # ── Brain pre-think: inject living memory + kairos alerts + associations
             if self._brain:
                 try:
                     brain_ctx = self._brain.pre_think(user_input)
@@ -320,6 +356,34 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
 
             self._state = AgentState.IDLE
             return response
+
+    def _is_simple_query(self, user_input: str) -> bool:
+        """
+        Returns True for conversational/knowledge queries that don't need
+        the full ReAct loop — greetings, what/how/why questions, status,
+        short messages. These go straight to _mind.generate().
+        """
+        u = user_input.strip().lower()
+        # Short messages are always simple
+        if len(user_input.split()) <= 6:
+            return True
+        # Question words without tool-needing content
+        simple_starts = ("what is", "what are", "who is", "why is", "how does",
+                         "how do", "tell me", "explain", "describe", "define",
+                         "what's", "how's", "when did", "where is", "can you explain",
+                         "i want to", "i need to", "i'm looking", "do you know",
+                         "status", "your status", "what is your", "help", "hi ",
+                         "hello", "hey ", "show me", "give me", "list ", "find ")
+        if any(u.startswith(s) for s in simple_starts):
+            return True
+        # Tool-needing keywords → NOT simple
+        tool_words = ("read file", "write file", "run ", "execute", "download",
+                      "install", "create file", "delete", "bash", "terminal",
+                      "web search", "browse", "open url", "fetch url")
+        if any(t in u for t in tool_words):
+            return False
+        # Default: treat as simple if no tool words
+        return True
 
     def _needs_planning(self, user_input: str) -> bool:
         """Determine if a task requires planning."""

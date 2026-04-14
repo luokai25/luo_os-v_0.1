@@ -274,7 +274,7 @@ class LuokaiInference:
         if intent == "help":
             return LUOKAI_HELP
 
-        if intent == "status":
+        if intent == "status" or "status" in query.lower().split():
             return self._status_response()
 
         # ── Math ──────────────────────────────────────────────────────
@@ -285,34 +285,40 @@ class LuokaiInference:
                 if result:
                     return f"**{math_expr.group().strip()}** = **{result}**"
 
-        # ── Sales / persuasion patterns ──────────────────────────────
-        if intent in ("general", "help") and self._data_loader:
-            sales_terms = ["buy", "price", "cost", "discount", "offer", "deal",
-                           "purchase", "recommend", "suggest", "best", "compare"]
+        # ── Skills search (primary — always first for code/search/skill intents)
+        if intent in ("skill_find", "search", "code", "reason"):
+            skill_response = self._skill_response(query)
+            if skill_response:
+                return skill_response
+
+        # ── Task-oriented patterns (specific keywords only) ───────────
+        if self._data_loader:
+            task_terms = ["cancel", "order", "booking", "reserve",
+                          "reset password", "login", "subscription", "refund",
+                          "track my", "delivery", "wifi", "connect"]
+            q_l = query.lower()
+            if any(t in q_l for t in task_terms):
+                hits = self._data_loader.search_task(query, limit=1)
+                if hits:
+                    turns = hits[0].get("turns", [])
+                    for i, t in enumerate(turns):
+                        if t.get("role") == "user":
+                            t_words = set(t.get("content","").lower().split())
+                            q_words = set(q_l.split())
+                            if len(t_words & q_words) >= 2 and i+1 < len(turns):
+                                return turns[i+1].get("content","")
+
+        # ── Sales patterns (purchase/buying intent only) ──────────────
+        if intent in ("general",) and self._data_loader:
+            sales_terms = ["buy", "purchase", "price", "cost", "discount",
+                           "offer", "deal", "recommend", "compare products"]
             if any(t in query.lower() for t in sales_terms):
                 best = self._data_loader.get_best_response(query)
                 if best:
                     return best
 
-        # ── Task-oriented patterns ────────────────────────────────────
-        if self._data_loader:
-            task_terms = ["cancel", "order", "booking", "reserve", "support",
-                          "problem", "issue", "fix", "reset", "password", "login",
-                          "account", "subscription", "refund", "track"]
-            if any(t in query.lower() for t in task_terms):
-                hits = self._data_loader.search_task(query, limit=1)
-                if hits:
-                    turns = hits[0].get("turns", [])
-                    q_lower = query.lower()
-                    for i, t in enumerate(turns):
-                        if t.get("role") == "user":
-                            t_words = set(t.get("content","").lower().split())
-                            q_words = set(q_lower.split())
-                            if len(t_words & q_words) >= 2 and i+1 < len(turns):
-                                return turns[i+1].get("content","")
-
-        # ── Skills search ─────────────────────────────────────────────
-        if intent in ("skill_find", "search", "code", "reason", "general"):
+        # ── Skills search fallback for general intent ─────────────────
+        if intent in ("general",):
             skill_response = self._skill_response(query)
             if skill_response:
                 return skill_response

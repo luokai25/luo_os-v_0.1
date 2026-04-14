@@ -98,9 +98,7 @@ class VectorMemory:
         if not results:
             return ""
         lines = [f"- {r['text']}" for r in results]
-        return "## Relevant memories (semantic search):
-" + "
-".join(lines)
+        return "## Relevant memories (semantic search):\n" + "\n".join(lines)
 
     def clear(self):
         if self.available and self._col:
