@@ -642,12 +642,10 @@ def cors(r):
     r.headers["Access-Control-Allow-Headers"] = "Content-Type"
     return r
 
-if __name__ == "__main__":
-    import atexit, webbrowser
-    print("\n" + "="*60)
-    print("  LuoOS Server")
-    print("  http://localhost:3000")
-    print("="*60 + "\n")
+def _run_server():
+    """Start the LuoOS server. Called by start.py or directly."""
+    import atexit
+    port = int(os.environ.get("LUO_PORT", 3000))
 
     def _shutdown():
         brain = _get_brain()
@@ -656,5 +654,7 @@ if __name__ == "__main__":
     atexit.register(_shutdown)
 
     threading.Thread(target=_vscode_autostart, daemon=True).start()
-    threading.Thread(target=lambda: (time.sleep(2), webbrowser.open("http://localhost:3000")), daemon=True).start()
-    app.run(host="0.0.0.0", port=3000, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True, use_reloader=False)
+
+if __name__ == "__main__":
+    _run_server()

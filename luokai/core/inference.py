@@ -154,6 +154,13 @@ class LuokaiInference:
         self._data_loader = None
         self._init_data_loader()
 
+        # Cell engines (reasoning, NLP, coding)
+        self._reasoning_engine = None
+        self._nlp_engine = None
+        self._coding_engine = None
+        self._data_index = None
+        self._init_cells()
+
         print(f"[LuokaiInference v{self.VERSION}] "
               f"{len(self._skills_index):,} skills · "
               f"{len(self._patterns)} patterns · "
@@ -212,6 +219,20 @@ class LuokaiInference:
         except Exception as e:
             print(f"[LuokaiInference] Data loader not available: {e}")
             self._data_loader = None
+
+    def _init_cells(self):
+        """Initialize cell engines from the cell system."""
+        try:
+            from luokai.cells import ReasoningEngine, NLPEngine, CodingEngine, get_index, load_data_if_available
+            self._reasoning_engine = ReasoningEngine()
+            self._nlp_engine = NLPEngine()
+            self._coding_engine = CodingEngine()
+            self._data_index = get_index()
+            # Load data index in background thread
+            import threading
+            threading.Thread(target=load_data_if_available, daemon=True).start()
+        except Exception as e:
+            print(f"[LuokaiInference] Cell system not available: {e}")
 
     # ── Main generate ─────────────────────────────────────────────────
 
@@ -274,7 +295,7 @@ class LuokaiInference:
         if intent == "help":
             return LUOKAI_HELP
 
-        if intent == "status" or "status" in query.lower().split():
+        if intent == "status" or any(w in query.lower() for w in ["status","how are you","are you ok","are you working"]):
             return self._status_response()
 
         # ── Math ──────────────────────────────────────────────────────
@@ -285,13 +306,28 @@ class LuokaiInference:
                 if result:
                     return f"**{math_expr.group().strip()}** = **{result}**"
 
-        # ── Skills search (primary — always first for code/search/skill intents)
+        # ── Cell system FIRST: coding, algorithm, debug, security ──────
+        # Cells have structured knowledge — query them before generic skills
+        if self._coding_engine:
+            cell_resp = self._coding_engine.respond(query)
+            if cell_resp:
+                return cell_resp
+
+        # ── Cell system: NLP-guided data index search ─────────────────
+        if self._nlp_engine and self._data_index:
+            analysis = self._nlp_engine.analyze(query)
+            lang = analysis.get("language")
+            answer = self._data_index.get_answer(query)
+            if answer and len(answer) > 30:
+                return answer
+
+        # ── Skills search (for skill_find / search / code / reason) ───
         if intent in ("skill_find", "search", "code", "reason"):
             skill_response = self._skill_response(query)
             if skill_response:
                 return skill_response
 
-        # ── Task-oriented patterns (specific keywords only) ───────────
+        # ── Task-oriented patterns ────────────────────────────────────
         if self._data_loader:
             task_terms = ["cancel", "order", "booking", "reserve",
                           "reset password", "login", "subscription", "refund",
@@ -308,7 +344,7 @@ class LuokaiInference:
                             if len(t_words & q_words) >= 2 and i+1 < len(turns):
                                 return turns[i+1].get("content","")
 
-        # ── Sales patterns (purchase/buying intent only) ──────────────
+        # ── Sales patterns ────────────────────────────────────────────
         if intent in ("general",) and self._data_loader:
             sales_terms = ["buy", "purchase", "price", "cost", "discount",
                            "offer", "deal", "recommend", "compare products"]
@@ -317,13 +353,13 @@ class LuokaiInference:
                 if best:
                     return best
 
-        # ── Skills search fallback for general intent ─────────────────
+        # ── Skills fallback for general intent ────────────────────────
         if intent in ("general",):
             skill_response = self._skill_response(query)
             if skill_response:
                 return skill_response
 
-        # ── Coding data lookup ────────────────────────────────────────
+        # ── Coding data lookup (loader) ────────────────────────────────
         if intent == "code" and self._data_loader:
             coding_hits = self._data_loader.search_coding(query, limit=1)
             if coding_hits:
@@ -511,7 +547,7 @@ class LuokaiInference:
         )
 
     def _status_response(self) -> str:
-        """Report LUOKAI's current status."""
+        """Report LUOKAI's current status. Includes cell system info."""
         data_stats = ""
         if self._data_loader:
             s = self._data_loader.stats()
@@ -523,6 +559,17 @@ class LuokaiInference:
                 f"     Task dialogs:        {s.get('task_dialogs',0):,}\n"
                 f"     Total data entries:  {s.get('total',0):,}\n"
             )
+        cell_info = ""
+        if self._reasoning_engine and self._nlp_engine and self._coding_engine:
+            cell_info = (
+                f"  🧬 Cell system:\n"
+                f"     Reasoning cells: {len(self._reasoning_engine.cells)}\n"
+                f"     NLP cells:       {len(self._nlp_engine.cells)}\n"
+                f"     Coding cells:    {len(self._coding_engine.cells)}\n"
+            )
+            if self._data_index:
+                idx_stats = self._data_index.stats()
+                cell_info += f"     Data index:      {idx_stats.get('total_entries',0):,} entries\n"
         return (
             f"**LUOKAI Status**\n\n"
             f"  🧠 Inference Engine:  v{self.VERSION} — operational\n"
@@ -530,6 +577,7 @@ class LuokaiInference:
             f"  💾 Known facts:       {len(self._facts)} semantic entries\n"
             f"  🔄 Learned patterns:  {len(self._patterns)} interaction patterns\n"
             f"  💬 Session messages:  {len(self._session)}\n"
+            f"{cell_info}"
             f"{data_stats}"
             f"  🕐 Time:             {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
             f"All systems nominal. Running on real training data. Fully independent."
