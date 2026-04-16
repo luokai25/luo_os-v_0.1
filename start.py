@@ -28,8 +28,8 @@ warn = lambda m: print(f"{Y}  ⚠️   {m}{R}")
 info = lambda m: print(f"{C}  →   {m}{R}")
 
 # 1. Python check
-if sys.version_info < (3, 9):
-    print(f"\n  ❌  Need Python 3.9+. Have {sys.version_info.major}.{sys.version_info.minor}")
+if sys.version_info < (3, 6):
+    print("\n  LuoOS needs Python 3.6+. Have " + str(sys.version_info.major) + "." + str(sys.version_info.minor))
     print("      https://python.org/downloads\n")
     input("Press Enter to exit..."); sys.exit(1)
 

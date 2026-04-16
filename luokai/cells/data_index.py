@@ -41,10 +41,14 @@ MAX_PER_CATEGORY = {
 }
 
 DATA_DIRS = [
-    Path.home() / ".luo_os" / "data",           # Downloaded data
-    Path(__file__).parent.parent.parent / "luokai" / "data",  # Repo data
-    Path("/home/claude/rar_extract"),             # Extracted during session
+    Path(__file__).parent.parent / "data" / "knowledge",   # Repo JSONL data (ships with LuoOS)
+    Path(__file__).parent.parent / "data",                  # Repo data root
+    Path.home() / ".luo_os" / "data",                       # User-added data
+    Path("/home/claude/rar_extract"),                        # Dev extraction dir
 ]
+
+# Repo knowledge DB — ships with LuoOS, always available
+REPO_DB = Path(__file__).parent.parent / "data" / "knowledge.db"
 
 class DataIndex:
     """
@@ -82,6 +86,42 @@ class DataIndex:
             CREATE INDEX IF NOT EXISTS idx_keywords ON entries(keywords);
         """)
         db.commit()
+
+    def load_from_jsonl(self, jsonl_dir: Path) -> int:
+        """Load compact JSONL knowledge files (ships with LuoOS repo)."""
+        if not jsonl_dir.exists():
+            return 0
+        db = self._connect()
+        total = 0
+        for fpath in sorted(jsonl_dir.glob("*.jsonl")):
+            batch = []
+            try:
+                with open(fpath, encoding="utf-8") as f:
+                    for line in f:
+                        try:
+                            item = json.loads(line.strip())
+                            entry_id = f"k_{total}"
+                            cat = item.get("c", "general")
+                            lang = item.get("l", "") or None
+                            q = item.get("q", "") or None
+                            a = item.get("a", "") or None
+                            kws = f"{cat} {lang or ''} {(q or '')[:50]}".lower()
+                            content_str = f"{q or ''} | {a or ''}"[:2000]
+                            batch.append((entry_id, cat, lang, content_str, kws, 0))
+                            total += 1
+                        except Exception:
+                            pass
+                if batch:
+                    db.executemany(
+                        "INSERT OR IGNORE INTO entries (id,category,language,content,keywords,ts) VALUES (?,?,?,?,?,?)",
+                        batch
+                    )
+                    db.commit()
+            except Exception as e:
+                pass
+        if total > 0:
+            print(f"[DataIndex] Loaded {total:,} entries from JSONL knowledge base")
+        return total
 
     def load_from_directory(self, data_dir: Path) -> int:
         """Load JSON data files from a directory into the index."""
@@ -206,6 +246,40 @@ class DataIndex:
 
         return " ".join(list(keywords)[:30])
 
+    def search_knowledge(self, query: str, language: str = None, limit: int = 5) -> List[Dict]:
+        """Search the knowledge table (k) from the repo DB."""
+        db = self._connect()
+        q_words = [w for w in re.sub(r"[^\w\s]", " ", query.lower()).split() if len(w) > 2]
+        if not q_words:
+            return []
+        # Check if k table exists
+        try:
+            tables = [r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+            if "k" not in tables:
+                return []
+            conditions = []
+            params = []
+            if language:
+                conditions.append("lang=?")
+                params.append(language.lower())
+            kw_parts = []
+            for w in q_words[:4]:
+                kw_parts.append("(q LIKE ? OR a LIKE ?)")
+                params.extend([f"%{w}%", f"%{w}%"])
+            if kw_parts:
+                conditions.append(f"({' OR '.join(kw_parts)})")
+            where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+            rows = db.execute(f"SELECT cat,lang,q,a FROM k {where} LIMIT {limit*3}", params).fetchall()
+            scored = []
+            for row in rows:
+                text = f"{row[2] or ''} {row[3] or ''}".lower()
+                score = sum(text.count(w) for w in q_words)
+                scored.append((score, {"category":row[0],"language":row[1],"q":row[2],"a":row[3]}))
+            scored.sort(key=lambda x: -x[0])
+            return [r for _, r in scored[:limit]]
+        except Exception:
+            return []
+
     def search(self, query: str, category: str = None,
                language: str = None, limit: int = 5) -> List[Dict]:
         """Search the index."""
@@ -272,7 +346,10 @@ class DataIndex:
 
     def get_answer(self, question: str) -> Optional[str]:
         """Get the best answer for a question from training data."""
-        results = self.search_conversations(question, limit=3)
+        # Try knowledge base first (78K curated entries)
+        results = self.search_knowledge(question, limit=3)
+        if not results:
+            results = self.search_conversations(question, limit=3)
         if not results:
             results = self.search(question, limit=2)
         if not results:
@@ -334,32 +411,42 @@ _index: Optional[DataIndex] = None
 def get_index() -> DataIndex:
     global _index
     if _index is None:
-        _index = DataIndex()
+        # Use the repo DB if it exists (ships with LuoOS)
+        if REPO_DB.exists():
+            _index = DataIndex(str(REPO_DB))
+        else:
+            _index = DataIndex()
     return _index
 
 def load_data_if_available() -> int:
     """Load data from any available source. Returns entries loaded."""
     idx = get_index()
 
-    # Check if already has data
+    # Check if already has data (repo DB is pre-loaded)
     s = idx.stats()
     if s.get("total_entries", 0) > 1000:
-        print(f"[DataIndex] Already loaded: {s['total_entries']:,} entries")
+        print(f"[DataIndex] {s['total_entries']:,} entries ready")
         return s["total_entries"]
 
-    # Try each data directory
+    # Try JSONL knowledge base (ships with repo)
+    jsonl_dir = Path(__file__).parent.parent / "data" / "knowledge"
+    if jsonl_dir.exists():
+        n = idx.load_from_jsonl(jsonl_dir)
+        if n > 0:
+            return n
+
+    # Try other data directories
     total = 0
     for d in DATA_DIRS:
-        if d.exists():
-            print(f"[DataIndex] Loading from {d}...")
+        if d.exists() and d != jsonl_dir:
             n = idx.load_from_directory(d)
             total += n
             if total > 10_000:
                 break
 
     if total > 0:
-        print(f"[DataIndex] ✅ Loaded {total:,} entries total")
+        print(f"[DataIndex] ✅ {total:,} entries loaded")
     else:
-        print("[DataIndex] No external data found — using built-in knowledge")
+        print("[DataIndex] Using built-in cell knowledge")
 
     return total
