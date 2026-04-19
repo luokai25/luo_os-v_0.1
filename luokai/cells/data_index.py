@@ -247,34 +247,65 @@ class DataIndex:
         return " ".join(list(keywords)[:30])
 
     def search_knowledge(self, query: str, language: str = None, limit: int = 5) -> List[Dict]:
-        """Search the knowledge table (k) from the repo DB."""
+        """Search the knowledge table (k) from the repo DB using smart scoring."""
         db = self._connect()
-        q_words = [w for w in re.sub(r"[^\w\s]", " ", query.lower()).split() if len(w) > 2]
+        q_lower = query.lower().strip()
+        q_words = [w for w in re.sub(r"[^\w\s]", " ", q_lower).split() if len(w) > 2]
         if not q_words:
             return []
-        # Check if k table exists
         try:
-            tables = [r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+            tables = [r[0] for r in db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
             if "k" not in tables:
                 return []
-            conditions = []
-            params = []
-            if language:
-                conditions.append("lang=?")
-                params.append(language.lower())
-            kw_parts = []
-            for w in q_words[:4]:
-                kw_parts.append("(q LIKE ? OR a LIKE ?)")
-                params.extend([f"%{w}%", f"%{w}%"])
-            if kw_parts:
-                conditions.append(f"({' OR '.join(kw_parts)})")
-            where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-            rows = db.execute(f"SELECT cat,lang,q,a FROM k {where} LIMIT {limit*3}", params).fetchall()
+
+            # Strategy 1: exact phrase match on question (highest priority)
+            exact_rows = db.execute(
+                "SELECT cat,lang,q,a FROM k WHERE LOWER(q) LIKE ? LIMIT ?",
+                (f"%{q_lower}%", limit)
+            ).fetchall()
+
+            # Strategy 2: all meaningful words must appear (AND logic)
+            sig_words = [w for w in q_words if w not in {
+                "how", "what", "why", "when", "where", "who", "the", "are",
+                "is", "to", "do", "does", "a", "an", "in", "of", "for",
+                "use", "using", "used", "make", "making", "get", "getting",
+                "work", "works", "working", "set", "setting"
+            }]
+            and_rows = []
+            if sig_words:
+                and_conds = " AND ".join(f"LOWER(q) LIKE ?" for _ in sig_words)
+                and_params = [f"%{w}%" for w in sig_words[:5]]
+                and_rows = db.execute(
+                    f"SELECT cat,lang,q,a FROM k WHERE {and_conds} LIMIT ?",
+                    and_params + [limit * 2]
+                ).fetchall()
+
+            # Combine and score
+            seen = set()
             scored = []
-            for row in rows:
-                text = f"{row[2] or ''} {row[3] or ''}".lower()
-                score = sum(text.count(w) for w in q_words)
-                scored.append((score, {"category":row[0],"language":row[1],"q":row[2],"a":row[3]}))
+            for rows, base_score in [(exact_rows, 100), (and_rows, 50)]:
+                for row in rows:
+                    key = row[2] or ""
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    q_text = (row[2] or "").lower()
+                    a_text = (row[3] or "").lower()
+                    # Score: exact phrase > word overlap
+                    score = base_score
+                    if q_lower in q_text:
+                        score += 200
+                    # Penalize generic "How do I..." synthetic entries
+                    if q_text.startswith("how do i") and "how do i" in q_lower:
+                        score -= 80
+                    score += sum(q_text.count(w) * 3 for w in sig_words)
+                    score += sum(a_text.count(w) for w in sig_words)
+                    scored.append((score, {
+                        "category": row[0], "language": row[1],
+                        "q": row[2], "a": row[3]
+                    }))
+
             scored.sort(key=lambda x: -x[0])
             return [r for _, r in scored[:limit]]
         except Exception:
@@ -346,42 +377,54 @@ class DataIndex:
 
     def get_answer(self, question: str) -> Optional[str]:
         """Get the best answer for a question from training data."""
-        # Try knowledge base first (78K curated entries)
+        # Try knowledge base first (curated entries with real answers)
         results = self.search_knowledge(question, limit=3)
-        if not results:
-            results = self.search_conversations(question, limit=3)
-        if not results:
-            results = self.search(question, limit=2)
-        if not results:
-            return None
+        if results:
+            best = results[0]
+            answer = best.get("a", "")
+            if answer and len(answer) > 30:
+                q = best.get("q", "")
+                # Don't return synthetic placeholder answers
+                # Only flag clearly synthetic placeholders, not real code with comments
+                bad_phrases = [
+                    "Common javascript pattern for:",
+                    "Common python pattern for:",
+                    "Markdown documentation content for",
+                    "Consider improving naming in this code",
+                    "Code review comment for",
+                ]
+                is_synthetic = (
+                    any(p in answer for p in bad_phrases) or
+                    (answer.strip().startswith("// ") and len(answer) < 50)
+                )
+                if is_synthetic:
+                    pass  # fall through to next source
+                else:
+                    return answer
 
-        # Find the result with the most overlap
-        q_words = set(question.lower().split())
-        best = None
-        best_score = 0
+        # Try conversation search
+        results = self.search_conversations(question, limit=3)
+        if results:
+            for r in results:
+                a = r.get("a") or r.get("content", "")
+                if a and len(a) > 30:
+                    bad = ["Common javascript pattern", "Common python pattern",
+                           "Markdown documentation content"]
+                    if not any(p in a for p in bad):
+                        return a[:600]
+
+        # Try general search
+        results = self.search(question, limit=2)
         for r in results:
-            content = r.get("content", "")
-            r_words = set(content.lower().split())
-            score = len(q_words & r_words)
-            if score > best_score:
-                best_score = score
-                best = r
+            content_str = r.get("content", "")
+            for marker in ["answer: ", "solution: ", "fix: "]:
+                if marker in content_str.lower():
+                    idx = content_str.lower().index(marker)
+                    answer = content_str[idx + len(marker):idx + 600]
+                    if len(answer) > 20:
+                        return answer.strip()
 
-        if not best or best_score < 2:
-            return None
-
-        # Extract answer portion
-        content = best.get("content", "")
-        # Look for "answer: " or "solution: " marker
-        for marker in ["answer: ", "solution: ", "fix: "]:
-            if marker in content.lower():
-                idx = content.lower().index(marker)
-                answer = content[idx + len(marker):idx + 600]
-                if len(answer) > 20:
-                    return answer.strip()
-
-        # Return whole content if no marker
-        return content[:500] if len(content) > 20 else None
+        return None
 
     def stats(self) -> Dict:
         """Get index statistics."""
