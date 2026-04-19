@@ -141,6 +141,7 @@ class LuokaiInference:
 
         # Interaction history for pattern matching
         self._session: List[Dict] = []
+        self._neural_state: str = "idle"
 
         # Learned patterns (loaded from SelfImprove)
         self._patterns: List[Dict] = []
@@ -154,11 +155,12 @@ class LuokaiInference:
         self._data_loader = None
         self._init_data_loader()
 
-        # Cell engines (reasoning, NLP, coding)
+        # Cell engines (reasoning, NLP, coding, neural)
         self._reasoning_engine = None
         self._nlp_engine = None
         self._coding_engine = None
         self._data_index = None
+        self._neural_engine = None
         self._init_cells()
 
         print(f"[LuokaiInference v{self.VERSION}] "
@@ -231,6 +233,18 @@ class LuokaiInference:
             # Load data index in background thread
             import threading
             threading.Thread(target=load_data_if_available, daemon=True).start()
+            # Neural engine — biological neuron interface (optional)
+            try:
+                from luokai.cells.neural import NeuralEngine
+                self._neural_engine = NeuralEngine(
+                    sim_mode=True,           # start in sim, connect hardware later
+                    ticks_per_second=50,     # light background thread
+                    auto_start=True,
+                )
+                self._neural_engine.connect_luokai(self._on_neural_state)
+            except Exception as ne:
+                pass  # neural engine is optional
+
         except Exception as e:
             print(f"[LuokaiInference] Cell system not available: {e}")
 
@@ -546,6 +560,14 @@ class LuokaiInference:
             "What specifically would you like me to recall?"
         )
 
+    def _on_neural_state(self, state: str, pattern) -> None:
+        """Receive neural cognitive state from biological neurons."""
+        # Store current neural state — influences LUOKAI's response tone
+        self._neural_state = state
+        # If neurons are highly engaged, proactively respond
+        if state in ("ENGAGED", "HIGH_ACTIVITY"):
+            pass  # future: trigger proactive suggestion
+
     def _status_response(self) -> str:
         """Report LUOKAI's current status. Includes cell system info."""
         data_stats = ""
@@ -570,6 +592,16 @@ class LuokaiInference:
             if self._data_index:
                 idx_stats = self._data_index.stats()
                 cell_info += f"     Data index:      {idx_stats.get('total_entries',0):,} entries\n"
+            if self._neural_engine:
+                ns = self._neural_engine.status()
+                bridge = ns.get("bridge", {})
+                cell_info += (
+                    f"  🧠 Neural interface:\n"
+                    f"     Mode:            {'SIM' if bridge.get('mode')=='sim' else 'CL1 HARDWARE'}\n"
+                    f"     Active channels: {bridge.get('active_channels', 0)}/64\n"
+                    f"     Total spikes:    {bridge.get('total_spikes', 0):,}\n"
+                    f"     Neural state:    {self._neural_state}\n"
+                )
         return (
             f"**LUOKAI Status**\n\n"
             f"  🧠 Inference Engine:  v{self.VERSION} — operational\n"
