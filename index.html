@@ -481,6 +481,31 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
 // ═══════════════════════════════════════════════════════════════════
 
 const API = "http://localhost:3000";
+
+  // LUOKAI model status — shown in taskbar automatically
+  async function updateModelStatus() {
+    try {
+      const r = await fetch(`${API}/api/model/status`);
+      const d = await r.json();
+      const el = document.getElementById("luokai-model-status");
+      if (!el) return;
+      if (d.ready) {
+        el.textContent = "🟢 LUOKAI ready";
+        el.title = d.model || "";
+        el.style.color = "var(--accent, #4f9)";
+        clearInterval(window._modelPoll);
+      } else if (d.loading) {
+        el.textContent = "⏳ Loading AI weights...";
+        el.title = "First run: downloading ~900MB once";
+        el.style.color = "#fa0";
+      } else {
+        el.textContent = "⚡ LUOKAI starting";
+        el.style.color = "var(--text2, #aaa)";
+      }
+    } catch(e) { /* server starting */ }
+  }
+  window._modelPoll = setInterval(updateModelStatus, 3000);
+  setTimeout(updateModelStatus, 800);
 let isDark = true, windows = {}, wZIndex = 100;
 let chatHistory = [], termHistory = [], termHistIdx = -1;
 let voiceActive = false, agentOnline = false;

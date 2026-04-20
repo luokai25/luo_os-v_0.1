@@ -85,6 +85,19 @@ info("Press Ctrl+C to stop")
 print(f"  {'─'*54}\n")
 
 try:
+    # Check if model weights are present, inform user if downloading
+    try:
+        from luokai.core.model_engine import MODELS_DIR, PRIMARY_MODEL
+        model_path = MODELS_DIR / PRIMARY_MODEL["filename"]
+        if not model_path.exists():
+            info(f"First run detected — LUOKAI will download AI weights (~{PRIMARY_MODEL['size_gb']:.1f}GB)")
+            info("This happens once. After that LUOKAI runs fully offline.")
+            info(f"Saving to: {MODELS_DIR}")
+        else:
+            step(f"AI weights found: {model_path.name} ({model_path.stat().st_size/1e9:.1f}GB)")
+    except Exception:
+        pass
+
     import luo_server
     luo_server._run_server()
 except KeyboardInterrupt:

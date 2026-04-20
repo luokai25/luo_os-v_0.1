@@ -635,6 +635,24 @@ def brain_coevo_stats():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
+@app.route("/api/model/status", methods=["GET"])
+def model_status():
+    """Get local model engine status."""
+    try:
+        from luokai.core.model_engine import get_engine
+        return jsonify({"ok": True, **get_engine().status()})
+    except Exception as e:
+        return jsonify({"ok": False, "ready": False, "loading": False, "error": str(e)})
+
+@app.route("/api/model/list", methods=["GET"])
+def model_list():
+    """List available models."""
+    try:
+        from luokai.core.model_engine import get_engine
+        return jsonify({"ok": True, "models": get_engine().list_available_models()})
+    except Exception as e:
+        return jsonify({"ok": False, "models": [], "error": str(e)})
+
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"
@@ -652,6 +670,13 @@ def _run_server():
         if brain:
             brain.shutdown()
     atexit.register(_shutdown)
+
+    # Boot LUOKAI model engine in background (downloads weights on first run)
+    try:
+        from luokai.core.model_engine import boot_engine
+        boot_engine()
+    except Exception:
+        pass
 
     threading.Thread(target=_vscode_autostart, daemon=True).start()
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True, use_reloader=False)

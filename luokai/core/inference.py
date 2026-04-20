@@ -163,6 +163,10 @@ class LuokaiInference:
         self._neural_engine = None
         self._init_cells()
 
+        # Local model weights (Qwen2.5-1.5B — downloads once, runs offline)
+        self._model_engine = None
+        self._init_model_engine()
+
         print(f"[LuokaiInference v{self.VERSION}] "
               f"{len(self._skills_index):,} skills · "
               f"{len(self._patterns)} patterns · "
@@ -334,6 +338,17 @@ class LuokaiInference:
             answer = self._data_index.get_answer(query)
             if answer and len(answer) > 30:
                 return answer
+
+        # ── Local model weights (Qwen2.5-1.5B — real AI inference) ────
+        # This is LUOKAI's brain — answers anything the cells don't handle
+        if self._model_engine and self._model_engine.is_ready:
+            model_response = self._model_engine.generate(
+                messages=[{"role": "user", "content": query}],
+                max_tokens=600,
+                temperature=0.7,
+            )
+            if model_response and len(model_response) > 10:
+                return model_response
 
         # ── Skills search (for skill_find / search / code / reason) ───
         if intent in ("skill_find", "search", "code", "reason"):
@@ -560,6 +575,14 @@ class LuokaiInference:
             "What specifically would you like me to recall?"
         )
 
+    def _init_model_engine(self):
+        """Boot the local model engine in background."""
+        try:
+            from luokai.core.model_engine import boot_engine
+            self._model_engine = boot_engine()
+        except Exception as e:
+            print(f"[LuokaiInference] Model engine not available: {e}")
+
     def _on_neural_state(self, state: str, pattern) -> None:
         """Receive neural cognitive state from biological neurons."""
         # Store current neural state — influences LUOKAI's response tone
@@ -592,6 +615,19 @@ class LuokaiInference:
             if self._data_index:
                 idx_stats = self._data_index.stats()
                 cell_info += f"     Data index:      {idx_stats.get('total_entries',0):,} entries\n"
+            if self._model_engine:
+                ms = self._model_engine.status()
+                if ms["ready"]:
+                    cell_info += (
+                        f"  🤖 Local model:\n"
+                        f"     Model:  {ms['model'][:40]}\n"
+                        f"     Size:   {ms['model_size']}\n"
+                        f"     Status: ✅ ready\n"
+                    )
+                elif ms["loading"]:
+                    cell_info += f"  🤖 Local model: ⏳ downloading/loading...\n"
+                else:
+                    cell_info += f"  🤖 Local model: first run — auto-downloading...\n"
             if self._neural_engine:
                 ns = self._neural_engine.status()
                 bridge = ns.get("bridge", {})
