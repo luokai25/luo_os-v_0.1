@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 DEFAULT = {
-    "model": "tinyllama", "ollama_url": "http://localhost:11434",
+    "model": "luokai", "luokai_url": "http://localhost:3000",
     "memory_file": "~/.luo_agent/MEMORY.md", "notes_dir": "~/.luo_agent/notes/",
     "sessions_dir": "~/.luo_agent/sessions/", "daemon_tick_seconds": 30,
     "max_tokens": 2048, "temperature": 0.7, "auto_dream": True, "version": "0.1.0"
@@ -35,7 +35,7 @@ class LuoConfig:
     @property
     def model(self): return self.data["model"]
     @property
-    def ollama_url(self): return self.data["ollama_url"]
+    def ollama_url(self): return self.data.get("luokai_url", "http://localhost:3000")
     @property
     def memory_file(self): return Path(self.data["memory_file"]).expanduser()
     @property

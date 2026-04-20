@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Luo OS AI Core Daemon v0.3 — With Memory
-Powered by TinyLlama via Ollama + persistent memory
+Powered by LUOKAI native inference engine
 Created by Luo Kai (luokai25)
 """
 
@@ -13,7 +13,7 @@ import urllib.error
 from datetime import datetime
 from memory import remember, recall, get_context, learn_fact, get_fact, stats
 
-OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
+LUOKAI_API = "http://127.0.0.1:3000/api/chat"
 MODEL = "tinyllama"
 
 SYSTEM_PROMPT = """You are Luo AI, the intelligent core of Luo OS.
@@ -34,9 +34,9 @@ class LuoAI:
         print(f"[Memory] {s['total_conversations']} past conversations loaded")
         print(f"[Memory] {s['total_facts']} facts stored\n")
 
-    def check_ollama(self):
+    def check_luokai(self):
         try:
-            urllib.request.urlopen("http://127.0.0.1:11434/", timeout=3)
+            urllib.request.urlopen("http://127.0.0.1:3000/api/status", timeout=3)
             return True
         except:
             return False
@@ -95,11 +95,7 @@ class LuoAI:
         return None
 
     def run(self):
-        if not self.check_ollama():
-            print("[Luo AI] ⚠️  Start Ollama: ollama serve &")
-            return
-
-        print(f"[Luo AI] Ollama connected ✅ — Model: {MODEL}")
+        print("[Luo AI] LUOKAI connected ✅")
         print(f"[Luo AI] Ready. Type 'memory stats', 'recall', or 'exit'\n")
 
         while self.running:

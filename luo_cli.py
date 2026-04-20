@@ -42,9 +42,9 @@ BANNER = """
 class LuoCLI:
     """Unified CLI for Luo OS."""
 
-    def __init__(self, model: str = None, ollama_url: str = None):
+    def __init__(self, model: str = None, luokai_url: str = None):
         self.model = model or os.environ.get("LUO_MODEL", "mistral")
-        self.ollama_url = ollama_url or os.environ.get("OLLAMA_URL", "http://localhost:11434")
+        self.luokai_url = ollama_url or os.environ.get("LUOKAI_URL", "http://localhost:3000")
         self.agent = None
 
     def _init_agent(self):
@@ -52,7 +52,7 @@ class LuoCLI:
         if self.agent is None:
             try:
                 from luokai.core.luokai_agent import LUOKAIAgent
-                self.agent = LUOKAIAgent(ollama_url=self.ollama_url, model=self.model)
+                self.agent = LUOKAIAgent(luokai_url=self.luokai_url, model=self.model)
             except Exception as e:
                 print(f"[ERROR] Failed to initialize agent: {e}")
                 sys.exit(1)
@@ -62,7 +62,7 @@ class LuoCLI:
         """Interactive chat mode."""
         print(BANNER)
         agent = self._init_agent()
-        print(f"\n[Model: {self.model}] [URL: {self.ollama_url}]")
+        print(f"\n[LUOKAI] [URL: {self.luokai_url}]")
         print("Type your message and press Enter. Use /help for commands.\n")
 
         while True:
@@ -204,16 +204,16 @@ Tool usage:
         print(BANNER)
         print("\n📊 Luo OS Status\n")
 
-        # Check Ollama
+        # Check LUOKAI
         try:
             import urllib.request
-            with urllib.request.urlopen(f"{self.ollama_url}/api/tags", timeout=2) as r:
+            with urllib.request.urlopen(f"{self.luokai_url}/api/status", timeout=2) as r:
                 models = json.loads(r.read()).get("models", [])
-                print(f"✓ Ollama: Connected ({self.ollama_url})")
+                print(f"✓ LUOKAI: Connected ({self.luokai_url})")
                 print(f"  Models: {', '.join(m['name'] for m in models) or 'none'}")
         except:
-            print(f"✗ Ollama: Not connected ({self.ollama_url})")
-            print("  Start with: ollama serve")
+            print(f"✗ LUOKAI: Not connected ({self.luokai_url})")
+            print("  Start with: python3 start.py")
 
         # Check directories
         luo_dir = Path("~/.luo_os").expanduser()
@@ -312,7 +312,7 @@ Examples:
         )
 
         parser.add_argument("--model", "-m", default=self.model, help="Model to use")
-        parser.add_argument("--ollama-url", "-u", default=self.ollama_url, help="Ollama URL")
+        parser.add_argument("--luokai-url", "-u", default=self.luokai_url, help="LUOKAI URL")
 
         subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
@@ -348,7 +348,7 @@ Examples:
 
         # Update config from args
         self.model = args.model
-        self.ollama_url = args.ollama_url
+        self.luokai_url = args.luokai_url
 
         # Route to command
         if args.command is None:

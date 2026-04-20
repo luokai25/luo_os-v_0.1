@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Luo Agent — Entry Point
-Autonomous AI agent for Luo OS powered by Ollama.
+Autonomous AI agent for Luo OS powered by LUOKAI native inference.
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))

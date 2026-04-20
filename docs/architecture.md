@@ -41,8 +41,8 @@
 - Location: `ai_core/`
 
 ### 3. Luo Agent
-- Autonomous AI agent powered by Ollama (local, free, offline)
-- **core/** — config, Ollama client, background daemon
+- Autonomous AI agent powered by LUOKAI native inference (local, free, offline)
+- **core/** — config, LUOKAI inference, background daemon
 - **memory/** — MEMORY.md + notes + autoDream consolidation
 - **tools/** — 14 permission-gated tools
 - **agents/** — reasoning loop with automatic tool calling

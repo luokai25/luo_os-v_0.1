@@ -99,7 +99,7 @@ class LuoRESTHandler(BaseHTTPRequestHandler):
                 payload=json.dumps({"model":model,"messages":[
                     {"role":"system","content":"You are Luo, the AI core of Luo OS. Be concise."},
                     {"role":"user","content":prompt}],"stream":False,"options":{"num_predict":512}}).encode()
-                req=urllib.request.Request("http://127.0.0.1:11434/api/chat",data=payload,
+                req=urllib.request.Request("http://127.0.0.1:3000/api/chat",data=payload,
                     headers={"Content-Type":"application/json"})
                 with urllib.request.urlopen(req,timeout=120) as r:
                     result=json.loads(r.read())

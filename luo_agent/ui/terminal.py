@@ -4,7 +4,7 @@ from pathlib import Path
 from core.config import LuoConfig
 from memory.memory import MemorySystem
 from agents.agent import LuoAgentCore
-from core.llm import OllamaClient
+from core.llm import OllamaClient  # LUOKAI shim
 
 R="\033[0m";B="\033[1m";DIM="\033[2m";CY="\033[96m";GR="\033[92m";YL="\033[93m";RD="\033[91m";MG="\033[95m"
 
@@ -15,7 +15,7 @@ BANNER=f"""{CY}{B}
  ██║     ██║   ██║██║   ██║    ██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║
  ███████╗╚██████╔╝╚██████╔╝    ██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║
  ╚══════╝ ╚═════╝  ╚═════╝     ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
-{R}{DIM} Autonomous AI Agent — Luo OS | Powered by Ollama (free, local, offline){R}
+{R}{DIM} Autonomous AI Agent — Luo OS | Powered by LUOKAI (free, local, offline){R}
 """
 
 HELP=f"""
@@ -31,7 +31,7 @@ class LuoTerminal:
     def __init__(self, config):
         self.config=config
         self.memory=MemorySystem(config.memory_file,config.notes_dir,config.sessions_dir)
-        self.llm=OllamaClient(config.ollama_url,config.model)
+        self.llm=OllamaClient()
         self.agent=LuoAgentCore(config,self.memory)
         self.sid=datetime.now().strftime("session_%Y%m%d_%H%M%S")
         try:
@@ -55,7 +55,7 @@ class LuoTerminal:
         elif c=="/models":
             ms=self.llm.list_models()
             if ms: self.p("Models:",CY); [self.p(f"  {m}{' ←' if m==self.config.model else ''}",GR if m==self.config.model else R) for m in ms]
-            else: self.p("None found. Run: ollama pull tinyllama",YL)
+            else: self.p("LUOKAI built-in — no models needed",YL)
         elif c=="/memory": self.p("── Memory ──",CY); print(self.memory.read_memory())
         elif c=="/notes":
             ns=self.memory.list_notes()
@@ -72,12 +72,12 @@ class LuoTerminal:
         elif c=="/clear": self.agent.reset_conversation(); self.p("✓ Cleared.",GR)
         elif c=="/dream":
             if self.llm.is_available(): self.p(self.memory.auto_dream(self.llm),GR)
-            else: self.p("Ollama offline.",RD)
+            else: self.p("LUOKAI starting...",RD)
         elif c=="/status":
             ok=self.llm.is_available()
             self.p("── Status ──",CY)
             self.p(f"  Model   : {self.config.model}",B)
-            self.p(f"  Ollama  : {'✓ online' if ok else '✗ offline'}",GR if ok else RD)
+            self.p(f"  LUOKAI  : {'✓ online' if ok else '✗ offline'}",GR if ok else RD)
             self.p(f"  Session : {self.sid}",DIM)
             self.p(f"  Messages: {len(self.agent.conversation)}",DIM)
         elif c in ("/exit","/quit","/q"):
@@ -88,8 +88,8 @@ class LuoTerminal:
     def run(self):
         os.system("clear")
         print(BANNER)
-        if self.llm.is_available(): self.p(f"✓ Ollama online — {self.config.model}",GR)
-        else: self.p("⚠  Ollama offline. Run: ollama serve",YL)
+        if self.llm.is_available(): self.p("✓ LUOKAI online",GR)
+        else: self.p("⚠  LUOKAI starting... run python3 start.py",YL)
         self.p("\nType a message or /help\n",DIM)
         while True:
             try: user=input(f"{CY}{B}you{R}{CY} ▸ {R}").strip()
@@ -97,7 +97,7 @@ class LuoTerminal:
                 self.agent.save_conversation(self.sid); self.p("\nGoodbye.",DIM); break
             if not user: continue
             if user.startswith("/"): self._cmd(user); continue
-            if not self.llm.is_available(): self.p("✗ Ollama offline.",RD); continue
+            if not self.llm.is_available(): self.p("✗ LUOKAI offline.",RD); continue
             print(f"\n{MG}{B}luo{R}{MG} ▸ {R}",end="")
             try:
                 self.agent.chat(user,stream_callback=lambda t:print(f"{MG}{t}{R}",end="",flush=True))

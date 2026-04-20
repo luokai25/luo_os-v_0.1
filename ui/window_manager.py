@@ -96,7 +96,7 @@ class LuoDesktop:
                 try:
                     import urllib.request
                     payload=json.dumps({"model":model,"messages":[{"role":"system","content":"You are Luo, AI core of Luo OS. Be concise."},{"role":"user","content":msg}],"stream":False,"options":{"num_predict":256}}).encode()
-                    req=urllib.request.Request("http://localhost:11434/api/chat",data=payload,headers={"Content-Type":"application/json"})
+                    req=urllib.request.Request("http://localhost:3000/api/chat",data=payload,headers={"Content-Type":"application/json"})
                     with urllib.request.urlopen(req,timeout=120) as r: result=json.loads(r.read())
                     resp=result.get("message",{}).get("content","").strip()
                     win.content.after(0,lambda:append(f"luo  > {resp}\n\n","luo"))
@@ -206,7 +206,7 @@ class LuoDesktop:
     def open_settings(self):
         win=LuoWindow(self,"Settings",400,300)
         for k,v in [("Version","Luo OS v0.1"),("Author","Abd El-Rahman Abbas (Mr. Kai)"),
-                    ("GitHub","github.com/luokai25"),("AI Backend","Ollama (local)"),
+                    ("GitHub","github.com/luokai25"),("AI Backend","LUOKAI (native)"),
                     ("Agent API","localhost:7070"),("REST API","localhost:8080"),("License","Open Source")]:
             row=tk.Frame(win.content,bg=BG2); row.pack(fill=tk.X,padx=8,pady=3)
             tk.Label(row,text=f"{k}:",bg=BG2,fg=DIM,font=FONT_SM,width=14,anchor=tk.W).pack(side=tk.LEFT)

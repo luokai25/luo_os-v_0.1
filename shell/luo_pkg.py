@@ -9,12 +9,11 @@ PKG_DB  = PKG_DIR / "installed.json"
 GR="[92m"; RD="[91m"; YL="[93m"; CY="[96m"; B="[1m"; R="[0m"; DIM="[2m"
 
 REGISTRY = {
-    "tinyllama":    {"desc":"TinyLlama 1.1B — 1GB RAM",         "cmd":"ollama pull tinyllama",                     "cat":"ai",     "size":"~600MB"},
-    "qwen2.5:1.5b": {"desc":"Qwen 2.5 1.5B — better reasoning","cmd":"ollama pull qwen2.5:1.5b",                   "cat":"ai",     "size":"~1GB"},
-    "phi3:mini":    {"desc":"Phi-3 Mini — best coding (4GB+)",  "cmd":"ollama pull phi3:mini",                     "cat":"ai",     "size":"~2.3GB"},
-    "gemma2:2b":    {"desc":"Gemma 2B — general (3GB+)",        "cmd":"ollama pull gemma2:2b",                     "cat":"ai",     "size":"~1.6GB"},
-    "mistral":      {"desc":"Mistral 7B — advanced (8GB+)",     "cmd":"ollama pull mistral",                       "cat":"ai",     "size":"~4GB"},
-    "ollama":       {"desc":"Local AI model runner",            "cmd":"curl -fsSL https://ollama.com/install.sh|sh","cat":"ai",     "size":"~50MB"},
+    "luokai":       {"desc":"LUOKAI native AI — built-in",      "cmd":"python3 start.py",                          "cat":"ai",     "size":"built-in"},
+    "cl1":          {"desc":"Cortical Labs CL1 neural interface","cmd":"pip install cl",                           "cat":"ai",     "size":"~2MB"},
+    "flask":        {"desc":"Web framework (required)",          "cmd":"pip install flask flask-cors",              "cat":"core",   "size":"~1MB"},
+    "numpy":        {"desc":"Numerical computing",               "cmd":"pip install numpy",                         "cat":"science","size":"~20MB"},
+    "scipy":        {"desc":"Scientific computing",              "cmd":"pip install scipy",                         "cat":"science","size":"~30MB"},
     "git":          {"desc":"Version control",                  "cmd":"apt-get install -y git",                    "cat":"dev",    "size":"~30MB"},
     "python3":      {"desc":"Python 3 + pip",                   "cmd":"apt-get install -y python3 python3-pip",    "cat":"dev",    "size":"~50MB"},
     "nodejs":       {"desc":"Node.js + npm",                    "cmd":"apt-get install -y nodejs npm",             "cat":"dev",    "size":"~70MB"},
@@ -63,34 +62,29 @@ def cmd_remove(name):
 def cmd_list():
     db = load_db()
     if not db: print("Nothing installed yet."); return
-    print(f"
-{B}Installed ({len(db)}):{R}")
+    print(f"\n{B}Installed ({len(db)}):{R}")
     for n, info in sorted(db.items()):
         print(f"  {GR}{n:<22}{R} {DIM}{info.get('category','?'):<10}{R} {info['installed'][:10]}")
 
 def cmd_search(q):
     results = [(k,v) for k,v in REGISTRY.items() if q.lower() in k.lower() or q.lower() in v["desc"].lower()]
     if not results: print(f"Nothing found for: {q}"); return
-    print(f"
-{B}Results for '{q}':{R}")
+    print(f"\n{B}Results for '{q}':{R}")
     for n, p in results: print(f"  {CY}{n:<22}{R} {DIM}{p['cat']:<10}{R} {p['size']:<10} {p['desc']}")
 
 def cmd_available(cat=""):
     db = load_db()
     pkgs = [(k,v) for k,v in REGISTRY.items() if not cat or v["cat"]==cat]
     if not pkgs: print(f"No packages in: {cat}"); return
-    print(f"
-{B}Available ({len(pkgs)}):{R}")
+    print(f"\n{B}Available ({len(pkgs)}):{R}")
     cur = ""
     for n, p in sorted(pkgs, key=lambda x:(x[1]["cat"],x[0])):
-        if p["cat"] != cur: cur = p["cat"]; print(f"
-  {B}{CY}[{cur.upper()}]{R}")
+        if p["cat"] != cur: cur = p["cat"]; print(f"\n  {B}{CY}[{cur.upper()}]{R}")
         mark = f"{GR} ✓{R}" if n in db else ""
         print(f"    {n:<22} {DIM}{p['size']:<10}{R} {p['desc']}{mark}")
 
 def usage():
-    print(f"""
-{B}Luo OS Package Manager v0.2{R}
+    print(f"""\n{B}Luo OS Package Manager v0.2{R}
   install <pkg>       install
   remove  <pkg>       remove
   list                installed packages

@@ -891,13 +891,10 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
             <div class="settings-row"><label>Always-On Voice</label><button class="toggle" id="tog-voice" onclick="toggleVoiceFromSettings()"></button></div>
             <div class="settings-row"><label>Co-Evolution Engine</label><button class="toggle" id="tog-coevo" onclick="toggleCoevo()"></button></div>
             <div class="settings-row"><label>Auto-Learn from Internet</label><button class="toggle on" onclick="toggleSetting('autolearn',this)"></button></div>
-            <div class="settings-row"><label>Ollama URL</label>
-              <input value="http://localhost:11434" style="width:200px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px"/>
-            </div>
-            <div class="settings-row"><label>Model</label>
+
+            <div class="settings-row"><label>Neural Engine</label>
               <select style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
-                <option>mistral</option><option>llama3</option><option>phi3</option>
-                <option>qwen2</option><option>deepseek-coder</option><option>codellama</option>
+                <option>LUOKAI (built-in)</option><option>CL1 Hardware</option><option>Simulation</option>
               </select>
             </div>
           </div>
@@ -996,16 +993,20 @@ async function luokaiSend() {
     addChatMsg("ai", d.response || d.error || "No response");
   } catch(e) {
     document.getElementById(thinkId)?.remove();
-    addChatMsg("ai", `⚠️ LUOKAI offline. Start server: python luo_server.py\n\nFallback: ${localFallback(msg)}`);
+    // Server not reachable — retry once after 800ms (handles cold start)
+    await new Promise(r => setTimeout(r, 800));
+    try {
+      const r2 = await fetch(`${API}/api/chat`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({message: msg}),
+      });
+      const d2 = await r2.json();
+      addChatMsg("ai", d2.response || d2.error || "No response");
+    } catch(e2) {
+      addChatMsg("ai", "LUOKAI is starting up — please wait a moment and try again.");
+    }
   }
-}
-
-function localFallback(msg) {
-  const tl = msg.toLowerCase();
-  if (tl.includes("time")) return `It's ${new Date().toLocaleTimeString()}`;
-  if (tl.includes("date")) return `Today is ${new Date().toLocaleDateString()}`;
-  if (tl.includes("hello") || tl.includes("hi")) return "LUOKAI online. Start python luo_server.py for full AI.";
-  return "Start luo_server.py to enable LUOKAI AI.";
 }
 
 function addChatMsg(role, text, id) {
@@ -1039,7 +1040,7 @@ async function toggleVoice() {
         addChatMsg("ai", "👂 Always-on voice activated! Say **'Luo'** or **'LUOKAI'** anywhere and I'll respond.");
       }
     } catch(e) {
-      notify("Voice Error", "Start luo_server.py first", "error");
+      notify("Voice Error", "LUOKAI is starting", "error");
     }
   } else {
     await fetch(`${API}/api/voice/stop`, {method:"POST"}).catch(()=>{});
@@ -1067,7 +1068,7 @@ async function toggleCoevo() {
       if (tog) tog.className = "toggle on";
     }
   } catch(e) {
-    notify("Error", "Start luo_server.py first", "error");
+    notify("Error", "LUOKAI is starting", "error");
   }
 }
 
@@ -1155,7 +1156,7 @@ async function termRun(cmd) {
     if (sub === "open")   { openApp(args[1]||"luokai"); return `Opening ${args[1]}...`; }
     if (sub === "status") {
       try { const r=await fetch(`${API}/api/status`); const d=await r.json(); return JSON.stringify(d,null,2); }
-      catch { return "LUOKAI offline — start luo_server.py"; }
+      catch { return "LUOKAI is starting up..."; }
     }
     if (sub === "voice")  { await toggleVoice(); return `Voice ${voiceActive?"on":"off"}`; }
     if (sub === "evolve") { await toggleCoevo(); return "Evolution engine started"; }
@@ -1178,7 +1179,7 @@ async function termRun(cmd) {
       const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:query})});
       const d = await r.json();
       return d.response || "No response";
-    } catch { return localFallback(query); }
+    } catch { return "LUOKAI is initializing..."; }
   }
 
   // ls
@@ -1212,7 +1213,7 @@ async function termRun(cmd) {
         const r = await fetch(`${API}/api/execute`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code,language:"python"})});
         const d = await r.json();
         return d.output;
-      } catch { return "Python execution requires luo_server.py"; }
+      } catch { return "Python execution unavailable"; }
     }
     return "Interactive Python: luo run python";
   }
@@ -1285,7 +1286,7 @@ async function filesLoad(path) {
         </div>`).join("") || `<div style="color:var(--text3);padding:20px;font-size:12px">(empty)</div>`;
     }
   } catch {
-    if (grid) grid.innerHTML = `<div style="color:var(--text3);padding:20px;font-size:12px">Server offline — start luo_server.py</div>`;
+    if (grid) grid.innerHTML = `<div style="color:var(--text3);padding:20px;font-size:12px">Loading...</div>`;
   }
 }
 
@@ -1350,7 +1351,7 @@ async function codeRun() {
     const d = await r.json();
     if (output) output.textContent = d.output || "(no output)";
   } catch {
-    if (output) output.textContent = "Server offline. Start: python luo_server.py";
+    if (output) output.textContent = "Loading LUOKAI...";
   }
 }
 
@@ -1368,7 +1369,7 @@ async function codeAI() {
     }
     notify("AI Code", d.response?.substring(0,80)+"...", "info");
   } catch {
-    notify("Error","Start luo_server.py","error");
+    notify("Error","LUOKAI starting","error");
   }
 }
 
@@ -1395,7 +1396,7 @@ async function studioCreate() {
     const d = await r.json();
     if (out) out.textContent = d.response;
     notify("Studio","Creation complete!","success");
-  } catch { if (out) out.textContent = "Server offline"; }
+  } catch { if (out) out.textContent = "LUOKAI starting..."; }
 }
 
 // ── VISION ────────────────────────────────────────────────────────
@@ -1424,7 +1425,7 @@ async function visionRun(task) {
     const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:msg})});
     const d = await r.json();
     if (out) out.textContent = d.response;
-  } catch { if (out) out.textContent = "Server offline"; }
+  } catch { if (out) out.textContent = "LUOKAI starting..."; }
 }
 
 // ── MUSIC ─────────────────────────────────────────────────────────
@@ -1437,7 +1438,7 @@ async function musicPlay() {
     const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:`play ${q}`})});
     const d = await r.json();
     if (st) st.textContent = d.response || "Playing...";
-  } catch { if (st) st.textContent = "Server offline"; }
+  } catch { if (st) st.textContent = "LUOKAI starting..."; }
 }
 
 function musicYT() {
@@ -1474,7 +1475,7 @@ async function noteAI() {
     const d = await r.json();
     if (body) body.value = d.response || body.value;
     notify("AI","Note improved!","success");
-  } catch { notify("Error","Server offline","error"); }
+  } catch { notify("Error","LUOKAI starting...","error"); }
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────
@@ -1600,7 +1601,7 @@ async function vscodeInit() {
     iframe.onerror = () => { _vsPanel("error"); _vsBadge("● error", "#ff4d6d"); };
   } catch(err) {
     _vsPanel("error");
-    document.getElementById("vscode-error-msg").textContent = "Server offline — start luo_server.py first";
+    document.getElementById("vscode-error-msg").textContent = "VS Code integration loading";
     _vsBadge("● offline", "#ff4d6d");
   }
 }

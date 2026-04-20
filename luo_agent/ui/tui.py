@@ -190,7 +190,7 @@ if TEXTUAL:
                         "options": {"num_predict": 512}
                     }).encode()
                     req = urllib.request.Request(
-                        "http://localhost:11434/api/chat", data=payload,
+                        "http://localhost:3000/api/chat", data=payload,
                         headers={"Content-Type":"application/json"}
                     )
                     with urllib.request.urlopen(req, timeout=120) as r:
@@ -203,7 +203,7 @@ if TEXTUAL:
                     self.call_from_thread(self.query_one("#status-bar").update, f"Model: {self.model}")
                 except Exception as e:
                     self.call_from_thread(log.write, f"[bold red]error[/] {e}")
-                    self.call_from_thread(self.query_one("#status-bar").update, "Error — is Ollama running?")
+                    self.call_from_thread(self.query_one("#status-bar").update, "Error — is LUOKAI running?")
             threading.Thread(target=_run, daemon=True).start()
 
         def _handle_cmd(self, cmd: str, log):
@@ -215,8 +215,7 @@ if TEXTUAL:
             elif cmd == "/memory":
                 mem_file = Path("~/.luo_agent/MEMORY.md").expanduser()
                 content  = mem_file.read_text() if mem_file.exists() else "(no memory yet)"
-                log.write(f"[bold cyan]── Memory ──[/]
-{content}")
+                log.write(f"[bold cyan]── Memory ──[/]\n{content}")
             elif cmd == "/status":
                 log.write(f"[bold cyan]── Status ──[/]")
                 log.write(f"Model    : {self.model}")

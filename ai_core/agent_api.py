@@ -96,7 +96,7 @@ class LuoAgentAPI:
                     "options": {"num_predict": 80}
                 }).encode()
                 req = urllib.request.Request(
-                    "http://127.0.0.1:11434/api/generate",
+                    "http://127.0.0.1:3000/api/chat",
                     data=payload,
                     headers={"Content-Type": "application/json"}
                 )

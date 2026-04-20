@@ -1,560 +1,230 @@
-<div align="center">
+# LuoOS — The AI-Native Operating System
 
-<img src="https://img.shields.io/badge/LuoOS-v0.1-00c8ff?style=for-the-badge&logo=linux&logoColor=white"/>
-<img src="https://img.shields.io/badge/AI--Native-OS-7c3aed?style=for-the-badge&logo=openai&logoColor=white"/>
-<img src="https://img.shields.io/badge/Runs%20in-Browser-00ff9d?style=for-the-badge&logo=googlechrome&logoColor=black"/>
-<img src="https://img.shields.io/badge/License-Proprietary-ff4d6d?style=for-the-badge"/>
+> **Built by Luo Kai.** An OS where the AI *is* the system — not a plugin, not a feature.
 
-<br/><br/>
-
-```
-  ██╗     ██╗   ██╗ ██████╗      ██████╗ ███████╗
-  ██║     ██║   ██║██╔═══██╗    ██╔═══██╗██╔════╝
-  ██║     ██║   ██║██║   ██║    ██║   ██║███████╗
-  ██║     ██║   ██║██║   ██║    ██║   ██║╚════██║
-  ███████╗╚██████╔╝╚██████╔╝    ╚██████╔╝███████║
-  ╚══════╝ ╚═════╝  ╚═════╝      ╚═════╝ ╚══════╝
-```
-
-# LuoOS — v0.1
-
-**The AI-Native Operating System. Runs entirely in your browser.**
-
-*Designed and built by **Luo Kai** · [luokai25](https://github.com/luokai25)*
-
-<br/>
-
-[**Quick Start**](#-quick-start) · [**Features**](#-features) · [**Architecture**](#-architecture) · [**Apps**](#-built-in-apps) · [**API**](#-api-reference) · [**Roadmap**](#-roadmap)
-
-</div>
-
----
-
-## What is LuoOS?
-
-LuoOS is a **complete desktop operating system that runs inside any modern web browser** — no installation, no virtual machine, no cloud dependency. It combines a fully functional browser-based desktop environment with **LUOKAI**, a deeply integrated AI agent that can control the OS, execute code, browse the web, process images, speak, and continuously improve itself.
-
-Unlike traditional web apps with bolted-on AI features, LuoOS is designed **AI-first from the ground up** — the AI is the operating system.
-
-```
-Traditional OS + AI:    [OS] → [App] → [AI plugin]     ← AI is optional
-LuoOS:                  [AI] ← [OS built around it]     ← AI is the core
-```
-
----
-
-## ✨ Features
-
-| Category | Capability |
-|----------|-----------|
-| 🖥️ **Desktop Environment** | Full windowed OS in the browser — taskbar, sidebar, drag/resize windows, multi-app |
-| 🤖 **LUOKAI AI Agent** | ReAct-based reasoning agent with planning, reflection, and tool use |
-| 🧠 **luo_memory** | Living cell memory system — 8 autonomous cells model the human brain, always alive, always evolving |
-| 🎤 **Always-On Voice** | 24/7 wake-word detection — say "Luo" anywhere, no button press needed |
-| 🔄 **Co-Evolution Engine** | Self-improvement loop — LUOKAI generates harder tests as it gets smarter |
-| 💻 **Luo VS Code** | Full VS Code in the browser via code-server, shared workspace with Luo Files |
-| 🌐 **Luo Browser** | Built-in web browser with AI integration |
-| 📁 **Luo Files** | Full file manager, synced with VS Code workspace |
-| ⌨️ **Luo Terminal** | Shell with Linux commands + custom `luo` AI commands |
-| 💻 **Luo Code** | Inline code editor with AI assistance and execution |
-| 🎨 **Luo Studio** | AI-powered media and content creation |
-| 👁️ **Luo Vision** | Object detection, image captioning, visual Q&A |
-| 🎵 **Luo Music** | Audio playback and streaming |
-| 📝 **Luo Notes** | Smart notes with AI improvement |
-| 🔧 **4,146 Skills** | Curated skill library across 20 domains |
-| 🐳 **Docker Ready** | Full containerized deployment |
-| ⚙️ **Systemd Services** | Production-grade service management on Linux |
+LUOKAI runs completely independently — no Ollama, no OpenAI, no external APIs. Double-click and it works.
 
 ---
 
 ## 🚀 Quick Start
 
-### Option 1 — Instant (no AI)
+**Windows** — double-click `start.bat`
 
+**Mac / Linux:**
 ```bash
-git clone https://github.com/luokai25/luo_os-v_0.1
-cd luo_os-v_0.1
-
-# Open the desktop OS directly in browser
-open index.html        # macOS
-xdg-open index.html    # Linux
-# or drag index.html into any browser
+./start.sh
 ```
 
-### Option 2 — Full Stack (with LUOKAI AI)
-
+**Any Python 3.6+:**
 ```bash
-git clone https://github.com/luokai25/luo_os-v_0.1
-cd luo_os-v_0.1
-
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Start a local LLM (Ollama required for AI)
-ollama serve &
-ollama pull mistral        # Fast and capable (~4GB)
-# ollama pull llama3       # Alternative
-# ollama pull qwen2        # Multilingual
-
-# Launch LuoOS
-./start.sh                 # Mac / Linux
-start.bat                  # Windows
-
-# Open in browser → http://localhost:3000
+python3 start.py
 ```
 
-### Option 3 — Docker
-
-```bash
-git clone https://github.com/luokai25/luo_os-v_0.1
-cd luo_os-v_0.1
-
-docker build -t luo_os .
-docker run -p 3000:3000 -p 8080:8080 luo_os
-
-# Open → http://localhost:3000
-```
-
-### Option 4 — CLI Only
-
-```bash
-pip install flask flask-cors requests
-
-python3 luo_cli.py chat       # Interactive AI chat
-python3 luo_cli.py server     # Web interface only
-python3 luo_cli.py evolution  # Self-improvement mode
-python3 luo_cli.py voice      # Voice interface
-python3 luo_cli.py tui        # Rich terminal UI
-```
+Opens automatically at `http://localhost:3000`. No config. No downloads. No external services.
 
 ---
 
-## 🏗️ Architecture
+## 🧠 LUOKAI Brain
 
-LuoOS is structured in layered components — each independently useful, all deeply integrated.
+Fully independent AI — built from scratch:
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         LuoOS Browser Desktop                        │
-│    index.html  ·  Window Manager  ·  12 Built-in Apps  ·  Sidebar   │
-├──────────────────────────────────────────────────────────────────────┤
-│                         luo_server.py  (Flask)                       │
-│   /api/chat    /api/execute    /api/fs/*    /api/vscode/*            │
-│   /api/voice   /api/evolution  /api/skills  /api/memory              │
-├────────────────────────┬─────────────────────────────────────────────┤
-│     LUOKAI Core        │         Supporting Systems                  │
-│  ┌─────────────────┐   │   ┌──────────────┐  ┌────────────────────┐ │
-│  │  ReAct Agent    │   │   │ Vector Memory│  │  Co-Evolution      │ │
-│  │  (Reason+Act)   │   │   │  (ChromaDB)  │  │  Engine            │ │
-│  └────────┬────────┘   │   └──────────────┘  └────────────────────┘ │
-│           │            │   ┌──────────────┐  ┌────────────────────┐ │
-│  ┌────────▼────────┐   │   │ Voice Layer  │  │  Skills Library    │ │
-│  │  Tool Executor  │   │   │  (24/7 STT)  │  │  (4,146 entries)   │ │
-│  │  (30+ tools)    │   │   └──────────────┘  └────────────────────┘ │
-│  └─────────────────┘   │                                             │
-├────────────────────────┴─────────────────────────────────────────────┤
-│                     Local LLM Layer (Ollama)                         │
-│              mistral  ·  llama3  ·  qwen2  ·  codellama              │
-├──────────────────────────────────────────────────────────────────────┤
-│              VS Code Layer  (code-server · port 8080)                │
-│         ~/luo_workspace  ·  Shared with Luo Files app                │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                      LUOKAI BRAIN                       │
+│                                                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │
+│  │  Reasoning  │  │     NLP     │  │   Coding    │     │
+│  │  14 cells   │  │   5 cells   │  │   6 cells   │     │
+│  └─────────────┘  └─────────────┘  └─────────────┘     │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │        Knowledge Base  —  78,063 entries         │   │
+│  │  algorithms · debugging · security · APIs        │   │
+│  │  architecture · testing · devops · docs          │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │       Neural Interface  —  Cortical Labs CL1     │   │
+│  │  64-channel MEA · spike detection · stimulation  │   │
+│  │  biological neuron ↔ AI closed loop              │   │
+│  └──────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Core Components
+### Cell System
 
-#### LUOKAI Agent (`luokai/core/`)
-The primary AI reasoning engine. Uses a **ReAct** (Reason + Act) loop: LUOKAI thinks through a problem, selects a tool, observes the result, and iterates until it has a complete answer. Supports streaming responses via Server-Sent Events.
+| Family | Cells | Purpose |
+|---|---|---|
+| **Reasoning** | ModusPonens, Syllogism, Analogy, CauseEffect, Abduction... | 14 cells — logical inference |
+| **NLP** | Tokenizer, NER, IntentClassifier, Sentiment, ContextTracker | 5 cells — language understanding |
+| **Coding** | Debug, Syntax, Logic, Algorithm, Security, Refactor | 6 cells — code intelligence |
+| **Neural** | NeuralBridge, SpikeInterpreter, StimulusDesigner | 3 cells — biological neuron interface |
 
-#### Tool Executor (`luo_agent/tools/`)
-Over 30 tools across categories: filesystem operations, shell execution, web search and fetch, system introspection, Docker management, code analysis, and utilities. Tools are permission-gated — write/execute operations require explicit authorization.
+### Knowledge Base (ships in repo, zero download)
 
-#### Co-Evolution Engine (`luokai/evolution/`)
-A closed-loop self-improvement system:
-1. **CHALLENGER** generates a test at the current difficulty level
-2. **LUOKAI** solves it using Tree-of-Thought reasoning
-3. **EVALUATOR** scores the response 0–10
-4. Poor responses feed back as training signals
-5. As scores improve, difficulty increases — the ceiling always rises
+78,063 curated entries in `luokai/data/knowledge.db`:
 
-#### Voice Layer (`luokai/voice/`)
-Always-on speech interface with wake-word detection. Uses Whisper for offline speech-to-text and edge-tts / pyttsx3 for text-to-speech. No cloud. No button press.
-
-#### VS Code Integration (`vscode/`)
-Full Visual Studio Code running in the browser via code-server. Shares `~/luo_workspace` with the Luo Files app — files created in VS Code are instantly visible in the file manager and vice versa. Auto-starts with LuoOS.
+- Code conversations — 15,000 real Q&A pairs
+- Algorithms — 10,000 (complexity, implementation)
+- Debugging scenarios — 10,000 (error → solution)
+- Security vulnerabilities — 8,000 (vuln + fix)
+- Architecture patterns — 8,000
+- API patterns, test cases, CI/CD, devops, documentation — 5,000 each
 
 ---
 
-## 📱 Built-in Apps
+## 🧬 Neural Interface — Cortical Labs CL1
 
-| Icon | App | Shortcut | Description |
-|------|-----|----------|-------------|
-| 🤖 | **LUOKAI** | `Ctrl+L` | Primary AI agent chat interface with streaming responses |
-| 🌐 | **Luo Browser** | `Ctrl+B` | Built-in web browser with iframe navigation |
-| ⌨️ | **Luo Terminal** | `Ctrl+T` | Shell with Linux commands + `luo <query>` AI integration |
-| 📁 | **Luo Files** | `Ctrl+F` | File manager synced with VS Code workspace |
-| 💻 | **Luo Code** | `Ctrl+E` | Inline code editor — Python, JS, Bash, HTML — with AI assist |
-| 🖥️ | **Luo VS Code** | `Ctrl+V` | Full VS Code via code-server in an iframe window |
-| 📝 | **Luo Notes** | — | Smart notes with AI rewriting and improvement |
-| 🎨 | **Luo Studio** | — | AI-powered image, video, and website generation |
-| 👁️ | **Luo Vision** | — | Object detection, captioning, visual question answering |
-| 🎵 | **Luo Music** | — | Audio player and streaming |
-| ⚙️ | **Luo Settings** | — | 200+ configurable system settings |
-| ℹ️ | **About LuoOS** | — | System info, memory stats, agent status |
+LuoOS bridges real biological neurons via the [Cortical Labs CL1](https://corticallabs.com) platform.
 
----
-
-## 🖥️ Luo VS Code
-
-LuoOS ships with a complete VS Code integration powered by [code-server](https://github.com/coder/code-server).
-
-### Setup
-
-```bash
-# Install code-server (first time only, ~2 minutes)
-bash vscode/install_code_server.sh
-
-# Start LuoOS — code-server auto-starts with it
-python3 luo_server.py
-
-# Then click the VS Code icon in the sidebar (or press Ctrl+V)
-```
-
-### What's included
-
-- **Shared workspace** at `~/luo_workspace` — visible in both VS Code and Luo Files
-- **Pre-configured settings** — JetBrains Mono font, autosave, bracket colorization
-- **Pre-installed extensions** — Python, ESLint, Prettier, GitLens, Code Runner, Material Icons
-- **API control** — start, stop, and check status from the LuoOS backend
-
-### Management
-
-```bash
-# CLI process manager
-bash vscode/code_server_manager.sh start    # Start code-server
-bash vscode/code_server_manager.sh stop     # Stop
-bash vscode/code_server_manager.sh status   # Check running/port/PID
-bash vscode/code_server_manager.sh restart  # Restart
-```
-
-### Architecture
-
-```
-LuoOS Desktop (port 3000)
-    └── VS Code Window
-            └── iframe → code-server (port 8080)
-                            └── ~/luo_workspace
-                                    └── (also mounted in Luo Files)
-```
-
----
-
-## 📡 API Reference
-
-When running `luo_server.py`, the following REST endpoints are available at `http://localhost:3000`:
-
-### AI & Chat
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/chat` | Send a message to LUOKAI (standard or streaming) |
-| `POST` | `/api/chat/stream` | SSE streaming chat endpoint |
-| `GET`  | `/api/status` | Agent status, model info, memory count |
-| `GET`  | `/api/models` | List available Ollama models |
-| `POST` | `/api/models/switch` | Switch the active model |
-
-### Execution & Search
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/execute` | Execute code (Python, Bash, JS) |
-| `POST` | `/api/search` | Web search |
-
-### Memory & Skills
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET`  | `/api/memory` | Retrieve stored memories |
-| `POST` | `/api/memory/recall` | Semantic search over memories |
-| `GET`  | `/api/skills` | List the skills library |
-| `POST` | `/api/skills/<name>` | Invoke a named skill |
-
-### Filesystem
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/fs/read` | Read a file |
-| `POST` | `/api/fs/write` | Write a file |
-| `POST` | `/api/fs/ls` | List a directory |
-
-### Voice
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/voice/start` | Start the 24/7 voice listener |
-| `POST` | `/api/voice/stop` | Stop voice listener |
-| `GET`  | `/api/voice/status` | Check voice state |
-
-### Evolution
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/evolution/start` | Start the co-evolution engine |
-| `GET`  | `/api/evolution/stats` | Get current evolution metrics |
-
-### VS Code
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET`  | `/api/vscode/status` | Installed?, running?, port, workspace path |
-| `POST` | `/api/vscode/start` | Launch code-server |
-| `POST` | `/api/vscode/stop` | Stop code-server |
-| `POST` | `/api/vscode/install` | Run install script in background |
-
----
-
-## 📂 Project Structure
-
-```
-luo_os-v_0.1/
-│
-├── index.html                  # Browser desktop OS (all apps, window manager)
-├── luo_server.py               # Main Flask backend (all API routes)
-├── luo_cli.py                  # Unified CLI entry point
-├── luo_os.py                   # Tkinter launcher (optional)
-├── requirements.txt            # Python dependencies
-│
-├── luokai/                     # LUOKAI AI core
-│   ├── core/
-│   │   ├── luokai_agent.py     # Base agent
-│   │   └── react_agent.py      # ReAct reasoning agent (streaming)
-│   ├── voice/
-│   │   └── always_on.py        # 24/7 wake-word voice interface
-│   ├── evolution/
-│   │   └── coevo.py            # Co-evolution self-improvement engine
-│   ├── memory/                 # Memory interfaces
-│   └── skills/                 # Skills library (4,146 entries)
-│
-├── luo_agent/                  # Agent framework
-│   ├── core/
-│   │   ├── config.py           # Configuration management
-│   │   └── llm.py              # Ollama LLM client
-│   ├── memory/
-│   │   ├── memory.py           # File-based memory
-│   │   └── vector_memory.py    # ChromaDB semantic memory
-│   ├── tools/
-│   │   └── tools.py            # 30+ tool implementations
-│   ├── agents/
-│   │   └── agent.py            # Core reasoning loop
-│   └── ui/
-│       ├── tui.py              # Rich terminal UI
-│       └── terminal.py         # Terminal interface
-│
-├── vscode/                     # VS Code integration
-│   ├── install_code_server.sh  # Auto-installer (latest release)
-│   └── code_server_manager.sh  # start/stop/status/restart
-│
-├── ai_core/                    # Additional AI modules
-│   ├── agent_api.py            # Socket API (port 7070)
-│   ├── rest_api.py             # REST API (port 8080)
-│   ├── multi_agent.py          # Multi-agent coordination
-│   ├── daemon.py               # Always-on AI daemon
-│   └── kairos.py               # Proactive background agent
-│
-├── apps/                       # Standalone app modules
-├── shell/                      # Shell environment
-├── kernel/                     # Kernel reference & configs
-├── ui/                         # Desktop UI (Tkinter, dashboard)
-├── compat/                     # Wine bridge, Android compat
-├── docker/                     # Docker + supervisord configs
-├── systemd/                    # Systemd service units
-├── iso/                        # ISO build scripts
-└── docs/                       # Architecture & roadmap docs
-```
-
----
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-```bash
-export LUO_MODEL=mistral               # Default Ollama model
-export OLLAMA_URL=http://localhost:11434
-export LUO_PORT=3000                   # Web server port
-export LUO_WORKSPACE=~/luo_workspace   # VS Code workspace
-```
-
-### Systemd Services (Linux production)
-
-```bash
-sudo ./install_services.sh
-
-sudo systemctl start luo-server        # Web interface
-sudo systemctl start luo-agent         # AI daemon
-sudo systemctl enable luo-server       # Auto-start on boot
-
-sudo systemctl status luo-*            # Check all LuoOS services
-journalctl -u luo-server -f            # Live logs
-```
-
----
-
-## 📦 Dependencies
-
-### Core (required)
-```
-flask >= 3.0          Web framework
-flask-cors            Cross-origin resource sharing
-requests              HTTP client
-ollama                Local LLM runtime (install separately)
-```
-
-### AI / Memory (recommended)
-```
-chromadb              Vector database for semantic memory
-sentence-transformers Embedding models for memory search
-```
-
-### Voice (optional)
-```
-pyaudio               Microphone input
-SpeechRecognition     Speech-to-text
-pyttsx3               Text-to-speech (offline)
-edge-tts              Neural TTS (online, high quality)
-```
-
-### UI (optional)
-```
-textual               Rich terminal UI
-rich                  Formatted terminal output
-```
-
-Install everything:
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## 🗺️ Roadmap
-
-### v0.1 — Foundation ✅ Current
-- [x] Browser desktop OS with window manager and 12 apps
-- [x] LUOKAI ReAct agent with streaming responses
-- [x] 30+ tool executor with permission gates
-- [x] luo_memory living cell memory system (8 autonomous cells)
-- [x] 24/7 voice interface with wake-word detection
-- [x] Co-evolution self-improvement engine
-- [x] VS Code integration via code-server (port 8080)
-- [x] Shared workspace between VS Code and Luo Files
-- [x] Multi-agent coordination framework
-- [x] Docker and systemd deployment support
-- [x] 4,146-entry skills library
-
-### v0.2 — Intelligence Layer 🚧 In Progress
-- [ ] KAIROS — proactive always-on background agent
-- [ ] Agent-to-agent HTTP communication protocol
-- [ ] Plugin system for custom tools
-- [ ] Real-time web dashboard with agent telemetry
-- [ ] Package manager with auto-update
-- [ ] ISO builder for bootable LuoOS image
-
-### v0.3 — Network Layer
-- [ ] Distributed agent mesh across multiple machines
-- [ ] P2P agent communication protocol
-- [ ] Cloud memory sync
-- [ ] Remote LuoOS management interface
-
-### v1.0 — Full OS Release
-- [ ] Custom bootloader
-- [ ] Native GUI (beyond browser)
-- [ ] Full app store
-- [ ] Android application compatibility
-- [ ] Full Windows compatibility via Wine
-- [ ] Security hardening and audit
-- [ ] Complete documentation
-
----
-
-## 🔗 Built On Open Source
-
-LuoOS is built on and inspired by over 60 open-source projects. Major foundations include:
-
-- **[Ollama](https://github.com/ollama/ollama)** — Local LLM runtime
-- **[code-server](https://github.com/coder/code-server)** — VS Code in the browser
-- **[ChromaDB](https://github.com/chroma-core/chroma)** — Vector database
-- **[Flask](https://github.com/pallets/flask)** — Python web framework
-- **[Redox OS](https://github.com/redox-os/redox)** — Rust microkernel reference
-- **[Whisper](https://github.com/openai/whisper)** — Offline speech recognition
-
-Full attribution: [SOURCES.md](SOURCES.md)
-
----
-
-## ⚖️ Legal
-
-**© 2025 Luo Kai (luokai25). All rights reserved.**
-
-LuoOS, LUOKAI, Luo AI, Luo Browser, Luo Terminal, Luo Files, Luo Studio, Luo Vision, Luo Music, Luo Notes, Luo Code, Luo Settings, Luo VS Code — all names, product designs, and implementations in this repository are the intellectual property of Luo Kai.
-
-The software is provided for viewing and evaluation purposes. Reproduction, redistribution, or commercial use requires explicit written permission from the author.
-
-Open-source components used in this project retain their original licenses as credited in [SOURCES.md](SOURCES.md).
-
----
-
-<div align="center">
-
-Built with ❤️ by **Luo Kai**
-
-*The OS that thinks.*
-
-</div>
-
----
-
-## 🧠 luo_memory — The Living Cell Memory System
-
-luo_memory is the memory architecture of luo_os. It is not a database, not a module, and not a plugin — it is a living organism made of eight autonomous cells, each modeled directly on a region of the human brain. While every other AI memory system waits to be called, luo_memory is always running. Its cells fire signals to each other, strengthen connections through use, weaken idle ones through decay, and consolidate knowledge during idle time — exactly as a biological brain does. The result is a memory system that does not just store and retrieve, but one that learns, associates, forgets gracefully, and grows smarter the longer it runs. It was designed specifically for luo_os: zero API cost, fully offline, runs on constrained hardware with Ollama, and integrates directly into the luo_agent reasoning loop with a single import.
-
-The eight cells and their brain analogs:
-
-| Cell | Brain Region | What It Does |
-|------|-------------|--------------|
-| `EpisodicCell` | Hippocampus | Stores every exchange verbatim — timestamp, session, agent. Never summarizes. Never discards. The human brain lossy-compresses; luo_memory does not. |
-| `SemanticCell` | Cerebral Cortex | Watches for concepts that repeat across sessions. When the same idea appears three or more times, it promotes it from episodic memory into a permanent semantic fact. |
-| `SkillCell` | Cerebellum | Observes every tool execution. When a sequence of tool calls completes a goal successfully, it crystallizes that sequence into a named, reusable skill the agent can invoke by name next time. |
-| `WorkingCell` | Prefrontal Cortex | Holds the current session's short-term context in a 12-slot buffer. Automatically flushes everything to EpisodicCell when the session ends so nothing is lost. |
-| `DecayCell` | Ebbinghaus Curve | Ticks every five minutes without being called. Applies a forgetting curve to synaptic connection weights — cold connections weaken, recently-used ones are protected. |
-| `DreamCell` | Hippocampal Replay | Activates when the system has been idle for two minutes or more. Replays recent episodes, finds recurring patterns, and fires promotions to SemanticCell — the AI equivalent of consolidation during sleep. |
-| `ImportanceCell` | Amygdala | Scores every incoming episode for high-impact signals: errors, decisions, breakthroughs, and user-flagged priorities. High-scoring events get boosted importance and resist the decay curve. |
-| `AssociativeCell` | Spreading Activation | Maintains a concept co-occurrence graph in SQLite. Activating one concept spreads activation to linked concepts — so searching for "Python" also surfaces memories tagged with "automation" and "script". |
-
-Cells communicate through `Signal` objects routed by `LuoCellNetwork`. Every time two cells fire within two seconds of each other, the synapse weight between them increases — Hebb's law: *neurons that fire together, wire together*. Over thousands of sessions the network develops its own association map, not one you programmed, but one that emerged from actual usage. This is the property that makes luo_memory qualitatively different from every other local memory system: it gets better the more it is used, without any retraining, without any cloud dependency, and without consuming additional RAM.
-
+**Simulation mode (no hardware needed — runs by default):**
 ```python
-from luo_agent.memory import LuoMemory
-import asyncio
-
-async def main():
-    mem = LuoMemory()
-    await mem.start()
-
-    await mem.store("user prefers Python over Bash for file operations")
-    context = await mem.wake_up()          # inject into system prompt
-    await mem.tool_executed("bash", success=True)
-    await mem.task_completed(goal="list project files", success=True)
-    facts   = await mem.get_facts()        # all promoted semantic facts
-    skills  = await mem.list_skills()      # all crystallized tool chains
-    related = await mem.spread("Python")   # spreading activation
-
-    await mem.stop()
-
-asyncio.run(main())
+from luokai.cells.neural import NeuralEngine
+engine = NeuralEngine(sim_mode=True)
+engine.start()
 ```
 
-CLI: `python3 luo_agent/memory/luo_memory.py [status|wake|store|recall|facts|skills|dream]`
+**Real CL1 hardware:**
+```python
+engine = NeuralEngine(sim_mode=False, ticks_per_second=1000)
+engine.start(try_hardware=True)
+```
 
-Files: `luo_agent/memory/luo_cell.py` · `luo_cells.py` · `luo_memory.py` · `MEMORY.md` · `palace/`
+**What it does:**
+- Reads spikes from 64 MEA channels at 25kHz
+- Classifies patterns: burst / synchronous / sparse / focal
+- Maps neural activity to cognitive states: FOCUSED, ENGAGED, ANALYTICAL, CREATIVE
+- Sends stimulation back: reward, reinforce, explore, entrain rhythms
+- Detects theta / alpha / beta / gamma rhythms
 
+**Stimulation presets:**
+```python
+engine.stimulate_response("reward")      # 5-pulse 50Hz burst
+engine.stimulate_response("reinforce")   # 10-pulse 100Hz strong
+engine.stimulate_response("explore")     # 2-pulse 10Hz distributed
+engine.stimulate_response("entrain_gamma")  # 40-pulse 40Hz attention
+```
+
+**Closed-loop experiment (CL1 hardware):**
+```python
+import cl
+from luokai.cells.neural import NeuralEngine
+
+engine = NeuralEngine(sim_mode=False)
+with cl.open() as neurons:
+    for tick in neurons.loop(ticks_per_second=1000):
+        for spike in tick.analysis.spikes:
+            neurons.stim(spike.channel, 1)
+        if len(tick.analysis.spikes) > 50:
+            engine.stimulate_response("reward")
+```
+
+---
+
+## 🏗 Architecture
+
+```
+LuoOS/
+├── start.py               # One-click launcher (Python 3.6+)
+├── start.bat              # Windows
+├── start.sh               # Mac/Linux
+├── luo_server.py          # Flask backend (port 3000)
+├── index.html             # Main OS UI
+│
+├── luokai/
+│   ├── core/
+│   │   ├── inference.py   # Inference engine (4,146 skills + knowledge)
+│   │   ├── brain.py       # Brain: CoEvo, KAIROS, TreeOfThought
+│   │   └── react_agent.py # ReAct reasoning agent
+│   │
+│   ├── cells/
+│   │   ├── base.py            # BaseCell
+│   │   ├── reasoning.py       # 14 reasoning cells
+│   │   ├── nlp.py             # 5 NLP cells
+│   │   ├── coding.py          # 6 coding cells
+│   │   ├── data_index.py      # Knowledge search
+│   │   └── neural/
+│   │       ├── bridge.py      # CL1 MEA interface
+│   │       ├── interpreter.py # Spike → cognitive state
+│   │       └── stimulator.py  # Decision → stimulation
+│   │
+│   ├── data/
+│   │   ├── knowledge.db       # 78,063 entries (12MB)
+│   │   ├── knowledge/k000.jsonl
+│   │   ├── knowledge/k001.jsonl
+│   │   └── build_knowledge.py
+│   │
+│   └── skills/            # 4,146 skills — 20 domains
+│
+├── ai_core/               # Background agents
+├── ui/                    # Dashboard panels
+└── docs/                  # Architecture & roadmap
+```
+
+---
+
+## 💬 Knowledge Coverage
+
+LUOKAI answers instantly from built-in knowledge:
+
+```
+CSS        — centering, flexbox, grid, box model, responsive
+APIs       — REST, GraphQL, WebSocket, OAuth 2.0, JWT
+DevOps     — Docker, Kubernetes, CI/CD, nginx, git
+Algorithms — binary search, BFS/DFS, dynamic programming, Big O
+Security   — SQL injection, XSS, CSRF, password hashing
+Databases  — SQL vs NoSQL, indexes, normalization, window functions
+Languages  — Python, JavaScript, TypeScript, Rust, React, Node.js
+ML/AI      — neural networks, PyTorch, training loops
+Networking — TCP/IP, HTTPS/TLS, DNS resolution
+```
+
+---
+
+## 🔌 API
+
+All at `http://localhost:3000`:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/chat` | Send message to LUOKAI |
+| `GET`  | `/api/status` | System status |
+| `GET`  | `/api/brain/status` | Cell system status |
+| `POST` | `/api/brain/learn` | Teach LUOKAI a fact |
+| `GET`  | `/api/brain/skills` | List skills |
+
+```bash
+curl -X POST http://localhost:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "what is binary search?"}'
+```
+
+---
+
+## 📋 Requirements
+
+- **Python 3.6+** — any version works
+- **flask + flask-cors** — auto-installed on first run
+
+**Optional for neural experiments:**
+- Cortical Labs CL1 hardware
+- `pip install cl`
+
+---
+
+## 🗺 Roadmap
+
+- [x] LUOKAI native AI — zero external dependencies
+- [x] Cell system — reasoning, NLP, coding, neural
+- [x] 78K knowledge entries in repo
+- [x] Cortical Labs CL1 neural interface
+- [x] One-click start — Windows / Mac / Linux
+- [x] Python 3.6+ compatibility
+- [ ] Conversation memory across sessions
+- [ ] Neural activity dashboard
+- [ ] Voice interface
+- [ ] Multi-language support
+
+---
+
+*Built by Luo Kai — an OS that thinks.*

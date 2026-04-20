@@ -6,7 +6,7 @@
 ## v0.1 — Foundation ✅ Current
 
 - [x] Kernel architecture (Linux + Redox + XNU)
-- [x] Luo Agent — autonomous local AI (Ollama)
+- [x] Luo Agent — autonomous local AI (LUOKAI native)
 - [x] 14-tool system with permission gates
 - [x] Three-tier memory (MEMORY.md + notes + sessions)
 - [x] autoDream background memory consolidation

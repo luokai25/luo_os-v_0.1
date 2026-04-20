@@ -260,7 +260,7 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
             return (f"I received: '{user_msg[:60]}'. "
                     f"LUOKAI inference starting up — try again in a moment.")
 
-    # All internal callers use _call_ollama name — alias to mind
+    # Legacy alias — _call_ollama routes to LUOKAI native inference
     _call_ollama = _call_luokai
 
     # ── ReAct Reasoning ─────────────────────────────────────────────────

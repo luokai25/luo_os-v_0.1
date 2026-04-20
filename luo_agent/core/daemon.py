@@ -2,7 +2,7 @@ import time, json, signal, sys
 from pathlib import Path
 from datetime import datetime
 from core.config import LuoConfig
-from core.llm import OllamaClient
+from core.llm import OllamaClient  # LUOKAI compat shim
 from memory.memory import MemorySystem
 from agents.agent import LuoAgentCore
 
@@ -13,7 +13,7 @@ class LuoDaemon:
     def __init__(self, config):
         self.config=config; self.running=False; self.tick=0
         self.memory=MemorySystem(config.memory_file,config.notes_dir,config.sessions_dir)
-        self.llm=OllamaClient(config.ollama_url,config.model)
+        self.llm=OllamaClient()
         self.agent=LuoAgentCore(config,self.memory)
         signal.signal(signal.SIGINT,self._stop)
         signal.signal(signal.SIGTERM,self._stop)

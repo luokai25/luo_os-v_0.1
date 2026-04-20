@@ -799,8 +799,8 @@ class AssociativeCell(LuoCell):
         ("inference",    "used_for",   "reasoning",       0.8),
         ("hallucination","causes",     "error",           0.8),
         ("rag",          "used_for",   "memory",          0.8),
-        ("ollama",       "is_a",       "tool",            0.9),
-        ("ollama",       "used_for",   "llm",             0.95),
+        ("luokai",       "is_a",       "tool",            0.9),
+        ("luokai",       "used_for",   "inference",       0.95),
 
         # memory system concepts
         ("episodic",     "is_a",       "memory",          0.95),

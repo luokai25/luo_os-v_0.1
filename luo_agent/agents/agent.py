@@ -1,6 +1,6 @@
 import json, re, os, sys
 from typing import Optional, Callable
-from core.llm import OllamaClient
+from core.llm import OllamaClient  # LUOKAI compat
 from core.config import LuoConfig
 from tools.tools import ToolExecutor
 
@@ -23,7 +23,7 @@ Be concise. Use tools when needed. Confirm destructive actions."""
 class LuoAgentCore:
     def __init__(self, config, memory=None):
         self.config = config
-        self.llm = OllamaClient(config.ollama_url, config.model)
+        self.llm = OllamaClient()
         self.tools = ToolExecutor()
         self.conversation = []
 

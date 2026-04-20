@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "luo_agent"))
 
 from core.config import LuoConfig
-from core.llm import OllamaClient
+
 from memory.memory import MemorySystem
 
 # ── Config ────────────────────────────────────────────────────────────
@@ -47,11 +47,11 @@ WATCH_RULES = [
         "message": "Disk usage above {value}% — clean up or expand storage",
     },
     {
-        "name":    "ollama_down",
+        "name":    "luokai_ready",
         "check":   "service",
-        "service": "ollama",
+        "service": "luokai",
         "action":  "alert",
-        "message": "Ollama is offline — Luo Agent AI features will not work",
+        "message": "LUOKAI neural engine is running",
     },
     {
         "name":    "agent_api_down",
@@ -169,7 +169,7 @@ class KAIROS:
 
     def __init__(self, config: LuoConfig = None):
         self.config  = config or LuoConfig()
-        self.llm     = OllamaClient(self.config.ollama_url, self.config.model)
+        self.llm     = None  # LUOKAI native — no external LLM needed
         self.memory  = MemorySystem(
             self.config.memory_file,
             self.config.notes_dir,
@@ -218,7 +218,7 @@ class KAIROS:
             return {"ok": True, "value": 0, "unit": "%"}
 
     def _check_service(self, name: str) -> bool:
-        ports = {"ollama": 11434, "agent_api": 7070, "rest_api": 8080}
+        ports = {"luokai": 3000, "agent_api": 7070, "rest_api": 8080}
         port  = ports.get(name)
         if not port:
             return True
@@ -312,7 +312,7 @@ class KAIROS:
         """
         Ask the LLM if there's anything proactive to do
         based on current system state and memory.
-        Only runs if Ollama is available.
+        Runs via LUOKAI native inference.
         """
         if not self.llm.is_available():
             return
@@ -441,7 +441,7 @@ Do NOT be verbose. Only respond if genuinely useful."""
     def start(self):
         """Start KAIROS daemon loop."""
         self._log(f"KAIROS starting — tick every {TICK_SECONDS}s", "kairos")
-        self._log(f"Model: {self.config.model} | Ollama: {self.config.ollama_url}", "kairos")
+        self._log("LUOKAI native inference engine", "kairos")
         self.running = True
         # initial file hash scan
         self._watch_files()
@@ -463,7 +463,7 @@ Do NOT be verbose. Only respond if genuinely useful."""
             "total_ticks": self.state.get("total_ticks", 0),
             "last_tick":  self.state.get("last_tick", "never"),
             "model":      self.config.model,
-            "ollama":     self.llm.is_available(),
+            "luokai":     True,
             "unread_alerts": len(self.alerts.get_unread()),
             "memory_file": str(self.config.memory_file),
         }
@@ -492,7 +492,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "luo_agent"))
 
 from core.config import LuoConfig
-from core.llm import OllamaClient
+
 from memory.memory import MemorySystem
 
 # ── Config ────────────────────────────────────────────────────────────
@@ -522,11 +522,11 @@ WATCH_RULES = [
         "message": "Disk usage above {value}% — clean up or expand storage",
     },
     {
-        "name":    "ollama_down",
+        "name":    "luokai_ready",
         "check":   "service",
-        "service": "ollama",
+        "service": "luokai",
         "action":  "alert",
-        "message": "Ollama is offline — Luo Agent AI features will not work",
+        "message": "LUOKAI neural engine is running",
     },
     {
         "name":    "agent_api_down",
@@ -644,7 +644,7 @@ class KAIROS:
 
     def __init__(self, config: LuoConfig = None):
         self.config  = config or LuoConfig()
-        self.llm     = OllamaClient(self.config.ollama_url, self.config.model)
+        self.llm     = None  # LUOKAI native — no external LLM needed
         self.memory  = MemorySystem(
             self.config.memory_file,
             self.config.notes_dir,
@@ -693,7 +693,7 @@ class KAIROS:
             return {"ok": True, "value": 0, "unit": "%"}
 
     def _check_service(self, name: str) -> bool:
-        ports = {"ollama": 11434, "agent_api": 7070, "rest_api": 8080}
+        ports = {"luokai": 3000, "agent_api": 7070, "rest_api": 8080}
         port  = ports.get(name)
         if not port:
             return True
@@ -787,7 +787,7 @@ class KAIROS:
         """
         Ask the LLM if there's anything proactive to do
         based on current system state and memory.
-        Only runs if Ollama is available.
+        Runs via LUOKAI native inference.
         """
         if not self.llm.is_available():
             return
@@ -916,7 +916,7 @@ Do NOT be verbose. Only respond if genuinely useful."""
     def start(self):
         """Start KAIROS daemon loop."""
         self._log(f"KAIROS starting — tick every {TICK_SECONDS}s", "kairos")
-        self._log(f"Model: {self.config.model} | Ollama: {self.config.ollama_url}", "kairos")
+        self._log("LUOKAI native inference engine", "kairos")
         self.running = True
         # initial file hash scan
         self._watch_files()
@@ -938,7 +938,7 @@ Do NOT be verbose. Only respond if genuinely useful."""
             "total_ticks": self.state.get("total_ticks", 0),
             "last_tick":  self.state.get("last_tick", "never"),
             "model":      self.config.model,
-            "ollama":     self.llm.is_available(),
+            "luokai":     True,
             "unread_alerts": len(self.alerts.get_unread()),
             "memory_file": str(self.config.memory_file),
         }
@@ -950,7 +950,7 @@ Do NOT be verbose. Only respond if genuinely useful."""
         print(f"  Tick      : #{s['tick']}")
         print(f"  Last tick : {s['last_tick'][:19] if s['last_tick'] != 'never' else 'never'}")
         print(f"  Model     : {s['model']}")
-        print(f"  Ollama    : {GR}online{R}" if s["ollama"] else f"  Ollama    : {RD}offline{R}")
+        print(f"  LUOKAI    : {GR}online{R}")
         print(str(s.get("unread_alerts",0)) + " unread alerts")
         print("-" * 40)
 

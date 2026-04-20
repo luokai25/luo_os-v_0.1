@@ -873,5 +873,5 @@ def get_inference() -> LuokaiInference:
 
 
 def generate(messages: List[Dict], **kwargs) -> str:
-    """Module-level generate function — drop-in replacement for _call_ollama."""
+    """Module-level generate function — LUOKAI native inference."""
     return get_inference().generate(messages, **kwargs)

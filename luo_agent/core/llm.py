@@ -1,50 +1,33 @@
-import json, urllib.request, urllib.error
-from typing import Generator
+#!/usr/bin/env python3
+"""LUOKAI LLM Client — routes to LUOKAI native inference engine."""
+import urllib.request, json
 
 class OllamaClient:
-    def __init__(self, base_url, model):
-        self.base_url = base_url.rstrip("/"); self.model = model
+    """Compatibility shim — routes to LUOKAI native inference."""
+    def __init__(self, url="http://localhost:3000", model="luokai"):
+        self.url   = "http://localhost:3000"
+        self.model = "luokai"
 
-    def chat(self, messages, temperature=0.7, max_tokens=2048):
-        payload = {"model":self.model,"messages":messages,"stream":True,
-                   "options":{"temperature":temperature,"num_predict":max_tokens}}
-        req = urllib.request.Request(f"{self.base_url}/api/chat",
-              json.dumps(payload).encode(), {"Content-Type":"application/json"})
-        full = ""
+    def chat(self, prompt: str, system: str = "") -> str:
         try:
-            with urllib.request.urlopen(req, timeout=120) as r:
-                for line in r:
-                    try:
-                        c = json.loads(line.decode().strip())
-                        full += c.get("message",{}).get("content","")
-                        if c.get("done"): break
-                    except: continue
-        except urllib.error.URLError as e: return f"[ERROR] Ollama unreachable: {e}"
-        return full.strip()
+            payload = json.dumps({"message": prompt}).encode()
+            req = urllib.request.Request(
+                f"{self.url}/api/chat",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = json.loads(r.read())
+                return data.get("response", "")
+        except Exception as e:
+            return f"[LUOKAI] {e}"
 
-    def stream_chat(self, messages, temperature=0.7, max_tokens=2048):
-        payload = {"model":self.model,"messages":messages,"stream":True,
-                   "options":{"temperature":temperature,"num_predict":max_tokens}}
-        req = urllib.request.Request(f"{self.base_url}/api/chat",
-              json.dumps(payload).encode(), {"Content-Type":"application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=120) as r:
-                for line in r:
-                    try:
-                        c = json.loads(line.decode().strip())
-                        tok = c.get("message",{}).get("content","")
-                        if tok: yield tok
-                        if c.get("done"): break
-                    except: continue
-        except urllib.error.URLError as e: yield f"[ERROR] {e}"
+    def generate(self, prompt: str) -> str:
+        return self.chat(prompt)
 
-    def is_available(self):
+    def is_available(self) -> bool:
         try:
-            urllib.request.urlopen(f"{self.base_url}/api/tags", timeout=5); return True
-        except: return False
-
-    def list_models(self):
-        try:
-            with urllib.request.urlopen(f"{self.base_url}/api/tags", timeout=5) as r:
-                return [m["name"] for m in json.loads(r.read()).get("models",[])]
-        except: return []
+            urllib.request.urlopen("http://localhost:3000/api/status", timeout=2)
+            return True
+        except Exception:
+            return False

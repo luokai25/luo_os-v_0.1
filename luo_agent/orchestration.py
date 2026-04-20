@@ -127,13 +127,13 @@ Be flexible and capable across domains.""",
     def __init__(
         self,
         role: AgentRole,
-        ollama_url: str = "http://localhost:11434",
+        luokai_url: str = "http://localhost:3000",
         model: str = None,
         agent_id: str = None
     ):
         self.id = agent_id or str(uuid.uuid4())[:8]
         self.role = role
-        self.ollama_url = ollama_url
+        self.luokai_url = luokai_url
         self.model = model or "mistral"
         self.state = AgentState(id=self.id, role=role)
         self._lock = threading.Lock()
@@ -152,7 +152,7 @@ Be flexible and capable across domains.""",
             full_prompt = f"{system_prompt}\n\nTask: {task.description}"
 
             # Call the LLM
-            result = self._call_ollama(full_prompt)
+            result = self._call_luokai(full_prompt)
 
             # Record in history
             self.state.history.append({
@@ -170,8 +170,8 @@ Be flexible and capable across domains.""",
                 self.state.status = "idle"
                 self.state.current_task = None
 
-    def _call_ollama(self, prompt: str, max_tokens: int = 1024) -> str:
-        """Call the Ollama API."""
+    def _call_luokai(self, prompt: str, max_tokens: int = 1024) -> str:
+        """Call LUOKAI native inference."""
         messages = [
             {"role": "system", "content": self.ROLE_PROMPTS.get(self.role, "")},
             {"role": "user", "content": prompt}
@@ -186,7 +186,7 @@ Be flexible and capable across domains.""",
 
         try:
             req = urllib.request.Request(
-                f"{self.ollama_url}/api/chat",
+                f"{self.luokai_url}/api/chat",
                 data=json.dumps(payload).encode(),
                 headers={"Content-Type": "application/json"}
             )
@@ -202,8 +202,8 @@ class MultiAgentOrchestrator:
     Orchestrates multiple specialized agents working together.
     """
 
-    def __init__(self, ollama_url: str = "http://localhost:11434", model: str = None):
-        self.ollama_url = ollama_url
+    def __init__(self, luokai_url: str = "http://localhost:3000", model: str = None):
+        self.luokai_url = luokai_url
         self.model = model
         self.agents: Dict[str, SpecialistAgent] = {}
         self.tasks: Dict[str, Task] = {}
@@ -221,7 +221,7 @@ class MultiAgentOrchestrator:
         for role in AgentRole:
             agent = SpecialistAgent(
                 role=role,
-                ollama_url=self.ollama_url,
+                luokai_url=self.luokai_url,
                 model=self.model
             )
             self.agents[agent.id] = agent
@@ -413,9 +413,9 @@ class MultiAgentOrchestrator:
 
 
 # Convenience function
-def create_orchestrator(ollama_url: str = "http://localhost:11434", model: str = None) -> MultiAgentOrchestrator:
+def create_orchestrator(luokai_url: str = "http://localhost:3000", model: str = None) -> MultiAgentOrchestrator:
     """Create a multi-agent orchestrator."""
-    return MultiAgentOrchestrator(ollama_url=ollama_url, model=model)
+    return MultiAgentOrchestrator(luokai_url=luokai_url, model=model)
 
 
 if __name__ == "__main__":

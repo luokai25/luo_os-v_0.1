@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 LUOKAI Agent — Core AI for LuoOS
-Integrates: Ollama LLM + 4146 skills + always-on voice + co-evolution + Vector Memory
+Integrates: LUOKAI native inference + 4146 skills + always-on voice + co-evolution + Vector Memory
 """
 import json, threading, time, re, subprocess, sys, os
 import urllib.request, urllib.parse
@@ -147,7 +147,7 @@ Rules:
             return self._vector_memory.search(query, n=n)
         return []
 
-    def _ollama(self, messages: list, max_tokens: int = 1024) -> str:
+    def _call_luokai_internal(self, messages: list, max_tokens: int = 1024) -> str:
         payload = json.dumps({
             "model":   self.model,
             "messages": messages,
@@ -218,17 +218,17 @@ Rules:
 
     # ── STATUS ──────────────────────────────────────────────────────
     def status(self) -> dict:
-        ollama_ok = False
+        luokai_ok = False
         try:
             None  # LUOKAI is always online - native inference
-            ollama_ok = True
+            luokai_ok = True
         except: pass
 
         return {
             "name":        self.NAME,
             "version":     self.VERSION,
             "model":       self.model,
-            "ollama":      ollama_ok,
+            "luokai":      luokai_ok,
             "skills":      len(self._skills),
             "memory":      len(self._memory),
             "vector_memory": self._vector_memory.count() if self._vector_memory else 0,

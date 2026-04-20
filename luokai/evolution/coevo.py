@@ -108,7 +108,7 @@ class CoEvoEngine:
     def _save_state(self):
         self.state_file.write_text(json.dumps(self._state, indent=2))
 
-    def _ollama(self, prompt: str, system: str = "", model: str = "luokai", max_tokens: int = 512) -> str:
+    def _call_luokai(self, prompt: str, system: str = "", model: str = "luokai", max_tokens: int = 512) -> str:
         """Generate using LUOKAI's native inference engine."""
         from luokai.core.inference import get_inference
         messages = []
@@ -160,7 +160,7 @@ Return JSON only:
   "id": "unique_id"
 }}"""
 
-        raw = self._ollama(challenger_prompt, challenger_system, max_tokens=400)
+        raw = self._call_luokai(challenger_prompt, challenger_system, max_tokens=400)
 
         # Parse JSON
         try:
@@ -217,7 +217,7 @@ Approach this from a {approach} angle:
 
 Domain: {challenge['domain']} | Difficulty: {challenge['difficulty']}/10"""
 
-            response = self._ollama(prompt, system, max_tokens=600)
+            response = self._call_luokai(prompt, system, max_tokens=600)
             paths.append({"approach": approach, "response": response})
 
         # Synthesize best answer from all paths
@@ -231,7 +231,7 @@ Approach 3 (Systematic): {paths[2]['response'][:300]}
 
 Synthesize these into the single best, most complete answer:"""
 
-        final_answer = self._ollama(synthesis_prompt, system, max_tokens=800)
+        final_answer = self._call_luokai(synthesis_prompt, system, max_tokens=800)
 
         return {
             "challenge_id": challenge["id"],
@@ -277,7 +277,7 @@ Return JSON:
   "improvement_hint": "How LUOKAI should improve this specific type of question"
 }}"""
 
-        raw = self._ollama(eval_prompt, evaluator_system, max_tokens=400)
+        raw = self._call_luokai(eval_prompt, evaluator_system, max_tokens=400)
 
         try:
             import re
