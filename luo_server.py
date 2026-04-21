@@ -17,6 +17,11 @@ from flask_cors import CORS
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Load LuoOS config (set by start.py or setup_luoos.py)
+_LUO_USER   = os.environ.get("LUO_USER_NAME", "User")
+_LUO_MODEL  = os.environ.get("LUO_AI_MODEL",  "qwen2.5-1.5b")
+_LUO_FEATS  = set(os.environ.get("LUO_FEATURES", "voice,coevo,neural,autolearn").split(","))
+
 app     = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
 
@@ -673,9 +678,11 @@ def _run_server():
             brain.shutdown()
     atexit.register(_shutdown)
 
-    # Boot LUOKAI model engine in background (downloads weights on first run)
+    # Boot LUOKAI model engine in background (uses model chosen during setup)
     try:
-        from luokai.core.model_engine import boot_engine
+        from luokai.core.model_engine import boot_engine, set_active_model
+        if _LUO_MODEL != "none":
+            set_active_model(_LUO_MODEL)
         boot_engine()
     except Exception:
         pass

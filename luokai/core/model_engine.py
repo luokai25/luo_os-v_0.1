@@ -46,6 +46,35 @@ UPGRADE_MODEL = {
     "desc":     "Phi-3.5 mini — best quality small model, needs 4GB RAM",
 }
 
+# Mid-range model — good balance of quality and speed
+MID_MODEL = {
+    "name":     "Qwen2.5-3B-Instruct-Q4_K_M",
+    "filename": "qwen2.5-3b-instruct-q4_k_m.gguf",
+    "url":      "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
+    "size_gb":  1.8,
+    "ram_gb":   3.5,
+    "desc":     "Qwen2.5 3B — better quality, needs 4GB RAM",
+}
+
+# Model registry — keyed by setup.py choice
+MODEL_REGISTRY = {
+    "qwen2.5-1.5b": PRIMARY_MODEL,
+    "qwen2.5-3b":   MID_MODEL,
+    "phi3.5":       UPGRADE_MODEL,
+}
+
+# Active model (set by start.py from user's setup choice)
+_active_model_key = "qwen2.5-1.5b"
+
+def set_active_model(model_key: str):
+    """Set which model to use. Called from start.py before boot_engine()."""
+    global _active_model_key
+    if model_key in MODEL_REGISTRY:
+        _active_model_key = model_key
+        print(f"[ModelEngine] Active model set to: {MODEL_REGISTRY[model_key]['name']}")
+    else:
+        print(f"[ModelEngine] Unknown model key '{model_key}', using default")
+
 # System prompt — LUOKAI's personality
 SYSTEM_PROMPT = """You are LUOKAI, the AI brain of LuoOS — an AI-native operating system built by Luo Kai.
 
@@ -150,13 +179,26 @@ class ModelEngine:
 
     def _ensure_model(self) -> Optional[Path]:
         """Download model if not present. Returns path to model file."""
-        model_cfg = PRIMARY_MODEL
+        # Use the model selected during setup
+        model_cfg = MODEL_REGISTRY.get(_active_model_key, PRIMARY_MODEL)
+        print(f"[ModelEngine] Using model: {model_cfg['name']}")
 
-        # Check if upgrade model exists (user manually placed it)
-        upgrade_path = MODELS_DIR / UPGRADE_MODEL["filename"]
-        if upgrade_path.exists():
-            print(f"[ModelEngine] Using upgrade model: {UPGRADE_MODEL['name']}")
-            return upgrade_path
+        # Check if selected model exists
+        primary_path = MODELS_DIR / model_cfg["filename"]
+        if primary_path.exists():
+            size_gb = primary_path.stat().st_size / 1e9
+            if size_gb > 0.5:
+                return primary_path
+            else:
+                primary_path.unlink()
+
+        # Also accept any upgrade model the user manually dropped in
+        for cfg in MODEL_REGISTRY.values():
+            p = MODELS_DIR / cfg["filename"]
+            if p.exists() and p.stat().st_size / 1e9 > 0.5:
+                if p != primary_path:
+                    print(f"[ModelEngine] Found existing model: {p.name}")
+                    return p
 
         # Check primary model
         primary_path = MODELS_DIR / model_cfg["filename"]
