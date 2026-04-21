@@ -2,31 +2,209 @@
 
 > **Built by Luo Kai.** An OS where the AI *is* the system — not a plugin, not a feature.
 
-LUOKAI runs completely independently — no Ollama, no OpenAI, no external APIs. Double-click and it works.
+LUOKAI is the brain of LuoOS. It runs 100% locally — no Ollama, no OpenAI, no cloud. Just open it and it works.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Ways to Run LuoOS
+
+### 1. 💻 On Your Device (Windows / Mac / Linux)
 
 **Windows** — double-click `start.bat`
 
 **Mac / Linux:**
 ```bash
+git clone https://github.com/luokai25/luo_os-v_0.1.git
+cd luo_os-v_0.1
 ./start.sh
 ```
 
 **Any Python 3.6+:**
 ```bash
+git clone https://github.com/luokai25/luo_os-v_0.1.git
+cd luo_os-v_0.1
 python3 start.py
 ```
 
-Opens automatically at `http://localhost:3000`. No config. No downloads. No external services.
+Opens at `http://localhost:3000` automatically. No config needed.
+
+On first run LUOKAI downloads its AI weights (~900MB) once to `~/.luo_os/models/`. After that it loads in ~3 seconds every time, fully offline.
+
+---
+
+### 2. ☁️ GitHub Codespaces (zero install — runs in browser)
+
+Run LuoOS directly in your browser with no local setup at all.
+
+1. Go to **https://github.com/luokai25/luo_os-v_0.1**
+2. Click the green **`<> Code`** button → **Codespaces** tab
+3. Click **"Create codespace on main"**
+4. Wait ~1 minute for the environment to boot
+5. In the Codespaces terminal:
+```bash
+python3 start.py
+```
+6. Codespaces will show a **"Open in Browser"** popup — click it
+7. LuoOS opens in a new tab, fully working
+
+> **Note:** In Codespaces the AI model weights download to the cloud container. The cell system (coding, debug, algorithms) works instantly while the model loads.
+
+---
+
+### 3. 🐳 Docker
+
+```bash
+# Pull and run
+docker pull ghcr.io/luokai25/luo_os:latest
+docker run -p 3000:3000 luokai25/luo_os
+
+# Or build yourself
+git clone https://github.com/luokai25/luo_os-v_0.1.git
+cd luo_os-v_0.1
+docker build -t luo_os .
+docker run -p 3000:3000 -v ~/.luo_os:/root/.luo_os luo_os
+```
+
+Mount `~/.luo_os` as a volume so the AI weights persist between container runs.
+
+Open `http://localhost:3000` in your browser.
+
+---
+
+### 4. 📦 pip install
+
+```bash
+pip install luo-os
+luo-os start
+```
+
+Opens at `http://localhost:3000`.
+
+---
+
+### 5. ▶️ Replit
+
+1. Go to **https://replit.com**
+2. Click **"+ Create Repl"** → **"Import from GitHub"**
+3. Paste: `https://github.com/luokai25/luo_os-v_0.1`
+4. Set the run command to: `python3 start.py`
+5. Click **Run**
+6. Open the **Webview** tab — LuoOS is live
+
+> Replit free tier works. The AI weights download to Replit's storage on first run.
+
+---
+
+### 6. 🌐 Gitpod
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/luokai25/luo_os-v_0.1)
+
+Or manually:
+1. Go to `https://gitpod.io/#https://github.com/luokai25/luo_os-v_0.1`
+2. Gitpod boots the workspace automatically
+3. In the terminal: `python3 start.py`
+4. Open the port `3000` preview
+
+---
+
+### 7. 🧑‍💻 VS Code Dev Container
+
+1. Install the **Dev Containers** extension in VS Code
+2. Clone the repo:
+```bash
+git clone https://github.com/luokai25/luo_os-v_0.1.git
+cd luo_os-v_0.1
+code .
+```
+3. VS Code will ask: **"Reopen in Container"** — click it
+4. In the container terminal: `python3 start.py`
+5. Open `http://localhost:3000`
+
+---
+
+### 8. 🐧 Linux Server / VPS
+
+```bash
+# Clone and run headless
+git clone https://github.com/luokai25/luo_os-v_0.1.git
+cd luo_os-v_0.1
+pip3 install flask flask-cors
+python3 luo_server.py
+
+# Access from anywhere
+http://YOUR_SERVER_IP:3000
+```
+
+To keep it running after logout:
+```bash
+# With screen
+screen -S luoos
+python3 luo_server.py
+# Ctrl+A then D to detach
+
+# Or with systemd
+sudo nano /etc/systemd/system/luoos.service
+```
+
+```ini
+[Unit]
+Description=LuoOS
+After=network.target
+
+[Service]
+WorkingDirectory=/path/to/luo_os-v_0.1
+ExecStart=python3 luo_server.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+```bash
+sudo systemctl enable --now luoos
+```
+
+---
+
+### 9. 🪟 Windows (detailed)
+
+```cmd
+:: Option A — batch file
+start.bat
+
+:: Option B — PowerShell
+python start.py
+
+:: Option C — no git, download ZIP
+:: 1. Go to github.com/luokai25/luo_os-v_0.1
+:: 2. Click Code > Download ZIP
+:: 3. Extract the ZIP
+:: 4. Double-click start.bat
+```
+
+Python 3.6+ required. Get it from **python.org** if not installed.
+
+---
+
+### 10. 🍎 macOS
+
+```bash
+# Install Python if needed
+brew install python3
+
+# Clone and run
+git clone https://github.com/luokai25/luo_os-v_0.1.git
+cd luo_os-v_0.1
+./start.sh
+
+# Or make executable and run
+chmod +x start.sh && ./start.sh
+```
 
 ---
 
 ## 🧠 LUOKAI Brain
 
-Fully independent AI — built from scratch:
+Fully independent AI — no external dependencies:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -40,144 +218,31 @@ Fully independent AI — built from scratch:
 │  ┌──────────────────────────────────────────────────┐   │
 │  │        Knowledge Base  —  78,063 entries         │   │
 │  │  algorithms · debugging · security · APIs        │   │
-│  │  architecture · testing · devops · docs          │   │
 │  └──────────────────────────────────────────────────┘   │
 │                                                         │
 │  ┌──────────────────────────────────────────────────┐   │
-│  │       Neural Interface  —  Cortical Labs CL1     │   │
-│  │  64-channel MEA · spike detection · stimulation  │   │
-│  │  biological neuron ↔ AI closed loop              │   │
+│  │    Local AI Weights — Qwen2.5-1.5B (909MB)       │   │
+│  │  Downloads once · runs offline · CPU only        │   │
+│  └──────────────────────────────────────────────────┘   │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │       Neural Interface — Cortical Labs CL1       │   │
+│  │  64-channel MEA · real biological neurons        │   │
 │  └──────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Cell System
+### How the AI works
 
-| Family | Cells | Purpose |
+| Step | What happens | Speed |
 |---|---|---|
-| **Reasoning** | ModusPonens, Syllogism, Analogy, CauseEffect, Abduction... | 14 cells — logical inference |
-| **NLP** | Tokenizer, NER, IntentClassifier, Sentiment, ContextTracker | 5 cells — language understanding |
-| **Coding** | Debug, Syntax, Logic, Algorithm, Security, Refactor | 6 cells — code intelligence |
-| **Neural** | NeuralBridge, SpikeInterpreter, StimulusDesigner | 3 cells — biological neuron interface |
+| 1 | Cell system handles coding/debug/algorithms | Instant |
+| 2 | Knowledge DB answers from 78K entries | Instant |
+| 3 | Local model (Qwen2.5-1.5B) answers everything else | ~1-3s |
+| 4 | Skills library as fallback | Instant |
 
-### Knowledge Base (ships in repo, zero download)
-
-78,063 curated entries in `luokai/data/knowledge.db`:
-
-- Code conversations — 15,000 real Q&A pairs
-- Algorithms — 10,000 (complexity, implementation)
-- Debugging scenarios — 10,000 (error → solution)
-- Security vulnerabilities — 8,000 (vuln + fix)
-- Architecture patterns — 8,000
-- API patterns, test cases, CI/CD, devops, documentation — 5,000 each
-
----
-
-## 🧬 Neural Interface — Cortical Labs CL1
-
-LuoOS bridges real biological neurons via the [Cortical Labs CL1](https://corticallabs.com) platform.
-
-**Simulation mode (no hardware needed — runs by default):**
-```python
-from luokai.cells.neural import NeuralEngine
-engine = NeuralEngine(sim_mode=True)
-engine.start()
-```
-
-**Real CL1 hardware:**
-```python
-engine = NeuralEngine(sim_mode=False, ticks_per_second=1000)
-engine.start(try_hardware=True)
-```
-
-**What it does:**
-- Reads spikes from 64 MEA channels at 25kHz
-- Classifies patterns: burst / synchronous / sparse / focal
-- Maps neural activity to cognitive states: FOCUSED, ENGAGED, ANALYTICAL, CREATIVE
-- Sends stimulation back: reward, reinforce, explore, entrain rhythms
-- Detects theta / alpha / beta / gamma rhythms
-
-**Stimulation presets:**
-```python
-engine.stimulate_response("reward")      # 5-pulse 50Hz burst
-engine.stimulate_response("reinforce")   # 10-pulse 100Hz strong
-engine.stimulate_response("explore")     # 2-pulse 10Hz distributed
-engine.stimulate_response("entrain_gamma")  # 40-pulse 40Hz attention
-```
-
-**Closed-loop experiment (CL1 hardware):**
-```python
-import cl
-from luokai.cells.neural import NeuralEngine
-
-engine = NeuralEngine(sim_mode=False)
-with cl.open() as neurons:
-    for tick in neurons.loop(ticks_per_second=1000):
-        for spike in tick.analysis.spikes:
-            neurons.stim(spike.channel, 1)
-        if len(tick.analysis.spikes) > 50:
-            engine.stimulate_response("reward")
-```
-
----
-
-## 🏗 Architecture
-
-```
-LuoOS/
-├── start.py               # One-click launcher (Python 3.6+)
-├── start.bat              # Windows
-├── start.sh               # Mac/Linux
-├── luo_server.py          # Flask backend (port 3000)
-├── index.html             # Main OS UI
-│
-├── luokai/
-│   ├── core/
-│   │   ├── inference.py   # Inference engine (4,146 skills + knowledge)
-│   │   ├── brain.py       # Brain: CoEvo, KAIROS, TreeOfThought
-│   │   └── react_agent.py # ReAct reasoning agent
-│   │
-│   ├── cells/
-│   │   ├── base.py            # BaseCell
-│   │   ├── reasoning.py       # 14 reasoning cells
-│   │   ├── nlp.py             # 5 NLP cells
-│   │   ├── coding.py          # 6 coding cells
-│   │   ├── data_index.py      # Knowledge search
-│   │   └── neural/
-│   │       ├── bridge.py      # CL1 MEA interface
-│   │       ├── interpreter.py # Spike → cognitive state
-│   │       └── stimulator.py  # Decision → stimulation
-│   │
-│   ├── data/
-│   │   ├── knowledge.db       # 78,063 entries (12MB)
-│   │   ├── knowledge/k000.jsonl
-│   │   ├── knowledge/k001.jsonl
-│   │   └── build_knowledge.py
-│   │
-│   └── skills/            # 4,146 skills — 20 domains
-│
-├── ai_core/               # Background agents
-├── ui/                    # Dashboard panels
-└── docs/                  # Architecture & roadmap
-```
-
----
-
-## 💬 Knowledge Coverage
-
-LUOKAI answers instantly from built-in knowledge:
-
-```
-CSS        — centering, flexbox, grid, box model, responsive
-APIs       — REST, GraphQL, WebSocket, OAuth 2.0, JWT
-DevOps     — Docker, Kubernetes, CI/CD, nginx, git
-Algorithms — binary search, BFS/DFS, dynamic programming, Big O
-Security   — SQL injection, XSS, CSRF, password hashing
-Databases  — SQL vs NoSQL, indexes, normalization, window functions
-Languages  — Python, JavaScript, TypeScript, Rust, React, Node.js
-ML/AI      — neural networks, PyTorch, training loops
-Networking — TCP/IP, HTTPS/TLS, DNS resolution
-```
+**First run:** model downloads ~900MB once to `~/.luo_os/models/`
+**Every run after:** loads in ~3 seconds, works offline forever
 
 ---
 
@@ -191,24 +256,30 @@ All at `http://localhost:3000`:
 | `GET`  | `/api/status` | System status |
 | `GET`  | `/api/brain/status` | Cell system status |
 | `POST` | `/api/brain/learn` | Teach LUOKAI a fact |
-| `GET`  | `/api/brain/skills` | List skills |
+| `GET`  | `/api/model/status` | Local model ready/loading |
+| `GET`  | `/api/model/list` | Available downloaded models |
 
 ```bash
 curl -X POST http://localhost:3000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "what is binary search?"}'
+  -d '{"message": "write a binary search in Python"}'
 ```
 
 ---
 
 ## 📋 Requirements
 
-- **Python 3.6+** — any version works
-- **flask + flask-cors** — auto-installed on first run
+| Requirement | Value |
+|---|---|
+| Python | 3.6+ |
+| RAM (minimum) | 2GB (for AI model) |
+| RAM (recommended) | 4GB |
+| Disk | 1.5GB (model + OS) |
+| GPU | Not required — CPU only |
+| Internet | First run only (model download) |
+| OS | Windows / Mac / Linux / any |
 
-**Optional for neural experiments:**
-- Cortical Labs CL1 hardware
-- `pip install cl`
+**Auto-installed on first run:** `flask`, `flask-cors`, `llama-cpp-python`
 
 ---
 
@@ -217,6 +288,7 @@ curl -X POST http://localhost:3000/api/chat \
 - [x] LUOKAI native AI — zero external dependencies
 - [x] Cell system — reasoning, NLP, coding, neural
 - [x] 78K knowledge entries in repo
+- [x] Local AI weights — Qwen2.5-1.5B (auto-download)
 - [x] Cortical Labs CL1 neural interface
 - [x] One-click start — Windows / Mac / Linux
 - [x] Python 3.6+ compatibility
@@ -224,6 +296,29 @@ curl -X POST http://localhost:3000/api/chat \
 - [ ] Neural activity dashboard
 - [ ] Voice interface
 - [ ] Multi-language support
+- [ ] Plugin system for custom cells
+
+---
+
+## 🧬 Neural Interface (Cortical Labs CL1)
+
+For real biological neuron experiments:
+
+```bash
+pip install cl
+```
+
+```python
+from luokai.cells.neural import NeuralEngine
+
+# Simulation mode (no hardware needed)
+engine = NeuralEngine(sim_mode=True)
+engine.start()
+
+# Real CL1 hardware
+engine = NeuralEngine(sim_mode=False, ticks_per_second=1000)
+engine.start(try_hardware=True)
+```
 
 ---
 
