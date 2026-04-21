@@ -188,7 +188,9 @@ class ModelEngine:
         tmp = dest.with_suffix(".tmp")
 
         req = urllib.request.Request(url, headers={"User-Agent": "LuoOS/1.0"})
-        with urllib.request.urlopen(req, timeout=30) as response:
+        import socket
+        socket.setdefaulttimeout(120)  # 2 min timeout on stalled connections
+        with urllib.request.urlopen(req, timeout=60) as response:
             total = int(response.headers.get("Content-Length", 0))
             downloaded = 0
             last_print = 0

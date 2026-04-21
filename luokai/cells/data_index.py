@@ -65,7 +65,7 @@ class DataIndex:
 
     def _connect(self) -> sqlite3.Connection:
         if self._db is None:
-            self._db = sqlite3.connect(str(self.db_path), check_same_thread=False)
+            self._db = sqlite3.connect(str(self.db_path, check_same_thread=False), check_same_thread=False)
             self._db.row_factory = sqlite3.Row
             self._setup_schema()
         return self._db

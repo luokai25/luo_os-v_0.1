@@ -54,12 +54,10 @@ def search_text(query: str, n: int = 5) -> str:
         lines.append(f"{i}. {r['title']}")
         if r["snippet"]:
             lines.append(f"   {r['snippet'][:200]}")
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 if __name__ == "__main__":
     import sys
     q = " ".join(sys.argv[1:]) or "Luo OS open source"
-    print(f"Searching: {q}
-")
+    print(f"Searching: {q}\n")
     print(search_text(q))

@@ -22,7 +22,7 @@ CORS(app)
 
 # ── VS Code / code-server Configuration ─────────────────────────────
 VSCODE_PORT      = 8080
-VSCODE_PASSWORD  = "luoos2024"
+VSCODE_PASSWORD  = os.environ.get("LUOOS_PASSWORD", "luoos2024")  # override: export LUOOS_PASSWORD=yourpass
 VSCODE_WORKSPACE = Path.home() / "luo_workspace"
 VSCODE_CONFIG    = Path.home() / ".config" / "code-server" / "config.yaml"
 VSCODE_PID_FILE  = Path("/tmp/luo-code-server.pid")
@@ -418,10 +418,11 @@ def _vscode_autostart():
         return
     _ensure_vscode_config()
     try:
-        log = open(VSCODE_LOG_FILE, "a")
+        global _vscode_log
+        _vscode_log = open(VSCODE_LOG_FILE, "a")  # kept open for subprocess lifetime
         _vscode_proc = subprocess.Popen(
             ["code-server", "--config", str(VSCODE_CONFIG), str(VSCODE_WORKSPACE)],
-            stdout=log, stderr=log, start_new_session=True
+            stdout=_vscode_log, stderr=_vscode_log, start_new_session=True
         )
         VSCODE_PID_FILE.write_text(str(_vscode_proc.pid))
         print(f"🖥️  code-server started (PID {_vscode_proc.pid}) on port {VSCODE_PORT}")
@@ -458,10 +459,11 @@ def vscode_start():
                         "msg": "code-server not installed. Run: bash vscode/install_code_server.sh"})
     _ensure_vscode_config()
     try:
-        log = open(VSCODE_LOG_FILE, "a")
+        global _vscode_log
+        _vscode_log = open(VSCODE_LOG_FILE, "a")  # kept open for subprocess lifetime
         _vscode_proc = subprocess.Popen(
             ["code-server", "--config", str(VSCODE_CONFIG), str(VSCODE_WORKSPACE)],
-            stdout=log, stderr=log, start_new_session=True
+            stdout=_vscode_log, stderr=_vscode_log, start_new_session=True
         )
         VSCODE_PID_FILE.write_text(str(_vscode_proc.pid))
         # Wait up to 8 seconds for it to bind
@@ -512,7 +514,7 @@ def vscode_install():
     try:
         proc = subprocess.Popen(
             ["bash", str(script)],
-            stdout=open("/tmp/code-server-install.log","w"),
+            stdout=open("/tmp/code-server-install.log","w"),  # subprocess handles close
             stderr=subprocess.STDOUT,
             start_new_session=True
         )

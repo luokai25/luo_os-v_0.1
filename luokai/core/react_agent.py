@@ -614,7 +614,10 @@ Be honest and constructive. If there were issues, acknowledge them and suggest i
                 if raw_input.startswith('{'):
                     action_input = json.loads(raw_input)
                 elif raw_input.startswith('['):
-                    action_input = {"args": json.loads(raw_input)}
+                    try:
+                        action_input = {"args": json.loads(raw_input)}
+                    except (json.JSONDecodeError, ValueError):
+                        action_input = {"args": raw_input}
                 else:
                     action_input = {"input": raw_input.strip('"')}
             except json.JSONDecodeError:

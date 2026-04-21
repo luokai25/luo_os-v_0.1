@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """LUOKAI LLM Client — routes to LUOKAI native inference engine."""
-import urllib.request, json
+import urllib.request
+import json, json
 
 class OllamaClient:
     """Compatibility shim — routes to LUOKAI native inference."""
@@ -18,7 +19,7 @@ class OllamaClient:
             )
             with urllib.request.urlopen(req, timeout=30) as r:
                 data = json.loads(r.read())
-                return data.get("response", "")
+                return data.get("response", "") or data.get("content", "")
         except Exception as e:
             return f"[LUOKAI] {e}"
 

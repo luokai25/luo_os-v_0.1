@@ -1,3 +1,4 @@
+import threading
 #!/usr/bin/env python3
 """
 LUOKAI Agent — Core AI for LuoOS

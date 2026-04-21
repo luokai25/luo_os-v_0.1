@@ -191,7 +191,10 @@ Be flexible and capable across domains.""",
                 headers={"Content-Type": "application/json"}
             )
             with urllib.request.urlopen(req, timeout=120) as r:
-                data = json.loads(r.read())
+                try:
+                    data = json.loads(r.read())
+                except (json.JSONDecodeError, ValueError):
+                    data = {}
                 return data.get("message", {}).get("content", "").strip()
         except Exception as e:
             return f"[ERROR] {e}"

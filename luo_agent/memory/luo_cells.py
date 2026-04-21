@@ -411,7 +411,7 @@ class SkillCell(LuoCell):
         if row:
             return {
                 "name": row[0], "description": row[1],
-                "tool_chain": json.loads(row[2]), "success_count": row[3],
+                "tool_chain": (json.loads(row[2]) if row[2] else []), "success_count": row[3],
             }
         return None
 

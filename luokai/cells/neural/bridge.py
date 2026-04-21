@@ -111,7 +111,7 @@ class NeuralBridgeCell(BaseCell):
             i: ChannelState(i) for i in range(1, self.MEA_CHANNELS + 1)
         }
         self._callbacks: List[Callable[[SpikePattern], None]] = []
-        self._stim_queue: List[Dict] = []
+        self._stim_queue: collections.deque = collections.deque(maxlen=1000)  # thread-safe deque
         self._cl_neurons  = None   # CL1 hardware connection
         self._stats = {
             "total_spikes": 0,
@@ -207,7 +207,7 @@ class NeuralBridgeCell(BaseCell):
 
         # Send queued stimulations
         while self._stim_queue:
-            stim = self._stim_queue.pop(0)
+            stim = self._stim_queue.popleft()
             try:
                 import cl
                 channels  = stim.get("channels", [27])
@@ -361,7 +361,7 @@ class NeuralBridgeCell(BaseCell):
             "burst_hz":  burst_hz,
             "queued_at": time.time(),
         }
-        self._stim_queue.append(stim)
+        self._stim_queue.append(stim)  # deque.append is thread-safe
 
     def get_channel_rates(self) -> Dict[int, float]:
         """Get spike rates for all channels (Hz)."""

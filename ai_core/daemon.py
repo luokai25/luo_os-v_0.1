@@ -65,7 +65,8 @@ class LuoAI:
                 method="POST"
             )
             with urllib.request.urlopen(req, timeout=180) as r:
-                result = json.loads(r.read().decode())
+                raw = r.read()
+                result = json.loads(raw.decode()) if raw else {}
                 response = result.get("response", "").strip()
                 remember(user_input, response)
                 return response
