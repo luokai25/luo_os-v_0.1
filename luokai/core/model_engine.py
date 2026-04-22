@@ -69,11 +69,14 @@ _active_model_key = "qwen2.5-1.5b"
 def set_active_model(model_key: str):
     """Set which model to use. Called from start.py before boot_engine()."""
     global _active_model_key
-    if model_key in MODEL_REGISTRY:
+    if model_key == "none":
+        _active_model_key = "none"
+        print("[ModelEngine] Model disabled — running cell system only")
+    elif model_key in MODEL_REGISTRY:
         _active_model_key = model_key
-        print(f"[ModelEngine] Active model set to: {MODEL_REGISTRY[model_key]['name']}")
+        print(f"[ModelEngine] Active model: {MODEL_REGISTRY[model_key]['name']}")
     else:
-        print(f"[ModelEngine] Unknown model key '{model_key}', using default")
+        print(f"[ModelEngine] Unknown model '{model_key}', using default (qwen2.5-1.5b)")
 
 # System prompt — LUOKAI's personality
 SYSTEM_PROMPT = """You are LUOKAI, the AI brain of LuoOS — an AI-native operating system built by Luo Kai.
@@ -386,6 +389,9 @@ def get_engine() -> ModelEngine:
 
 def boot_engine():
     """Boot the model engine in background — called at server start."""
+    if _active_model_key == "none":
+        print("[ModelEngine] Model disabled by user (cell system only mode)")
+        return get_engine()  # return engine but don't start it
     engine = get_engine()
     engine.start(background=True)
     return engine

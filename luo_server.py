@@ -72,6 +72,15 @@ active_agent = react_agent or agent
 # ── Routes ───────────────────────────────────────────────────────────
 @app.route("/")
 def index():
+    ui = os.environ.get("LUO_UI", "classic")
+    return send_from_directory(".", "index_3d.html" if ui == "3d" else "index.html")
+
+@app.route("/3d")
+def index_3d():
+    return send_from_directory(".", "index_3d.html")
+
+@app.route("/classic")
+def index_classic():
     return send_from_directory(".", "index.html")
 
 @app.route("/<path:path>")

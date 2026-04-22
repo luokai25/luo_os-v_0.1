@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LuoOS — 3D Spatial Desktop</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;800&display=swap');
+
+  :root {
+    --bg:        #020407;
+    --bg-card:   #080d12;
+    --bg-panel:  #0c1219;
+    --border:    #1a2535;
+    --border-hi: #2a4060;
+    --text:      #c8d8e8;
+    --text2:     #6a8aaa;
+    --text3:     #2a4050;
+    --accent:    #00d4ff;
+    --accent2:   #7c3aed;
+    --accent3:   #10b981;
+    --accent4:   #f59e0b;
+    --glow:      rgba(0,212,255,0.15);
+    --glow2:     rgba(124,58,237,0.12);
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-ui:   'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    user-select: none;
+    cursor: none;
+  }
+
+  /* ── Custom cursor ───────────────────────────────────────────── */
+  #cursor {
+    position: fixed; pointer-events: none; z-index: 99999;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width .15s, height .15s, background .15s;
+    mix-blend-mode: screen;
+  }
+  #cursor-ring {
+    position: fixed; pointer-events: none; z-index: 99998;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(0,212,255,0.4);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all .12s ease-out;
+  }
+  body:has(.screen:hover) #cursor { width: 8px; height: 8px; }
+  body.dragging #cursor { background: var(--accent4); width: 16px; height: 16px; }
+  body.dragging #cursor-ring { border-color: var(--accent4); width: 48px; height: 48px; }
+
+  /* ── World — the 3D scene container ─────────────────────────── */
+  #world {
+    position: fixed; inset: 0;
+    perspective: 1400px;
+    perspective-origin: 50% 45%;
+    overflow: hidden;
+  }
+
+  /* ── Stage — rotates in 3D based on mouse ────────────────────── */
+  #stage {
+    position: absolute;
+    width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform .06s linear;
+  }
+
+  /* ── Ambient particles ───────────────────────────────────────── */
+  #particles {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  }
+  .particle {
+    position: absolute;
+    width: 1px; height: 1px;
+    background: var(--accent);
+    border-radius: 50%;
+    opacity: 0;
+    animation: float var(--d, 8s) var(--delay, 0s) infinite ease-in-out;
+  }
+  @keyframes float {
+    0%   { opacity: 0; transform: translateY(0) scale(0); }
+    20%  { opacity: .6; }
+    80%  { opacity: .3; }
+    100% { opacity: 0; transform: translateY(-120vh) scale(2); }
+  }
+
+  /* ── Grid overlay ────────────────────────────────────────────── */
+  #grid {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* ── Screens ──────────────────────────────────────────────────── */
+  .screen {
+    position: absolute;
+    width: 680px;
+    height: 480px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform-style: preserve-3d;
+    transition: box-shadow .3s, border-color .3s;
+    box-shadow:
+      0 0 0 0 transparent,
+      0 30px 80px rgba(0,0,0,.8),
+      inset 0 1px 0 rgba(255,255,255,.04);
+    cursor: none;
+  }
+  .screen.focused {
+    border-color: var(--border-hi);
+    box-shadow:
+      0 0 30px var(--glow),
+      0 0 80px var(--glow2),
+      0 40px 100px rgba(0,0,0,.9),
+      inset 0 1px 0 rgba(255,255,255,.06);
+    z-index: 100;
+  }
+  .screen.dragging-screen {
+    transition: none;
+    box-shadow:
+      0 0 50px var(--glow),
+      0 60px 120px rgba(0,0,0,.95);
+  }
+
+  /* Initial 4-screen layout */
+  #screen-main    { left: 120px;  top: 60px;  }
+  #screen-code    { right: 120px; top: 60px;  }
+  #screen-data    { left: 120px;  bottom: 40px; }
+  #screen-neural  { right: 120px; bottom: 40px; }
+
+  /* ── Screen titlebar ─────────────────────────────────────────── */
+  .titlebar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    cursor: grab;
+    flex-shrink: 0;
+  }
+  .titlebar:active { cursor: grabbing; }
+  .title-dots { display: flex; gap: 6px; }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    cursor: pointer; transition: filter .2s;
+  }
+  .dot:hover { filter: brightness(1.5); }
+  .dot-close   { background: #ff5f57; }
+  .dot-min     { background: #febc2e; }
+  .dot-max     { background: #28c840; }
+  .title-text  { font-size: 11px; color: var(--text2); font-family: var(--font-mono); flex: 1; }
+  .title-icon  { font-size: 13px; }
+
+  /* ── Screen body ─────────────────────────────────────────────── */
+  .screen-body {
+    flex: 1; overflow: hidden;
+    position: relative;
+  }
+
+  /* ── LUOKAI Chat ─────────────────────────────────────────────── */
+  #screen-main .screen-body {
+    display: flex; flex-direction: column;
+  }
+  #chat-msgs {
+    flex: 1; overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .msg {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+    font-family: var(--font-mono);
+    animation: msgIn .2s ease-out;
+  }
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--accent2);
+    color: #e0d0ff;
+  }
+  .msg.ai {
+    align-self: flex-start;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .msg.ai strong { color: var(--accent); }
+  .msg.thinking {
+    align-self: flex-start;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    color: var(--text3);
+    font-style: italic;
+  }
+  .msg.thinking::after {
+    content: '';
+    display: inline-block;
+    animation: dots 1s infinite;
+  }
+  @keyframes dots {
+    0%   { content: '.'; }
+    33%  { content: '..'; }
+    66%  { content: '...'; }
+  }
+  .chat-input-row {
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    display: flex; gap: 8px;
+  }
+  .chat-input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    outline: none;
+    cursor: text;
+    user-select: text;
+    transition: border-color .2s;
+  }
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-send {
+    background: var(--accent);
+    color: #000;
+    border: none; border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    transition: opacity .2s;
+  }
+  .chat-send:hover { opacity: .85; }
+
+  /* ── Code editor ─────────────────────────────────────────────── */
+  #code-editor {
+    width: 100%; height: 100%;
+    background: transparent;
+    border: none; outline: none;
+    color: var(--accent3);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 16px;
+    resize: none;
+    cursor: text;
+    user-select: text;
+    tab-size: 2;
+  }
+  .line-numbers {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 36px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    padding: 16px 0;
+    display: flex; flex-direction: column; gap: 0;
+    pointer-events: none;
+  }
+  .ln {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text3); text-align: right;
+    padding-right: 6px; line-height: 1.7;
+  }
+
+  /* ── Data / Dashboard ────────────────────────────────────────── */
+  .data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 14px;
+    height: 100%;
+    overflow-y: auto;
+  }
+  .metric-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 6px;
+    transition: border-color .3s;
+  }
+  .metric-card:hover { border-color: var(--border-hi); }
+  .metric-label { font-size: 9px; color: var(--text2); text-transform: uppercase; letter-spacing: .1em; font-family: var(--font-mono); }
+  .metric-value { font-size: 24px; font-weight: 800; color: var(--accent); font-family: var(--font-mono); }
+  .metric-sub { font-size: 10px; color: var(--text3); font-family: var(--font-mono); }
+  .sparkline { height: 32px; margin-top: 4px; }
+  .sparkline canvas { width: 100%; height: 100%; }
+  .metric-card.wide { grid-column: span 2; }
+  .mini-bar {
+    display: flex; gap: 2px; align-items: flex-end; height: 30px; margin-top: 4px;
+  }
+  .bar-seg {
+    flex: 1; background: var(--accent); border-radius: 2px 2px 0 0;
+    opacity: .6; transition: opacity .3s;
+    animation: barGrow .5s ease-out backwards;
+  }
+  .bar-seg:hover { opacity: 1; }
+  @keyframes barGrow {
+    from { height: 0 !important; }
+  }
+
+  /* ── Neural screen ───────────────────────────────────────────── */
+  #neural-canvas {
+    width: 100%; height: 100%;
+    display: block;
+  }
+
+  /* ── Taskbar ─────────────────────────────────────────────────── */
+  #taskbar {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(8,13,18,.9);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 14px 14px 0 0;
+    padding: 8px 16px;
+    z-index: 1000;
+  }
+  .tb-btn {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text2);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tb-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--glow); }
+  .tb-btn.active { border-color: var(--accent); color: var(--accent); background: var(--glow); }
+  .tb-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+  #model-status {
+    font-size: 10px; color: var(--text2); font-family: var(--font-mono);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--bg-panel);
+  }
+
+  /* ── Context menu ────────────────────────────────────────────── */
+  #ctx-menu {
+    position: fixed; z-index: 9000;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-hi);
+    border-radius: 10px;
+    padding: 6px;
+    min-width: 180px;
+    display: none;
+    box-shadow: 0 20px 60px rgba(0,0,0,.8), 0 0 20px var(--glow);
+    animation: ctxIn .15s ease-out;
+  }
+  @keyframes ctxIn {
+    from { opacity: 0; transform: scale(.95); }
+  }
+  #ctx-menu.open { display: block; }
+  .ctx-item {
+    padding: 8px 12px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    transition: background .15s;
+  }
+  .ctx-item:hover { background: var(--border); color: var(--accent); }
+  .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* ── Tray (top right info) ───────────────────────────────────── */
+  #tray {
+    position: fixed; top: 12px; right: 16px;
+    display: flex; gap: 10px; align-items: center;
+    font-family: var(--font-mono); font-size: 11px; color: var(--text2);
+    z-index: 1000;
+  }
+  #clock { font-size: 13px; color: var(--text); font-weight: 500; }
+
+  /* ── Minimap ─────────────────────────────────────────────────── */
+  #minimap {
+    position: fixed; bottom: 60px; right: 16px;
+    width: 120px; height: 80px;
+    background: rgba(8,13,18,.8);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden; z-index: 500;
+  }
+  #minimap canvas { width: 100%; height: 100%; display: block; }
+
+  /* ── Scrollbar ───────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- Ambient grid -->
+<div id="grid"></div>
+
+<!-- Particles -->
+<div id="particles"></div>
+
+<!-- Tray -->
+<div id="tray">
+  <span id="neural-indicator" style="color:var(--accent3)">⬤</span>
+  <span>LUOKAI</span>
+  <div style="width:1px;height:14px;background:var(--border)"></div>
+  <span id="clock">00:00:00</span>
+</div>
+
+<!-- Minimap -->
+<div id="minimap"><canvas id="minimap-canvas"></canvas></div>
+
+<!-- World -->
+<div id="world">
+  <div id="stage">
+
+    <!-- Screen 1: LUOKAI Chat -->
+    <div class="screen" id="screen-main">
+      <div class="titlebar" data-screen="screen-main">
+        <div class="title-dots">
+          <div class="dot dot-close" onclick="closeScreen('screen-main')"></div>
+          <div class="dot dot-min"   onclick="minimizeScreen('screen-main')"></div>
+          <div class="dot dot-max"   onclick="maximizeScreen('screen-main')"></div>
+        </div>
+        <span class="title-icon">🧠</span>
+        <span class="title-text">LUOKAI — AI Brain</span>
+        <span style="font-size:9px;color:var(--accent3);font-family:var(--font-mono)" id="ai-status">● ready</span>
+      </div>
+      <div class="screen-body" id="screen-main-body">
+        <div id="chat-msgs">
+          <div class="msg ai">
+            <strong>LUOKAI</strong><br>
+            Good to see you. I'm your AI — fully local, always on.<br>
+            Ask me anything or use the other screens for code, data, and neural activity.
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-in" placeholder="Ask LUOKAI anything..." autocomplete="off">
+          <button class="chat-send" onclick="sendChat()">↵ Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2: Code Editor -->
+    <div class="screen" id="screen-code">
+      <div class="titlebar" data-screen="screen-code">
+        <div class="title-dots">
+          <div class="dot dot-close" onclick="closeScreen('screen-code')"></div>
+          <div class="dot dot-min"   onclick="minimizeScreen('screen-code')"></div>
+          <div class="dot dot-max"   onclick="maximizeScreen('screen-code')"></div>
+        </div>
+        <span class="title-icon">⌨️</span>
+        <span class="title-text">Code Editor</span>
+        <span style="font-size:9px;color:var(--accent4);font-family:var(--font-mono)">Python</span>
+      </div>
+      <div class="screen-body" style="position:relative">
+        <div class="line-numbers" id="line-nums"></div>
+        <textarea id="code-editor" spellcheck="false" style="padding-left:52px"
+          oninput="updateLineNums()"># LuoOS Code Editor — write and run Python
+# LUOKAI can help: ask in the AI screen
+
+def fibonacci(n: int) -> list[int]:
+    """Generate fibonacci sequence."""
+    if n <= 0: return []
+    seq = [0, 1]
+    while len(seq) < n:
+        seq.append(seq[-1] + seq[-2])
+    return seq[:n]
+
+# Run the code — LUOKAI analyses results
+result = fibonacci(10)
+print(f"First 10 fibonacci: {result}")
+print(f"Sum: {sum(result)}")
+</textarea>
+      </div>
+    </div>
+
+    <!-- Screen 3: Data Dashboard -->
+    <div class="screen" id="screen-data">
+      <div class="titlebar" data-screen="screen-data">
+        <div class="title-dots">
+          <div class="dot dot-close" onclick="closeScreen('screen-data')"></div>
+          <div class="dot dot-min"   onclick="minimizeScreen('screen-data')"></div>
+          <div class="dot dot-max"   onclick="maximizeScreen('screen-data')"></div>
+        </div>
+        <span class="title-icon">📊</span>
+        <span class="title-text">System Dashboard</span>
+        <span style="font-size:9px;color:var(--accent2);font-family:var(--font-mono)" id="refresh-label">live</span>
+      </div>
+      <div class="screen-body">
+        <div class="data-grid" id="data-grid">
+          <div class="metric-card">
+            <div class="metric-label">Knowledge Entries</div>
+            <div class="metric-value" id="m-knowledge">78,063</div>
+            <div class="metric-sub">cells: 25 active</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Skills Loaded</div>
+            <div class="metric-value" id="m-skills">4,146</div>
+            <div class="metric-sub">across 20 domains</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Neural Spikes</div>
+            <div class="metric-value" id="m-spikes">0</div>
+            <div class="metric-sub">last second</div>
+            <div class="mini-bar" id="spike-bar"></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Response Time</div>
+            <div class="metric-value" id="m-resp">—</div>
+            <div class="metric-sub">milliseconds avg</div>
+          </div>
+          <div class="metric-card wide">
+            <div class="metric-label">Model Status</div>
+            <div class="metric-value" style="font-size:14px" id="m-model">Checking...</div>
+            <div class="metric-sub" id="m-model-sub">local inference engine</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">API Keys</div>
+            <div class="metric-value" id="m-keys">—</div>
+            <div class="metric-sub">configured</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Uptime</div>
+            <div class="metric-value" id="m-uptime">00:00</div>
+            <div class="metric-sub">this session</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 4: Neural Visualizer -->
+    <div class="screen" id="screen-neural">
+      <div class="titlebar" data-screen="screen-neural">
+        <div class="title-dots">
+          <div class="dot dot-close" onclick="closeScreen('screen-neural')"></div>
+          <div class="dot dot-min"   onclick="minimizeScreen('screen-neural')"></div>
+          <div class="dot dot-max"   onclick="maximizeScreen('screen-neural')"></div>
+        </div>
+        <span class="title-icon">🧬</span>
+        <span class="title-text">Neural Interface — CL1 MEA</span>
+        <span style="font-size:9px;color:var(--accent);font-family:var(--font-mono)" id="neural-mode">sim</span>
+      </div>
+      <div class="screen-body">
+        <canvas id="neural-canvas"></canvas>
+      </div>
+    </div>
+
+  </div><!-- /stage -->
+</div><!-- /world -->
+
+<!-- Taskbar -->
+<div id="taskbar">
+  <button class="tb-btn active" onclick="toggleScreen('screen-main')">🧠 LUOKAI</button>
+  <button class="tb-btn" onclick="toggleScreen('screen-code')">⌨️ Code</button>
+  <button class="tb-btn" onclick="toggleScreen('screen-data')">📊 Data</button>
+  <button class="tb-btn" onclick="toggleScreen('screen-neural')">🧬 Neural</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" onclick="resetLayout()">⊞ Reset</button>
+  <button class="tb-btn" onclick="toggleParallax()">⟳ 3D</button>
+  <div class="tb-sep"></div>
+  <span id="model-status">⚡ LUOKAI</span>
+</div>
+
+<!-- Context menu -->
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="spawnScreen()">＋ New Screen</div>
+  <div class="ctx-item" onclick="resetLayout()">⊞ Reset Layout</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="focusScreen()">⬡ Focus Mode</div>
+  <div class="ctx-item" onclick="tileScreens()">⊡ Tile All</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" onclick="openChat()">🧠 Ask LUOKAI</div>
+  <div class="ctx-item" onclick="openCode()">⌨️ New Code</div>
+</div>
+
+<script>
+const API = 'http://localhost:3000';
+
+// ── State ──────────────────────────────────────────────────────────
+let mouseX = 0, mouseY = 0;
+let stageRotX = 0, stageRotY = 0;
+let parallaxEnabled = true;
+let activeScreen = null;
+let dragScreen = null, dragOffX = 0, dragOffY = 0;
+let screenStates = {}; // minimized, closed, maximized
+let startTime = Date.now();
+let spikeHistory = new Array(20).fill(0);
+let respTimes = [];
+
+// ── Screen positions (stored separately from CSS) ──────────────────
+const screenPos = {
+  'screen-main':   { x: 120,   y: 60  },
+  'screen-code':   { x: null,  y: 60  }, // null = from right
+  'screen-data':   { x: 120,   y: null },
+  'screen-neural': { x: null,  y: null },
+};
+
+// ── Custom cursor ──────────────────────────────────────────────────
+const cursor = document.getElementById('cursor');
+const cursorRing = document.getElementById('cursor-ring');
+
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY;
+  cursor.style.left = mouseX + 'px';
+  cursor.style.top  = mouseY + 'px';
+  setTimeout(() => {
+    cursorRing.style.left = mouseX + 'px';
+    cursorRing.style.top  = mouseY + 'px';
+  }, 60);
+  if (parallaxEnabled) updateParallax(e);
+});
+
+// ── 3D Parallax — world tilts as mouse moves ───────────────────────
+function updateParallax(e) {
+  const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
+  const dx = (e.clientX - cx) / cx, dy = (e.clientY - cy) / cy;
+  stageRotY = dx * 4;   // max 4deg horizontal tilt
+  stageRotX = -dy * 2.5; // max 2.5deg vertical tilt
+  document.getElementById('stage').style.transform =
+    `rotateX(${stageRotX}deg) rotateY(${stageRotY}deg)`;
+}
+
+function toggleParallax() {
+  parallaxEnabled = !parallaxEnabled;
+  if (!parallaxEnabled)
+    document.getElementById('stage').style.transform = 'rotateX(0) rotateY(0)';
+}
+
+// ── Screen dragging ────────────────────────────────────────────────
+document.querySelectorAll('.titlebar').forEach(tb => {
+  tb.addEventListener('mousedown', startDrag);
+});
+
+function startDrag(e) {
+  if (e.target.classList.contains('dot')) return;
+  const screenId = e.currentTarget.dataset.screen;
+  const screen = document.getElementById(screenId);
+  dragScreen = screen;
+  document.body.classList.add('dragging');
+  screen.classList.add('dragging-screen');
+  focusScreenEl(screen);
+
+  const rect = screen.getBoundingClientRect();
+  dragOffX = e.clientX - rect.left;
+  dragOffY = e.clientY - rect.top;
+  e.preventDefault();
+}
+
+document.addEventListener('mousemove', e => {
+  if (!dragScreen) return;
+  const x = e.clientX - dragOffX;
+  const y = e.clientY - dragOffY;
+  // Clamp to viewport
+  const maxX = window.innerWidth  - dragScreen.offsetWidth;
+  const maxY = window.innerHeight - dragScreen.offsetHeight;
+  dragScreen.style.left   = Math.max(0, Math.min(x, maxX)) + 'px';
+  dragScreen.style.top    = Math.max(0, Math.min(y, maxY)) + 'px';
+  dragScreen.style.right  = 'auto';
+  dragScreen.style.bottom = 'auto';
+});
+
+document.addEventListener('mouseup', () => {
+  if (dragScreen) {
+    dragScreen.classList.remove('dragging-screen');
+    dragScreen = null;
+    document.body.classList.remove('dragging');
+  }
+});
+
+// ── Screen focus ───────────────────────────────────────────────────
+function focusScreenEl(el) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('focused'));
+  el.classList.add('focused');
+  activeScreen = el;
+}
+
+document.querySelectorAll('.screen').forEach(s => {
+  s.addEventListener('mousedown', () => focusScreenEl(s));
+});
+
+// ── Window controls ────────────────────────────────────────────────
+function closeScreen(id) {
+  const s = document.getElementById(id);
+  s.style.display = 'none';
+  updateTaskbar();
+}
+
+function minimizeScreen(id) {
+  const s = document.getElementById(id);
+  s.style.transform += ' scale(.1) translateY(200px)';
+  s.style.opacity = '0';
+  s.style.pointerEvents = 'none';
+  setTimeout(() => {
+    s.style.display = 'none';
+    s.style.transform = '';
+    s.style.opacity = '';
+    s.style.pointerEvents = '';
+  }, 300);
+  updateTaskbar();
+}
+
+function maximizeScreen(id) {
+  const s = document.getElementById(id);
+  const isMaxed = s.dataset.maxed === '1';
+  if (isMaxed) {
+    s.style.width  = '680px';
+    s.style.height = '480px';
+    s.style.left   = s.dataset.ox || '';
+    s.style.top    = s.dataset.oy || '';
+    s.style.right  = s.dataset.or || '';
+    s.style.bottom = s.dataset.ob || '';
+    s.dataset.maxed = '0';
+  } else {
+    s.dataset.ox = s.style.left;
+    s.dataset.oy = s.style.top;
+    s.dataset.or = s.style.right;
+    s.dataset.ob = s.style.bottom;
+    s.style.left = '0'; s.style.top = '0';
+    s.style.right = '0'; s.style.bottom = '50px';
+    s.style.width  = '100vw';
+    s.style.height = 'calc(100vh - 50px)';
+    s.dataset.maxed = '1';
+  }
+}
+
+function toggleScreen(id) {
+  const s = document.getElementById(id);
+  if (s.style.display === 'none') {
+    s.style.display = 'flex';
+    focusScreenEl(s);
+  } else {
+    minimizeScreen(id);
+  }
+  updateTaskbar();
+}
+
+function updateTaskbar() {
+  document.querySelectorAll('.tb-btn').forEach(btn => {
+    const onclick = btn.getAttribute('onclick') || '';
+    const match = onclick.match(/toggleScreen\('([^']+)'\)/);
+    if (match) {
+      const s = document.getElementById(match[1]);
+      btn.classList.toggle('active', s && s.style.display !== 'none');
+    }
+  });
+}
+
+function resetLayout() {
+  const screens = ['screen-main','screen-code','screen-data','screen-neural'];
+  const positions = [
+    { left:'120px',  top:'60px',    right:'auto', bottom:'auto' },
+    { left:'auto',   top:'60px',    right:'120px',bottom:'auto' },
+    { left:'120px',  top:'auto',    right:'auto', bottom:'40px' },
+    { left:'auto',   top:'auto',    right:'120px',bottom:'40px' },
+  ];
+  screens.forEach((id, i) => {
+    const s = document.getElementById(id);
+    s.style.display = 'flex';
+    s.style.width   = '680px';
+    s.style.height  = '480px';
+    s.dataset.maxed = '0';
+    Object.assign(s.style, positions[i]);
+  });
+  updateTaskbar();
+}
+
+function tileScreens() {
+  const vw = window.innerWidth, vh = window.innerHeight - 50;
+  const w = vw/2 - 10, h = vh/2 - 10;
+  const positions = [
+    { left:'4px',         top:'4px',           },
+    { left:(vw/2+6)+'px', top:'4px',           },
+    { left:'4px',         top:(vh/2+6)+'px',   },
+    { left:(vw/2+6)+'px', top:(vh/2+6)+'px',   },
+  ];
+  ['screen-main','screen-code','screen-data','screen-neural'].forEach((id,i) => {
+    const s = document.getElementById(id);
+    s.style.display = 'flex';
+    s.style.width   = w + 'px';
+    s.style.height  = h + 'px';
+    s.style.left    = positions[i].left;
+    s.style.top     = positions[i].top;
+    s.style.right   = 'auto';
+    s.style.bottom  = 'auto';
+    s.dataset.maxed = '0';
+  });
+  updateTaskbar();
+}
+
+function focusScreen() {
+  if (activeScreen) maximizeScreen(activeScreen.id);
+}
+
+function openChat() {
+  toggleScreen('screen-main');
+  setTimeout(() => document.getElementById('chat-in')?.focus(), 100);
+}
+function openCode() { toggleScreen('screen-code'); }
+
+// ── Context menu ───────────────────────────────────────────────────
+const ctxMenu = document.getElementById('ctx-menu');
+document.addEventListener('contextmenu', e => {
+  e.preventDefault();
+  ctxMenu.style.left = Math.min(e.clientX, window.innerWidth-200) + 'px';
+  ctxMenu.style.top  = Math.min(e.clientY, window.innerHeight-200) + 'px';
+  ctxMenu.classList.add('open');
+});
+document.addEventListener('click', () => ctxMenu.classList.remove('open'));
+
+// ── Mouse wheel — zoom world ───────────────────────────────────────
+let worldScale = 1;
+document.addEventListener('wheel', e => {
+  e.preventDefault();
+  worldScale = Math.max(0.5, Math.min(1.5, worldScale - e.deltaY * 0.001));
+  document.getElementById('stage').style.transform +=
+    ` scale(${worldScale})`;
+}, { passive: false });
+
+// ── Double-click to focus a screen ────────────────────────────────
+document.querySelectorAll('.screen').forEach(s => {
+  s.addEventListener('dblclick', e => {
+    if (e.target.closest('.titlebar')) maximizeScreen(s.id);
+  });
+});
+
+// ── LUOKAI Chat ────────────────────────────────────────────────────
+const chatMsgs = document.getElementById('chat-msgs');
+const chatIn   = document.getElementById('chat-in');
+
+chatIn.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+
+async function sendChat() {
+  const msg = chatIn.value.trim();
+  if (!msg) return;
+  chatIn.value = '';
+  addMsg('user', msg);
+  const thinkEl = addMsg('thinking', 'Thinking');
+  const t0 = Date.now();
+
+  try {
+    const r = await fetch(`${API}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    const d = await r.json();
+    thinkEl.remove();
+    const resp = d.response || d.error || 'No response';
+    addMsg('ai', resp);
+    const elapsed = Date.now() - t0;
+    respTimes.push(elapsed);
+    if (respTimes.length > 10) respTimes.shift();
+    document.getElementById('m-resp').textContent =
+      Math.round(respTimes.reduce((a,b)=>a+b,0)/respTimes.length);
+  } catch(err) {
+    thinkEl.remove();
+    // Retry once
+    await new Promise(r => setTimeout(r, 800));
+    try {
+      const r2 = await fetch(`${API}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg })
+      });
+      const d2 = await r2.json();
+      addMsg('ai', d2.response || 'No response');
+    } catch {
+      addMsg('ai', 'LUOKAI is starting up — please wait a moment.');
+    }
+  }
+}
+
+function addMsg(role, text) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  if (role === 'ai') {
+    div.innerHTML = text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/`([^`]+)`/g, '<code style="background:rgba(0,212,255,.1);padding:1px 5px;border-radius:3px;color:var(--accent)">$1</code>')
+      .replace(/\n/g, '<br>');
+  } else if (role === 'thinking') {
+    div.textContent = text;
+  } else {
+    div.textContent = text;
+  }
+  chatMsgs.appendChild(div);
+  chatMsgs.scrollTop = chatMsgs.scrollHeight;
+  return div;
+}
+
+// ── Code editor line numbers ───────────────────────────────────────
+function updateLineNums() {
+  const lines = document.getElementById('code-editor').value.split('\n').length;
+  const lnDiv = document.getElementById('line-nums');
+  lnDiv.innerHTML = Array.from({length:lines},(_,i)=>
+    `<div class="ln">${i+1}</div>`).join('');
+}
+updateLineNums();
+
+// ── Neural canvas visualizer ───────────────────────────────────────
+const neuralCanvas = document.getElementById('neural-canvas');
+const nctx = neuralCanvas.getContext('2d');
+const CHANNELS = 64;
+
+// Layout MEA 8×8
+const nodes = Array.from({length:CHANNELS},(_,i)=>({
+  id:   i,
+  row:  Math.floor(i/8),
+  col:  i%8,
+  x:    0, y: 0,
+  rate: 2 + Math.random()*8,
+  phase: Math.random()*Math.PI*2,
+  spikes: [],
+  active: false,
+}));
+
+function resizeNeural() {
+  const rect = neuralCanvas.parentElement.getBoundingClientRect();
+  neuralCanvas.width  = rect.width;
+  neuralCanvas.height = rect.height;
+  const pad = 30, cols = 8, rows = 8;
+  const cw = (rect.width  - pad*2) / cols;
+  const ch = (rect.height - pad*2) / rows;
+  nodes.forEach(n => {
+    n.x = pad + n.col * cw + cw/2;
+    n.y = pad + n.row * ch + ch/2;
+  });
+}
+resizeNeural();
+new ResizeObserver(resizeNeural).observe(neuralCanvas.parentElement);
+
+let neuralT = 0;
+function drawNeural() {
+  const W = neuralCanvas.width, H = neuralCanvas.height;
+  nctx.fillStyle = 'rgba(2,4,7,.25)';
+  nctx.fillRect(0, 0, W, H);
+  neuralT += 0.03;
+
+  let totalSpikes = 0;
+
+  nodes.forEach(n => {
+    // Fire based on rate + burst dynamics
+    const burst = Math.sin(neuralT * 0.7 + n.phase) > 0.7;
+    const prob = burst ? n.rate * 3 : n.rate;
+    if (Math.random() * 60 < prob / 60) {
+      n.spikes.push({ t: neuralT, intensity: burst ? 1 : 0.5 });
+      n.active = true;
+      totalSpikes++;
+    }
+    n.spikes = n.spikes.filter(s => neuralT - s.t < 0.5);
+    n.active = n.spikes.length > 0;
+
+    // Draw connections between active nearby nodes
+    if (n.active) {
+      nodes.forEach(m => {
+        if (m.id <= n.id || !m.active) return;
+        const dist = Math.hypot(m.x - n.x, m.y - n.y);
+        if (dist > 90) return;
+        const alpha = (1 - dist/90) * 0.25;
+        nctx.beginPath();
+        nctx.strokeStyle = `rgba(0,212,255,${alpha})`;
+        nctx.lineWidth = 0.5;
+        nctx.moveTo(n.x, n.y);
+        nctx.lineTo(m.x, m.y);
+        nctx.stroke();
+      });
+    }
+
+    // Draw node
+    const r  = n.active ? 5 + n.spikes.length * 2 : 3;
+    const alpha = n.active ? 0.9 : 0.2;
+    nctx.beginPath();
+    nctx.arc(n.x, n.y, r, 0, Math.PI*2);
+    nctx.fillStyle = n.active
+      ? `rgba(0,212,255,${alpha})`
+      : `rgba(42,64,80,0.6)`;
+    nctx.fill();
+
+    // Ripple on spike
+    if (n.active && n.spikes.length) {
+      const age = neuralT - n.spikes[n.spikes.length-1].t;
+      const rippleR = age * 60;
+      if (rippleR < 40) {
+        nctx.beginPath();
+        nctx.arc(n.x, n.y, rippleR, 0, Math.PI*2);
+        nctx.strokeStyle = `rgba(0,212,255,${0.4*(1-rippleR/40)})`;
+        nctx.lineWidth = 1;
+        nctx.stroke();
+      }
+    }
+
+    // Channel number
+    nctx.font = '7px JetBrains Mono';
+    nctx.fillStyle = n.active ? 'rgba(0,212,255,.7)' : 'rgba(42,64,80,.5)';
+    nctx.textAlign = 'center';
+    nctx.fillText(n.id+1, n.x, n.y + 3);
+  });
+
+  // Update spike meter
+  spikeHistory.push(totalSpikes);
+  spikeHistory.shift();
+  document.getElementById('m-spikes').textContent = totalSpikes;
+  renderSpikeBar();
+
+  requestAnimationFrame(drawNeural);
+}
+drawNeural();
+
+function renderSpikeBar() {
+  const bar = document.getElementById('spike-bar');
+  if (!bar) return;
+  const maxH = 30;
+  const maxVal = Math.max(...spikeHistory, 1);
+  bar.innerHTML = spikeHistory.map((v,i) => {
+    const h = Math.round((v/maxVal) * maxH);
+    return `<div class="bar-seg" style="height:${h}px;animation-delay:${i*0.02}s;opacity:${0.3+v/maxVal*0.7}"></div>`;
+  }).join('');
+}
+
+// ── Particles ──────────────────────────────────────────────────────
+const ptcContainer = document.getElementById('particles');
+for (let i = 0; i < 40; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.cssText = `
+    left:${Math.random()*100}%;
+    top:${100+Math.random()*20}%;
+    --d:${6+Math.random()*12}s;
+    --delay:${Math.random()*8}s;
+    background:${Math.random()>.5?'var(--accent)':'var(--accent2)'};
+  `;
+  ptcContainer.appendChild(p);
+}
+
+// ── Clock ──────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const upMs = Date.now() - startTime;
+  const mins = Math.floor(upMs/60000), secs = Math.floor((upMs%60000)/1000);
+  document.getElementById('m-uptime').textContent =
+    String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Model status polling ───────────────────────────────────────────
+async function checkModelStatus() {
+  try {
+    const r = await fetch(`${API}/api/model/status`);
+    const d = await r.json();
+    const el = document.getElementById('model-status');
+    const m  = document.getElementById('m-model');
+    const ms = document.getElementById('m-model-sub');
+    if (d.ready) {
+      el.textContent = '🟢 LUOKAI ready';
+      el.style.color = 'var(--accent3)';
+      m.textContent  = d.model ? d.model.replace('.gguf','') : 'LUOKAI';
+      m.style.fontSize = '12px';
+      ms.textContent = d.model_size || 'local inference';
+      document.getElementById('ai-status').textContent = '● ready';
+      document.getElementById('ai-status').style.color = 'var(--accent3)';
+      clearInterval(modelPoll);
+    } else if (d.loading) {
+      el.textContent = '⏳ Loading...';
+      m.textContent = 'Downloading weights';
+      document.getElementById('ai-status').textContent = '⏳ loading';
+    } else {
+      el.textContent = '⚡ LUOKAI';
+      m.textContent = 'Cell system ready';
+      document.getElementById('ai-status').textContent = '● cells';
+    }
+  } catch(e) {}
+}
+const modelPoll = setInterval(checkModelStatus, 3000);
+checkModelStatus();
+
+// ── Minimap ────────────────────────────────────────────────────────
+const mmCanvas = document.getElementById('minimap-canvas');
+const mmCtx = mmCanvas.getContext('2d');
+mmCanvas.width = 120; mmCanvas.height = 80;
+
+function drawMinimap() {
+  mmCtx.clearRect(0, 0, 120, 80);
+  mmCtx.fillStyle = 'rgba(8,13,18,.8)';
+  mmCtx.fillRect(0, 0, 120, 80);
+  const scaleX = 120 / window.innerWidth, scaleY = 80 / window.innerHeight;
+  document.querySelectorAll('.screen').forEach(s => {
+    if (s.style.display === 'none') return;
+    const rect = s.getBoundingClientRect();
+    mmCtx.fillStyle = s.classList.contains('focused')
+      ? 'rgba(0,212,255,.4)' : 'rgba(26,37,53,.8)';
+    mmCtx.strokeStyle = 'rgba(0,212,255,.3)';
+    mmCtx.lineWidth = 0.5;
+    const x = rect.left*scaleX, y = rect.top*scaleY;
+    const w = rect.width*scaleX, h = rect.height*scaleY;
+    mmCtx.fillRect(x, y, w, h);
+    mmCtx.strokeRect(x, y, w, h);
+  });
+  // Cursor dot
+  mmCtx.fillStyle = 'rgba(0,212,255,.8)';
+  mmCtx.beginPath();
+  mmCtx.arc(mouseX*scaleX, mouseY*scaleY, 2, 0, Math.PI*2);
+  mmCtx.fill();
+  requestAnimationFrame(drawMinimap);
+}
+drawMinimap();
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === '1') { e.preventDefault(); toggleScreen('screen-main'); }
+    if (e.key === '2') { e.preventDefault(); toggleScreen('screen-code'); }
+    if (e.key === '3') { e.preventDefault(); toggleScreen('screen-data'); }
+    if (e.key === '4') { e.preventDefault(); toggleScreen('screen-neural'); }
+    if (e.key === 'r') { e.preventDefault(); resetLayout(); }
+    if (e.key === 't') { e.preventDefault(); tileScreens(); }
+  }
+});
+
+// ── Init ───────────────────────────────────────────────────────────
+resetLayout();
+updateTaskbar();
+focusScreenEl(document.getElementById('screen-main'));
+</script>
+</body>
+</html>

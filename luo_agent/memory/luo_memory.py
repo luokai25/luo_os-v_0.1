@@ -77,8 +77,8 @@ class LuoMemory:
         os.makedirs(self.palace_path, exist_ok=True)
 
         # import here to allow luo_memory.py to be used standalone
-        from luo_cell import LuoCellNetwork
-        from luo_cells import (
+        from luo_agent.memory.luo_cell import LuoCellNetwork
+        from luo_agent.memory.luo_cells import (
             EpisodicCell, SemanticCell, SkillCell, WorkingCell,
             DecayCell, DreamCell, ImportanceCell, AssociativeCell,
             TemporalCell, MetaCell, GoalCell, SensoryCell,

@@ -77,12 +77,16 @@ os.environ["LUO_PORT"]      = str(PORT)
 os.environ["LUO_USER_NAME"] = USER_NAME
 os.environ["LUO_AI_MODEL"]  = AI_MODEL
 os.environ["LUO_FEATURES"]  = ",".join(k for k,v in FEATURES.items() if v)
+os.environ["LUO_UI"]         = config.get("ui_mode", "classic")
 url = f"http://localhost:{PORT}"
 
 # ── Startup info ────────────────────────────────────────────────────
 print(f"  {DIM}{'─'*54}{R}")
 info(f"Welcome back, {W}{USER_NAME}{R}")
-info(f"Starting LuoOS  →  {G}{url}{R}")
+ui_mode = config.get("ui_mode", "classic")
+info(f"Starting LuoOS  →  {G}{url}{R}  {DIM}(UI: {ui_mode}){R}")
+if ui_mode == "3d":
+    info(f"3D UI also at  →  {G}{url}/3d{R}")
 
 # Model status
 from luokai.core.model_engine import MODELS_DIR, PRIMARY_MODEL, UPGRADE_MODEL

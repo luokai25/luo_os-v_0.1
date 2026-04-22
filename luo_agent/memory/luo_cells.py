@@ -27,7 +27,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from luo_cell import LuoCell, LuoCellNetwork, Signal
+from luo_agent.memory.luo_cell import LuoCell, LuoCellNetwork, Signal
 
 logger = logging.getLogger("luo_memory")
 

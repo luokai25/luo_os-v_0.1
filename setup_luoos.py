@@ -137,6 +137,83 @@ def _recommend_model():
         return "qwen2.5-1.5b"
 
 
+
+# ── 60 Most-used API keys ─────────────────────────────────────────
+API_KEY_CATALOG = [
+    # AI & ML
+    ("OPENAI_API_KEY",          "OpenAI",              "ai",        "GPT-4, DALL-E, Whisper"),
+    ("ANTHROPIC_API_KEY",       "Anthropic",           "ai",        "Claude 3.5 Sonnet, Haiku"),
+    ("GOOGLE_AI_API_KEY",       "Google AI (Gemini)",  "ai",        "Gemini Pro, Gemini Flash"),
+    ("COHERE_API_KEY",          "Cohere",              "ai",        "Command, Embed, Rerank"),
+    ("MISTRAL_API_KEY",         "Mistral AI",          "ai",        "Mistral Large, Codestral"),
+    ("GROQ_API_KEY",            "Groq",                "ai",        "Llama3, Mixtral — ultra fast"),
+    ("TOGETHER_API_KEY",        "Together AI",         "ai",        "Open source models"),
+    ("REPLICATE_API_TOKEN",     "Replicate",           "ai",        "Run any ML model"),
+    ("HUGGINGFACE_TOKEN",       "Hugging Face",        "ai",        "Models, datasets, spaces"),
+    ("STABILITY_API_KEY",       "Stability AI",        "ai",        "Stable Diffusion"),
+    ("ELEVENLABS_API_KEY",      "ElevenLabs",          "ai",        "Voice synthesis"),
+    ("DEEPGRAM_API_KEY",        "Deepgram",            "ai",        "Speech-to-text"),
+    # Search & Web
+    ("SERPAPI_API_KEY",         "SerpAPI",             "search",    "Google Search results"),
+    ("BRAVE_API_KEY",           "Brave Search",        "search",    "Privacy-first search"),
+    ("BING_SEARCH_KEY",         "Bing Search",         "search",    "Microsoft Bing API"),
+    ("GOOGLE_SEARCH_KEY",       "Google Search",       "search",    "Google Custom Search"),
+    ("TAVILY_API_KEY",          "Tavily",              "search",    "AI-optimised web search"),
+    # Cloud
+    ("AWS_ACCESS_KEY_ID",       "AWS",                 "cloud",     "Amazon Web Services"),
+    ("GOOGLE_CLOUD_KEY",        "Google Cloud",        "cloud",     "GCP services"),
+    ("AZURE_API_KEY",           "Microsoft Azure",     "cloud",     "Azure Cognitive Services"),
+    ("CLOUDFLARE_API_TOKEN",    "Cloudflare",          "cloud",     "CDN, Workers, R2"),
+    ("VERCEL_TOKEN",            "Vercel",              "cloud",     "Deployments, Edge"),
+    ("NETLIFY_TOKEN",           "Netlify",             "cloud",     "Static sites, Functions"),
+    ("DIGITALOCEAN_TOKEN",      "DigitalOcean",        "cloud",     "Droplets, K8s, Spaces"),
+    # Data & Storage
+    ("SUPABASE_KEY",            "Supabase",            "data",      "Postgres + Auth + Storage"),
+    ("MONGODB_URI",             "MongoDB Atlas",       "data",      "Cloud database"),
+    ("REDIS_URL",               "Redis Cloud",         "data",      "Cache + pub/sub"),
+    ("PINECONE_API_KEY",        "Pinecone",            "data",      "Vector database"),
+    ("WEAVIATE_API_KEY",        "Weaviate",            "data",      "Vector search"),
+    ("PLANETSCALE_TOKEN",       "PlanetScale",         "data",      "Serverless MySQL"),
+    # Communication
+    ("TWILIO_AUTH_TOKEN",       "Twilio",              "comm",      "SMS, voice, WhatsApp"),
+    ("SENDGRID_API_KEY",        "SendGrid",            "comm",      "Transactional email"),
+    ("RESEND_API_KEY",          "Resend",              "comm",      "Email for developers"),
+    ("MAILGUN_API_KEY",         "Mailgun",             "comm",      "Email API"),
+    ("SLACK_BOT_TOKEN",         "Slack",               "comm",      "Slack bot + webhooks"),
+    ("DISCORD_BOT_TOKEN",       "Discord",             "comm",      "Discord bot"),
+    ("TELEGRAM_BOT_TOKEN",      "Telegram",            "comm",      "Telegram bot"),
+    # Payments & Finance
+    ("STRIPE_SECRET_KEY",       "Stripe",              "payments",  "Payments, subscriptions"),
+    ("PAYPAL_CLIENT_SECRET",    "PayPal",              "payments",  "PayPal checkout"),
+    ("COINBASE_API_KEY",        "Coinbase",            "payments",  "Crypto payments"),
+    ("PLAID_SECRET",            "Plaid",               "payments",  "Bank data, fintech"),
+    # Analytics & Monitoring
+    ("MIXPANEL_TOKEN",          "Mixpanel",            "analytics", "Product analytics"),
+    ("SEGMENT_WRITE_KEY",       "Segment",             "analytics", "Data pipeline"),
+    ("AMPLITUDE_API_KEY",       "Amplitude",           "analytics", "Behavioural analytics"),
+    ("DATADOG_API_KEY",         "Datadog",             "analytics", "Monitoring + APM"),
+    ("SENTRY_DSN",              "Sentry",              "analytics", "Error tracking"),
+    ("POSTHOG_API_KEY",         "PostHog",             "analytics", "Open source analytics"),
+    # Developer Tools
+    ("GITHUB_TOKEN",            "GitHub",              "dev",       "Repos, Actions, APIs"),
+    ("GITLAB_TOKEN",            "GitLab",              "dev",       "GitLab API"),
+    ("JIRA_API_TOKEN",          "Jira",                "dev",       "Project management"),
+    ("LINEAR_API_KEY",          "Linear",              "dev",       "Issue tracking"),
+    ("NOTION_TOKEN",            "Notion",              "dev",       "Workspace API"),
+    ("AIRTABLE_API_KEY",        "Airtable",            "dev",       "No-code database"),
+    # Maps & Location
+    ("GOOGLE_MAPS_KEY",         "Google Maps",         "maps",      "Maps, geocoding, places"),
+    ("MAPBOX_TOKEN",            "Mapbox",              "maps",      "Custom maps"),
+    ("OPENWEATHER_KEY",         "OpenWeatherMap",      "maps",      "Weather data"),
+    # Auth & Security
+    ("AUTH0_CLIENT_SECRET",     "Auth0",               "auth",      "Authentication platform"),
+    ("CLERK_SECRET_KEY",        "Clerk",               "auth",      "User management"),
+    ("FIREBASE_SECRET",         "Firebase",            "auth",      "Google Firebase"),
+    # Media & Content
+    ("CLOUDINARY_API_SECRET",   "Cloudinary",          "media",     "Image + video CDN"),
+    ("YOUTUBE_API_KEY",         "YouTube Data",        "media",     "YouTube API v3"),
+]
+
 # ════════════════════════════════════════════════════════════════════
 # SETUP WIZARD
 # ════════════════════════════════════════════════════════════════════
@@ -213,8 +290,52 @@ def run_setup():
         dl_now = ask_yn("  Download the model now? (happens in background if No)", default=True)
         config["download_model_now"] = dl_now
 
+    # ── Step 2.5: API Keys ──────────────────────────────────────────
+    header("Step 3 of 6 — API Keys (optional)",
+           "Connect LUOKAI to external services for extra capabilities")
+
+    print(f"  {DIM}All keys stored locally in ~/.luo_os/config.json — never sent anywhere.{R}")
+    print(f"  {DIM}Skip any you don't have. You can add them later by editing config.json{R}")
+
+    config["api_keys"] = {}
+    categories = {}
+    for env_key, name, cat, desc in API_KEY_CATALOG:
+        categories.setdefault(cat, []).append((env_key, name, desc))
+
+    cat_labels = {
+        "ai": "🤖 AI & Machine Learning",
+        "search": "🔍 Search & Web",
+        "cloud": "☁️  Cloud Platforms",
+        "data": "🗄️  Databases & Storage",
+        "comm": "💬 Communication",
+        "payments": "💳 Payments & Finance",
+        "analytics": "📊 Analytics & Monitoring",
+        "dev": "🛠️  Developer Tools",
+        "maps": "🗺️  Maps & Location",
+        "auth": "🔐 Auth & Security",
+        "media": "🎬 Media & Content",
+    }
+
+    add_any = ask_yn("  Add any API keys now?", default=False)
+    if add_any:
+        for cat_key, entries in categories.items():
+            print(f"\n  {W}{cat_labels.get(cat_key, cat_key)}{R}")
+            for env_key, name, desc in entries:
+                val = ask(f"  {name} {DIM}({desc}){R}", default="")
+                if val and val.strip():
+                    config["api_keys"][env_key] = val.strip()
+                    # Also set in environment immediately
+                    import os as _os
+                    _os.environ[env_key] = val.strip()
+
+    added = len(config["api_keys"])
+    if added:
+        tick(f"{added} API key{'s' if added != 1 else ''} saved")
+    else:
+        info("No API keys added — LUOKAI works great without them")
+
     # ── Step 3: Appearance ───────────────────────────────────────────
-    header("Step 3 of 5 — Appearance",
+    header("Step 4 of 6 — Appearance",
            "How should LuoOS look?")
 
     print(f"  {C}Theme:{R}\n")
@@ -239,8 +360,68 @@ def run_setup():
     config["wallpaper"] = wallpaper
     tick(f"Wallpaper: {wallpaper}")
 
-    # ── Step 4: Features ─────────────────────────────────────────────
-    header("Step 4 of 5 — Features",
+    print()
+    print(f"  {C}Desktop mode:{R}\n")
+    ui_mode = ask("", options=[
+        ("3d",      f"3D Spatial    {DIM}Four floating screens, 3D parallax, drag anywhere{R}  {Y}← New{R}"),
+        ("classic", f"Classic       {DIM}Traditional desktop layout (default){R}"),
+    ])
+    config["ui_mode"] = ui_mode
+    tick(f"Desktop: {'3D Spatial' if ui_mode == '3d' else 'Classic'}")
+
+    # ── Step 3.5: API Keys ───────────────────────────────────────────
+    header("Step 4 of 6 — API Keys (optional)",
+           "Connect external services to LuoOS — skip any you don't need")
+
+    config["api_keys"] = {}
+    print(f"  {DIM}Keys are stored in ~/.luo_os/config.json (local only, never sent anywhere){R}")
+    print(f"  {DIM}Press Enter to skip any key. You can add keys later by editing config.json{R}")
+
+    add_keys = ask_yn("  Would you like to add any API keys now?", default=False)
+
+    if add_keys:
+        # Group by category
+        categories = [
+            ("🤖 AI & LLM",          ["openai","anthropic","google_ai","mistral","cohere","groq","together","replicate","huggingface","perplexity"]),
+            ("🔍 Search & Web",       ["serpapi","brave_search","tavily","bing_search","exa"]),
+            ("Cloud",              ["aws","gcp","azure","cloudflare","vercel"]),
+            ("💻 Dev & Code",          ["github","gitlab","linear","supabase","firebase"]),
+            ("💬 Communication",       ["twilio","sendgrid","slack","discord","telegram"]),
+            ("💳 Payments",            ["stripe","paypal","plaid"]),
+            ("📊 Data & Analytics",    ["pinecone","airtable","notion","mongodb"]),
+            ("Maps & Weather",     ["google_maps","mapbox","openweather"]),
+            ("🎵 Media & Voice",       ["cloudinary","elevenlabs","deepgram","spotify"]),
+            ("🔐 Auth & Monitoring",   ["auth0","datadog","sentry","posthog"]),
+            ("📰 Misc",                ["newsapi","alpha_vantage","coinbase"]),
+        ]
+
+        provider_map = {p[0]: p for p in API_PROVIDERS}
+
+        for cat_name, keys in categories:
+            print(f"\n  {B}{cat_name}{R}")
+            any_in_cat = False
+            for key in keys:
+                if key not in provider_map:
+                    continue
+                pid, name, desc = provider_map[key]
+                val = ask(f"  {name} {DIM}({desc}){R}", default="")
+                if val and val.strip():
+                    config["api_keys"][key] = val.strip()
+                    tick(f"{name} key saved")
+                    any_in_cat = True
+            if not any_in_cat:
+                pass  # silently skip empty categories
+
+        total_keys = len(config["api_keys"])
+        if total_keys:
+            tick(f"{total_keys} API key{'s' if total_keys > 1 else ''} saved")
+        else:
+            info("No keys added — you can add them later in ~/.luo_os/config.json")
+    else:
+        info("Skipped — add API keys later in ~/.luo_os/config.json")
+
+    # ── Step 5: Features ─────────────────────────────────────────────
+    header("Step 5 of 6 — Features",
            "Enable or disable LUOKAI capabilities")
 
     print()
@@ -263,7 +444,7 @@ def run_setup():
         print(f"  → {status}\n")
 
     # ── Step 5: Port & auto-open ─────────────────────────────────────
-    header("Step 5 of 5 — Startup preferences",
+    header("Step 6 of 6 — Startup preferences",
            "How should LuoOS start?")
 
     print(f"  {C}Server port:{R}\n")
@@ -339,6 +520,83 @@ def run_setup():
 # CONFIG APPLICATION
 # ════════════════════════════════════════════════════════════════════
 
+
+# ── 60 most-used API providers ──────────────────────────────────────
+API_PROVIDERS = [
+    # AI & LLM
+    ("openai",          "OpenAI",               "GPT-4, DALL-E, Whisper"),
+    ("anthropic",       "Anthropic",            "Claude models"),
+    ("google_ai",       "Google AI (Gemini)",   "Gemini Pro, Flash"),
+    ("mistral",         "Mistral AI",           "Mistral, Mixtral models"),
+    ("cohere",          "Cohere",               "Command, Embed models"),
+    ("groq",            "Groq",                 "Ultra-fast LLM inference"),
+    ("together",        "Together AI",          "Open-source model hosting"),
+    ("replicate",       "Replicate",            "Image/video/audio AI"),
+    ("huggingface",     "Hugging Face",         "Model hub + Inference API"),
+    ("perplexity",      "Perplexity AI",        "AI-powered search"),
+    # Search & Web
+    ("serpapi",         "SerpAPI",              "Google Search results"),
+    ("brave_search",    "Brave Search",         "Privacy-focused search"),
+    ("tavily",          "Tavily",               "AI-optimised web search"),
+    ("bing_search",     "Bing Search",          "Microsoft web search"),
+    ("exa",             "Exa.ai",               "Neural search engine"),
+    # Cloud
+    ("aws",             "AWS",                  "S3, Lambda, EC2 etc."),
+    ("gcp",             "Google Cloud",         "GCS, BigQuery, etc."),
+    ("azure",           "Microsoft Azure",      "Azure services"),
+    ("cloudflare",      "Cloudflare",           "CDN, Workers, R2"),
+    ("vercel",          "Vercel",               "Deployments + Edge"),
+    # Dev & Code
+    ("github",          "GitHub",               "Repos, Actions, Copilot"),
+    ("gitlab",          "GitLab",               "CI/CD, repos"),
+    ("linear",          "Linear",               "Issue tracking"),
+    ("jira",            "Jira / Atlassian",     "Project management"),
+    ("supabase",        "Supabase",             "Postgres + auth + storage"),
+    ("firebase",        "Firebase",             "Realtime DB + auth"),
+    ("planetscale",     "PlanetScale",          "Serverless MySQL"),
+    ("neon",            "Neon",                 "Serverless Postgres"),
+    # Communication
+    ("twilio",          "Twilio",               "SMS, voice, WhatsApp"),
+    ("sendgrid",        "SendGrid",             "Transactional email"),
+    ("mailgun",         "Mailgun",              "Email API"),
+    ("slack",           "Slack",                "Messaging + bots"),
+    ("discord",         "Discord",              "Bot API"),
+    ("telegram",        "Telegram",             "Bot API"),
+    ("whatsapp",        "WhatsApp Business",    "Messaging API"),
+    # Payments & Finance
+    ("stripe",          "Stripe",               "Payments + billing"),
+    ("paypal",          "PayPal",               "Payments"),
+    ("plaid",           "Plaid",                "Banking data"),
+    ("coinbase",        "Coinbase",             "Crypto"),
+    # Data & Analytics
+    ("pinecone",        "Pinecone",             "Vector database"),
+    ("weaviate",        "Weaviate",             "Vector + GraphQL DB"),
+    ("airtable",        "Airtable",             "Spreadsheet DB"),
+    ("notion",          "Notion",               "Docs + DB API"),
+    ("mongodb",         "MongoDB Atlas",        "Cloud MongoDB"),
+    # Maps & Location
+    ("google_maps",     "Google Maps",          "Geocoding, directions"),
+    ("mapbox",          "Mapbox",               "Custom maps"),
+    ("openweather",     "OpenWeatherMap",       "Weather data"),
+    # Media
+    ("cloudinary",      "Cloudinary",           "Image/video CDN"),
+    ("youtube",         "YouTube Data",         "Videos, channels"),
+    ("spotify",         "Spotify",              "Music API"),
+    ("elevenlabs",      "ElevenLabs",           "Text-to-speech AI"),
+    ("deepgram",        "Deepgram",             "Speech-to-text AI"),
+    # Auth & Security
+    ("auth0",           "Auth0",                "Authentication"),
+    ("okta",            "Okta",                 "Enterprise identity"),
+    # Monitoring & Infra
+    ("datadog",         "Datadog",              "Monitoring + APM"),
+    ("sentry",          "Sentry",               "Error tracking"),
+    ("posthog",         "PostHog",              "Product analytics"),
+    ("grafana",         "Grafana Cloud",        "Dashboards + alerts"),
+    # Misc
+    ("newsapi",         "NewsAPI",              "Live news articles"),
+    ("alpha_vantage",   "Alpha Vantage",        "Stock market data"),
+]
+
 THEMES = {
     "dark": {
         "--bg":        "#0d0d0d",
@@ -407,6 +665,12 @@ def _apply_config(config):
         return
 
     content = html_path.read_text(encoding="utf-8")
+
+    # ── Apply API keys to environment ───────────────────────────────
+    import os as _os
+    for env_key, val in config.get("api_keys", {}).items():
+        if val:
+            _os.environ[env_key] = val
 
     # ── Apply theme CSS variables ────────────────────────────────────
     theme_name = config.get("theme", "dark")

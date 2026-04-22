@@ -578,8 +578,13 @@ class LuokaiInference:
     def _init_model_engine(self):
         """Boot the local model engine in background."""
         try:
-            from luokai.core.model_engine import boot_engine
-            self._model_engine = boot_engine()
+            import os
+            from luokai.core.model_engine import boot_engine, set_active_model
+            model_key = os.environ.get("LUO_AI_MODEL", "qwen2.5-1.5b")
+            if model_key != "none":
+                set_active_model(model_key)
+                self._model_engine = boot_engine()
+            # If model_key == "none", _model_engine stays None — cells handle everything
         except Exception as e:
             print(f"[LuokaiInference] Model engine not available: {e}")
 
