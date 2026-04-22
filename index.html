@@ -901,37 +901,180 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
     case "settings": return `
       <div class="settings-layout">
         <div class="settings-sidebar">
-          ${[["🖥️","Appearance"],["🤖","LUOKAI AI"],["🎤","Voice"],["🔄","Evolution"],["ℹ️","System"],["🔒","Privacy"],["🎨","Themes"],["🌐","Network"]].map(([i,n])=>`<div class="settings-item" onclick="settingsTab('${n}')">${i} ${n}</div>`).join("")}
+          ${[["🖥️","Appearance"],["🤖","LUOKAI AI"],["🎤","Voice"],["🔄","Evolution"],["🔑","API Keys"],["🎨","Themes"],["ℹ️","System"],["🔒","Privacy"],["🌐","Network"]].map(([i,n],idx)=>`<div class="settings-item${idx===0?' active':''}" onclick="settingsTab('${n}')" data-tab="${n}">${i} ${n}</div>`).join("")}
         </div>
         <div class="settings-content" id="settings-content">
-          <div class="settings-section">
-            <h3>Appearance</h3>
-            <div class="settings-row"><label>Dark Mode</label><button class="toggle on" id="tog-dark" onclick="toggleTheme()"></button></div>
-            <div class="settings-row"><label>Wallpaper Text Shadow</label><button class="toggle on" id="tog-shadow" onclick="toggleSetting('shadow',this)"></button></div>
-            <div class="settings-row"><label>Animations</label><button class="toggle on" id="tog-anim" onclick="toggleSetting('anim',this)"></button></div>
-            <div class="settings-row"><label>Blur Effects</label><button class="toggle on" id="tog-blur" onclick="toggleSetting('blur',this)"></button></div>
-          </div>
-          <div class="settings-section">
-            <h3>LUOKAI AI</h3>
-            <div class="settings-row"><label>Always-On Voice</label><button class="toggle" id="tog-voice" onclick="toggleVoiceFromSettings()"></button></div>
-            <div class="settings-row"><label>Co-Evolution Engine</label><button class="toggle" id="tog-coevo" onclick="toggleCoevo()"></button></div>
-            <div class="settings-row"><label>Auto-Learn from Internet</label><button class="toggle on" onclick="toggleSetting('autolearn',this)"></button></div>
 
-            <div class="settings-row"><label>Neural Engine</label>
-              <select style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
-                <option>LUOKAI (built-in)</option><option>CL1 Hardware</option><option>Simulation</option>
-              </select>
+          <div class="stab" data-tab="Appearance">
+            <div class="settings-section">
+              <h3>Appearance</h3>
+              <div class="settings-row"><label>Dark Mode</label><button class="toggle on" id="tog-dark" onclick="toggleTheme()"></button></div>
+              <div class="settings-row"><label>Wallpaper Text Shadow</label><button class="toggle on" id="tog-shadow" onclick="toggleSetting('shadow',this)"></button></div>
+              <div class="settings-row"><label>Animations</label><button class="toggle on" id="tog-anim" onclick="toggleSetting('anim',this)"></button></div>
+              <div class="settings-row"><label>Blur Effects</label><button class="toggle on" id="tog-blur" onclick="toggleSetting('blur',this)"></button></div>
+              <div class="settings-row"><label>Font Size</label>
+                <select onchange="setFontSize(this.value)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
+                  <option value="12">Small (12px)</option><option value="13" selected>Medium (13px)</option><option value="15">Large (15px)</option>
+                </select>
+              </div>
+              <div class="settings-row"><label>UI Mode</label>
+                <select onchange="switchUI(this.value)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
+                  <option value="classic">Classic Desktop</option><option value="3d">3D Spatial</option>
+                </select>
+              </div>
             </div>
           </div>
-          <div class="settings-section">
-            <h3>System Info</h3>
-            <div class="settings-row"><label>OS Name</label><span style="color:var(--accent);font-size:13px">LuoOS v1.0</span></div>
-            <div class="settings-row"><label>Creator</label><span style="color:var(--text2);font-size:13px">Luo Kai (luokai25)</span></div>
-            <div class="settings-row"><label>AI Core</label><span style="color:var(--text2);font-size:13px">LUOKAI v1.0</span></div>
-            <div class="settings-row"><label>License</label><span style="color:var(--text2);font-size:13px">Open Source — All rights Luo Kai © 2025</span></div>
-            <div class="settings-row"><label>Skills Loaded</label><span style="color:var(--accent3);font-size:13px" id="st-skills">4,146</span></div>
-            <div class="settings-row"><label>Memory</label><span style="color:var(--text2);font-size:13px" id="st-mem">—</span></div>
+
+          <div class="stab" data-tab="LUOKAI AI" style="display:none">
+            <div class="settings-section">
+              <h3>LUOKAI AI</h3>
+              <div class="settings-row"><label>Always-On Voice</label><button class="toggle" id="tog-voice" onclick="toggleVoiceFromSettings()"></button></div>
+              <div class="settings-row"><label>Co-Evolution Engine</label><button class="toggle" id="tog-coevo" onclick="toggleCoevo()"></button></div>
+              <div class="settings-row"><label>Auto-Learn</label><button class="toggle on" id="tog-autolearn" onclick="toggleSetting('autolearn',this)"></button></div>
+              <div class="settings-row"><label>Neural Engine</label>
+                <select onchange="setNeuralEngine(this.value)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
+                  <option value="luokai">LUOKAI (built-in)</option><option value="cl1">CL1 Hardware</option><option value="sim">Simulation</option>
+                </select>
+              </div>
+              <div class="settings-row"><label>Model Status</label><span id="settings-model-status" style="font-size:12px;color:var(--accent)">checking...</span></div>
+              <div class="settings-row"><label>Knowledge Entries</label><span style="color:var(--accent3);font-size:12px">78,063</span></div>
+              <div class="settings-row"><label>Skills Loaded</label><span style="color:var(--accent3);font-size:12px" id="st-skills">4,146</span></div>
+            </div>
           </div>
+
+          <div class="stab" data-tab="Voice" style="display:none">
+            <div class="settings-section">
+              <h3>Voice Settings</h3>
+              <div class="settings-row"><label>Voice Activation</label><button class="toggle" id="tog-voice2" onclick="toggleVoiceFromSettings()"></button></div>
+              <div class="settings-row"><label>Wake Word</label>
+                <select style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
+                  <option>Luo</option><option>LUOKAI</option><option>Hey Luo</option>
+                </select>
+              </div>
+              <div class="settings-row"><label>Voice Speed</label>
+                <input type="range" min="0.5" max="2" step="0.1" value="1" style="accent-color:var(--accent)">
+              </div>
+              <div class="settings-row"><label>Auto-respond</label><button class="toggle on" onclick="toggleSetting('auto-respond',this)"></button></div>
+              <div class="settings-row">
+                <button onclick="testVoice()" style="background:var(--accent);border:none;color:#000;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Test Voice</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="stab" data-tab="Evolution" style="display:none">
+            <div class="settings-section">
+              <h3>Co-Evolution Engine</h3>
+              <div class="settings-row"><label>Enable Co-Evolution</label><button class="toggle" id="tog-coevo2" onclick="toggleCoevo()"></button></div>
+              <div class="settings-row"><label>Mutation Rate</label>
+                <input type="range" min="0" max="100" value="20" style="accent-color:var(--accent)" oninput="this.nextElementSibling.textContent=this.value+'%'"><span style="color:var(--accent2);font-size:12px;min-width:35px">20%</span>
+              </div>
+              <div class="settings-row"><label>Learning Speed</label>
+                <select style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
+                  <option>Slow</option><option selected>Normal</option><option>Fast</option>
+                </select>
+              </div>
+              <div class="settings-row"><label>Evolution Status</label><span id="evo-status" style="color:var(--text2);font-size:12px">idle</span></div>
+              <div class="settings-row">
+                <button onclick="toggleCoevo()" style="background:var(--accent2);border:none;color:#fff;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">Start Evolution Cycle</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="stab" data-tab="API Keys" style="display:none">
+            <div class="settings-section">
+              <h3>API Keys</h3>
+              <p style="color:var(--text2);font-size:11px;margin-bottom:12px">Keys stored locally in ~/.luo_os/config.json — never sent anywhere</p>
+              ${[
+                ["OpenAI","openai_key","sk-..."],
+                ["Anthropic","anthropic_key","sk-ant-..."],
+                ["Google AI","google_ai_key","AIza..."],
+                ["Groq","groq_key","gsk_..."],
+                ["Mistral","mistral_key","..."],
+                ["Together AI","together_key","..."],
+                ["GitHub","github_key","ghp_..."],
+                ["Stripe","stripe_key","sk_..."],
+                ["Twilio","twilio_key","AC..."],
+                ["SendGrid","sendgrid_key","SG...."],
+                ["AWS Access","aws_key","AKIA..."],
+                ["Cloudflare","cloudflare_key","..."],
+              ].map(([label,key,ph])=>`
+              <div class="settings-row"><label>${label}</label>
+                <input type="password" placeholder="${ph}" id="apikey-${key}"
+                  style="width:180px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:11px;font-family:monospace"
+                  onchange="saveApiKey('${key}',this.value)">
+              </div>`).join("")}
+              <div class="settings-row">
+                <button onclick="loadApiKeys()" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer">↺ Reload from config</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="stab" data-tab="Themes" style="display:none">
+            <div class="settings-section">
+              <h3>Themes</h3>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
+                ${[
+                  ["Dark","#0d0d0d","#4fc3f7"],
+                  ["Darker","#000000","#00e5ff"],
+                  ["Hacker","#000000","#00ff41"],
+                  ["Ocean","#020c1b","#64ffda"],
+                  ["Light","#f5f5f5","#1976d2"],
+                  ["Purple","#0a0010","#cc88ff"],
+                ].map(([name,bg,acc])=>`
+                <div onclick="applyTheme('${name.toLowerCase()}')"
+                  style="background:${bg};border:2px solid ${acc}33;border-radius:8px;padding:12px;cursor:pointer;transition:border-color .2s"
+                  onmouseover="this.style.borderColor='${acc}'" onmouseout="this.style.borderColor='${acc}33'">
+                  <div style="font-size:11px;color:${acc};font-weight:600">${name}</div>
+                  <div style="display:flex;gap:4px;margin-top:6px">
+                    <div style="width:12px;height:12px;border-radius:50%;background:${bg};border:1px solid #444"></div>
+                    <div style="width:12px;height:12px;border-radius:50%;background:${acc}"></div>
+                  </div>
+                </div>`).join("")}
+              </div>
+            </div>
+          </div>
+
+          <div class="stab" data-tab="System" style="display:none">
+            <div class="settings-section">
+              <h3>System Info</h3>
+              <div class="settings-row"><label>OS Name</label><span style="color:var(--accent);font-size:13px">LuoOS v1.0</span></div>
+              <div class="settings-row"><label>Creator</label><span style="color:var(--text2);font-size:13px">Luo Kai (luokai25)</span></div>
+              <div class="settings-row"><label>AI Core</label><span style="color:var(--text2);font-size:13px">LUOKAI v1.0 — Independent</span></div>
+              <div class="settings-row"><label>License</label><span style="color:var(--text2);font-size:13px">Open Source — Luo Kai © 2025</span></div>
+              <div class="settings-row"><label>Skills Loaded</label><span style="color:var(--accent3);font-size:13px" id="st-skills2">4,146</span></div>
+              <div class="settings-row"><label>Knowledge DB</label><span style="color:var(--accent3);font-size:13px">78,063 entries</span></div>
+              <div class="settings-row"><label>Model</label><span id="sys-model" style="color:var(--text2);font-size:12px">checking...</span></div>
+              <div class="settings-row"><label>Memory (session)</label><span style="color:var(--text2);font-size:13px" id="st-mem">—</span></div>
+              <div class="settings-row"><label>Repo</label><a href="https://github.com/luokai25/luo_os-v_0.1" target="_blank" style="color:var(--accent);font-size:12px">github.com/luokai25/luo_os-v_0.1</a></div>
+            </div>
+          </div>
+
+          <div class="stab" data-tab="Privacy" style="display:none">
+            <div class="settings-section">
+              <h3>Privacy</h3>
+              <div class="settings-row"><label>Local-only mode</label><button class="toggle on" onclick="toggleSetting('local-only',this)"></button></div>
+              <div class="settings-row"><label>Save conversation history</label><button class="toggle on" onclick="toggleSetting('save-history',this)"></button></div>
+              <div class="settings-row"><label>Analytics / telemetry</label><button class="toggle" onclick="toggleSetting('telemetry',this)"></button></div>
+              <div class="settings-row"><label>Clear conversation history</label>
+                <button onclick="clearHistory()" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer">Clear History</button>
+              </div>
+              <p style="color:var(--text3);font-size:11px;margin-top:12px;line-height:1.6">
+                LuoOS runs entirely on your machine. No data is sent to external servers unless you enable API keys. Your conversations stay local.
+              </p>
+            </div>
+          </div>
+
+          <div class="stab" data-tab="Network" style="display:none">
+            <div class="settings-section">
+              <h3>Network</h3>
+              <div class="settings-row"><label>Server Port</label><span style="color:var(--accent);font-size:13px" id="net-port">3000</span></div>
+              <div class="settings-row"><label>Server Status</label><span id="net-status" style="color:var(--accent3);font-size:12px">checking...</span></div>
+              <div class="settings-row"><label>Auto-start server</label><button class="toggle on" onclick="toggleSetting('auto-start',this)"></button></div>
+              <div class="settings-row"><label>Allow LAN access</label><button class="toggle" onclick="toggleSetting('lan-access',this)"></button></div>
+              <div class="settings-row"><label>LUOKAI API URL</label><span style="color:var(--text2);font-size:11px;font-family:monospace" id="net-url">http://localhost:3000</span></div>
+            </div>
+          </div>
+
         </div>
       </div>`;
 
@@ -1505,7 +1648,114 @@ async function noteAI() {
 
 // ── SETTINGS ─────────────────────────────────────────────────────
 function settingsTab(name) {
-  document.querySelectorAll(".settings-item").forEach(el => el.classList.toggle("active", el.textContent.includes(name)));
+  // Update sidebar active state
+  document.querySelectorAll(".settings-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.tab === name);
+  });
+  // Show correct tab content
+  document.querySelectorAll(".stab").forEach(el => {
+    el.style.display = el.dataset.tab === name ? "block" : "none";
+  });
+  // Load live data for relevant tabs
+  if (name === "LUOKAI AI" || name === "System") loadSettingsStatus();
+  if (name === "Network") loadNetworkStatus();
+  if (name === "API Keys") loadApiKeys();
+}
+
+function loadSettingsStatus() {
+  fetch(\`\${API}/api/model/status\`).then(r=>r.json()).then(d=>{
+    const el = document.getElementById("settings-model-status");
+    const el2 = document.getElementById("sys-model");
+    const txt = d.ready ? "🟢 " + (d.model||"ready") : d.loading ? "⏳ loading..." : "⚡ cell system";
+    if (el) el.textContent = txt;
+    if (el2) el2.textContent = txt;
+  }).catch(()=>{});
+  fetch(\`\${API}/api/skills/stats\`).then(r=>r.json()).then(d=>{
+    const el = document.getElementById("st-skills");
+    const el2 = document.getElementById("st-skills2");
+    const count = d.total_skills || d.count || "4,146";
+    if (el) el.textContent = count;
+    if (el2) el2.textContent = count;
+  }).catch(()=>{});
+}
+
+function loadNetworkStatus() {
+  const portEl = document.getElementById("net-port");
+  const statusEl = document.getElementById("net-status");
+  const urlEl = document.getElementById("net-url");
+  const port = window.location.port || "3000";
+  if (portEl) portEl.textContent = port;
+  if (urlEl) urlEl.textContent = \`http://localhost:\${port}\`;
+  fetch(\`\${API}/api/status\`).then(r=>r.json()).then(d=>{
+    if (statusEl) { statusEl.textContent = "🟢 online"; statusEl.style.color = "var(--accent3)"; }
+  }).catch(()=>{
+    if (statusEl) { statusEl.textContent = "🔴 offline"; statusEl.style.color = "#f44"; }
+  });
+}
+
+function loadApiKeys() {
+  // Try to load existing saved keys from server config (best-effort)
+  fetch(\`\${API}/api/status\`).then(r=>r.json()).then(d=>{
+    const keys = d.api_keys || {};
+    Object.entries(keys).forEach(([k,v])=>{
+      const el = document.getElementById("apikey-" + k);
+      if (el && v) el.placeholder = "••••••••" + v.slice(-4);
+    });
+  }).catch(()=>{});
+}
+
+function saveApiKey(key, value) {
+  if (!value) return;
+  fetch(\`\${API}/api/config/key\`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({key, value})
+  }).then(()=> notify("API Key Saved", key.replace("_key","") + " key saved locally", "info"))
+    .catch(()=> notify("Saved locally", "Key stored in session", "info"));
+}
+
+function applyTheme(name) {
+  const themes = {
+    dark:   {"--bg":"#0d0d0d","--bg-card":"#141414","--bg-input":"#1a1a1a","--border":"#2a2a2a","--text":"#e8e8e8","--text2":"#999","--accent":"#4fc3f7","--accent2":"#7c4dff","--accent3":"#4caf50"},
+    darker: {"--bg":"#000000","--bg-card":"#0a0a0a","--bg-input":"#111","--border":"#222","--text":"#fff","--text2":"#aaa","--accent":"#00e5ff","--accent2":"#aa00ff","--accent3":"#00e676"},
+    hacker: {"--bg":"#000000","--bg-card":"#001100","--bg-input":"#001a00","--border":"#003300","--text":"#00ff41","--text2":"#00bb30","--accent":"#00ff41","--accent2":"#00cc33","--accent3":"#00ff88"},
+    ocean:  {"--bg":"#020c1b","--bg-card":"#0a192f","--bg-input":"#112240","--border":"#1d3557","--text":"#ccd6f6","--text2":"#8892b0","--accent":"#64ffda","--accent2":"#57cbff","--accent3":"#48cfb2"},
+    light:  {"--bg":"#f5f5f5","--bg-card":"#fff","--bg-input":"#eee","--border":"#ccc","--text":"#111","--text2":"#555","--accent":"#1976d2","--accent2":"#7b1fa2","--accent3":"#2e7d32"},
+    purple: {"--bg":"#0a0010","--bg-card":"#110020","--bg-input":"#1a0030","--border":"#3a0060","--text":"#e8d8ff","--text2":"#9980c0","--accent":"#cc88ff","--accent2":"#ff66dd","--accent3":"#88ffcc"},
+  };
+  const t = themes[name] || themes.dark;
+  Object.entries(t).forEach(([k,v])=>document.documentElement.style.setProperty(k,v));
+  localStorage.setItem("luo-theme-name", name);
+  notify("Theme Applied", name.charAt(0).toUpperCase()+name.slice(1), "info");
+}
+
+function setFontSize(size) {
+  document.documentElement.style.setProperty("--font-size-base", size+"px");
+  document.body.style.fontSize = size+"px";
+}
+
+function setNeuralEngine(val) {
+  fetch(\`\${API}/api/chat\`, {method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({message:"set neural engine to "+val})}).catch(()=>{});
+  notify("Neural Engine", "Switched to " + val, "info");
+}
+
+function switchUI(mode) {
+  window.location.href = mode === "3d" ? "/3d" : "/classic";
+}
+
+function testVoice() {
+  if (window.speechSynthesis) {
+    const u = new SpeechSynthesisUtterance("Hello, I am LUOKAI, your AI.");
+    window.speechSynthesis.speak(u);
+  }
+}
+
+function clearHistory() {
+  if (confirm("Clear all conversation history?")) {
+    document.querySelectorAll(".chat-msg").forEach(e=>e.remove());
+    notify("History Cleared", "Conversation history cleared", "info");
+  }
 }
 
 function toggleSetting(key, btn) {

@@ -651,6 +651,25 @@ def brain_coevo_stats():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
+@app.route("/api/config/key", methods=["POST"])
+def config_save_key():
+    """Save an API key to ~/.luo_os/config.json."""
+    body = request.json or {}
+    key, value = body.get("key",""), body.get("value","")
+    if not key or not value:
+        return jsonify({"ok": False, "error": "key and value required"})
+    try:
+        from setup_luoos import CONFIG_PATH, load_config
+        import json as _json
+        cfg = load_config()
+        if "api_keys" not in cfg:
+            cfg["api_keys"] = {}
+        cfg["api_keys"][key] = value
+        CONFIG_PATH.write_text(_json.dumps(cfg, indent=2))
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
 @app.route("/api/model/status", methods=["GET"])
 def model_status():
     """Get local model engine status."""
