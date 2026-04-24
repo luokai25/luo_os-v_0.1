@@ -91,6 +91,10 @@ if ui_mode == "3d":
 # Model status
 from luokai.core.model_engine import MODELS_DIR, PRIMARY_MODEL, UPGRADE_MODEL
 
+def _model_size(model_key):
+    sizes = {"qwen2.5-1.5b":"900MB","qwen2.5-3b":"1.8GB","phi3.5":"2.2GB"}
+    return sizes.get(model_key, "~1GB")
+
 MODEL_FILES = {
     "qwen2.5-1.5b": PRIMARY_MODEL["filename"],
     "qwen2.5-3b":   "qwen2.5-3b-instruct-q4_k_m.gguf",
@@ -115,10 +119,6 @@ if active:
 if SHOW_TIPS:
     info(f"Press Ctrl+C to stop  ·  Reconfigure: python3 setup_luoos.py --reset")
 print(f"  {DIM}{'─'*54}{R}\n")
-
-def _model_size(model_key):
-    sizes = {"qwen2.5-1.5b":"900MB","qwen2.5-3b":"1.8GB","phi3.5":"2.2GB"}
-    return sizes.get(model_key, "~1GB")
 
 # ── Browser opener ───────────────────────────────────────────────────
 def open_browser():

@@ -408,6 +408,103 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
+
+/* ═══ VIRTUAL WORKSPACES (4-sided cube) ════════════════════════════
+   Normal LuoOS desktop, 4 workspaces.
+   Ctrl+→/← or Ctrl+1-4 to switch. Cube animates between them.
+   Each workspace is a full clone of the desktop shell.
+   Windows live on their workspace — not shared.
+══════════════════════════════════════════════════════════════════ */
+
+#workspace-root {
+  position: fixed; inset: 0; z-index: 0;
+  perspective: 2000px;
+  perspective-origin: 50% 50%;
+}
+
+#workspace-cube {
+  position: absolute; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .55s cubic-bezier(.77,0,.175,1);
+}
+
+.workspace {
+  position: absolute; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  /* Each face positioned by JS */
+}
+
+/* Workspace indicator — bottom centre strip */
+#ws-indicator {
+  position: fixed; bottom: calc(var(--taskbar-h) + 8px); left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: 8px; align-items: center;
+  background: rgba(6,12,20,.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 5px 12px;
+  z-index: 9999; pointer-events: auto;
+  opacity: 0; transition: opacity .3s;
+}
+#ws-indicator.show { opacity: 1; }
+.ws-dot {
+  width: 26px; height: 6px; border-radius: 3px;
+  background: var(--border); cursor: pointer;
+  transition: background .2s, width .2s;
+}
+.ws-dot.active { background: var(--accent); width: 32px; }
+#ws-label {
+  font-size: 10px; color: var(--text2);
+  font-family: var(--font-main); margin-left: 4px;
+}
+
+/* Thumbnail strip for Mission Control */
+#mission-control {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(2,4,8,.92);
+  backdrop-filter: blur(40px);
+  display: none; align-items: center; justify-content: center; gap: 24px;
+  flex-direction: column;
+}
+#mission-control.open { display: flex; }
+#mc-title { color: var(--text2); font-size: 12px; font-family: var(--font-main); letter-spacing: .15em; text-transform: uppercase; margin-bottom: 8px; }
+#mc-workspaces { display: flex; gap: 20px; }
+.mc-thumb {
+  width: 260px; height: 165px;
+  background: var(--bg-panel);
+  border: 2px solid var(--border);
+  border-radius: 12px; cursor: pointer;
+  position: relative; overflow: hidden;
+  transition: border-color .2s, transform .2s;
+  flex-shrink: 0;
+}
+.mc-thumb:hover, .mc-thumb.active { border-color: var(--accent); transform: scale(1.04); }
+.mc-thumb-label {
+  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; color: var(--text2); font-family: var(--font-main);
+  background: rgba(6,12,20,.8); padding: 2px 10px; border-radius: 10px;
+}
+.mc-thumb-num {
+  position: absolute; top: 8px; right: 10px;
+  font-size: 18px; font-weight: 800; color: var(--border);
+  font-family: var(--font-ui);
+}
+.mc-thumb.active .mc-thumb-num { color: var(--accent); }
+.mc-ws-preview {
+  position: absolute; inset: 0;
+  background: var(--bg-desktop);
+  overflow: hidden;
+}
+.mc-mini-bar {
+  position: absolute; bottom: 0; width: 100%; height: 14px;
+  background: var(--bg-glass); border-top: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 6px; gap: 4px;
+}
+.mc-mini-dot { width: 20px; height: 4px; background: var(--border); border-radius: 2px; }
+.mc-mini-dot.a { background: var(--accent); width: 26px; }
+#mc-hint { color: var(--tex3,var(--text3)); font-size: 10px; font-family: var(--font-main); margin-top: 12px; }
+
 </style>
 </head>
 <body>
@@ -420,6 +517,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <div id="boot-status">Initializing kernel...</div>
 </div>
 
+
+<!-- ═══ WORKSPACE ROOT — 4-sided cube ══════════════════════════════ -->
+<div id="workspace-root">
+<div id="workspace-cube">
+
+  <!-- Workspace 0 — main (existing desktop shell) -->
+  <div class="workspace" id="ws-0" data-ws="0">
 <!-- WALLPAPER -->
 <div id="wallpaper"><div id="wallpaper-text">LUO</div></div>
 
@@ -457,12 +561,122 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
 
 <!-- WINDOW CONTAINER -->
 <div id="window-container"></div>
+  </div>
+
+
+  <div class="workspace" id="ws-1" data-ws="1">
+    <!-- Workspace 1 — clean desktop -->
+    <div class="wallpaper-ws" style="position:fixed;inset:0;background:var(--bg-desktop);display:flex;align-items:center;justify-content:center;overflow:hidden">
+      <div style="font-size:min(22vw,300px);font-weight:900;color:transparent;background:linear-gradient(135deg,#00c8ff06,#7c3aed08,#00ff9d05);-webkit-background-clip:text;background-clip:text;font-family:var(--font-ui)">LUO</div>
+    </div>
+    <nav class="sidebar-ws" style="position:fixed;left:0;top:0;bottom:var(--taskbar-h);width:var(--sidebar-w);z-index:100;background:var(--bg-glass);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;backdrop-filter:blur(20px)">
+      <button class="sb-btn" onclick="wsOpenApp(1,'luokai')" title="LUOKAI">🤖<div class="sb-tooltip">LUOKAI AI</div></button>
+      <div class="sb-sep"></div>
+      <button class="sb-btn" onclick="wsOpenApp(1,'files')">📁<div class="sb-tooltip">Files</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(1,'terminal')">⌨️<div class="sb-tooltip">Terminal</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(1,'browser')">🌐<div class="sb-tooltip">Browser</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(1,'code')">💻<div class="sb-tooltip">Code</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(1,'notes')">📝<div class="sb-tooltip">Notes</div></button>
+      <div style="flex:1"></div>
+      <button class="sb-btn" onclick="wsOpenApp(1,'settings')">⚙️<div class="sb-tooltip">Settings</div></button>
+    </nav>
+    <div class="ws-icon-area" id="ws-icons-1" style="position:fixed;top:0;left:var(--sidebar-w);width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));padding:20px;z-index:1;pointer-events:none"></div>
+    <div class="ws-windows" id="ws-windows-1" style="position:fixed;left:var(--sidebar-w);top:0;width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));z-index:50;pointer-events:none"></div>
+  </div>
+
+  <div class="workspace" id="ws-2" data-ws="2">
+    <!-- Workspace 2 — clean desktop -->
+    <div class="wallpaper-ws" style="position:fixed;inset:0;background:var(--bg-desktop);display:flex;align-items:center;justify-content:center;overflow:hidden">
+      <div style="font-size:min(22vw,300px);font-weight:900;color:transparent;background:linear-gradient(135deg,#00c8ff06,#7c3aed08,#00ff9d05);-webkit-background-clip:text;background-clip:text;font-family:var(--font-ui)">LUO</div>
+    </div>
+    <nav class="sidebar-ws" style="position:fixed;left:0;top:0;bottom:var(--taskbar-h);width:var(--sidebar-w);z-index:100;background:var(--bg-glass);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;backdrop-filter:blur(20px)">
+      <button class="sb-btn" onclick="wsOpenApp(2,'luokai')" title="LUOKAI">🤖<div class="sb-tooltip">LUOKAI AI</div></button>
+      <div class="sb-sep"></div>
+      <button class="sb-btn" onclick="wsOpenApp(2,'files')">📁<div class="sb-tooltip">Files</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(2,'terminal')">⌨️<div class="sb-tooltip">Terminal</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(2,'browser')">🌐<div class="sb-tooltip">Browser</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(2,'code')">💻<div class="sb-tooltip">Code</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(2,'notes')">📝<div class="sb-tooltip">Notes</div></button>
+      <div style="flex:1"></div>
+      <button class="sb-btn" onclick="wsOpenApp(2,'settings')">⚙️<div class="sb-tooltip">Settings</div></button>
+    </nav>
+    <div class="ws-icon-area" id="ws-icons-2" style="position:fixed;top:0;left:var(--sidebar-w);width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));padding:20px;z-index:1;pointer-events:none"></div>
+    <div class="ws-windows" id="ws-windows-2" style="position:fixed;left:var(--sidebar-w);top:0;width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));z-index:50;pointer-events:none"></div>
+  </div>
+
+  <div class="workspace" id="ws-3" data-ws="3">
+    <!-- Workspace 3 — clean desktop -->
+    <div class="wallpaper-ws" style="position:fixed;inset:0;background:var(--bg-desktop);display:flex;align-items:center;justify-content:center;overflow:hidden">
+      <div style="font-size:min(22vw,300px);font-weight:900;color:transparent;background:linear-gradient(135deg,#00c8ff06,#7c3aed08,#00ff9d05);-webkit-background-clip:text;background-clip:text;font-family:var(--font-ui)">LUO</div>
+    </div>
+    <nav class="sidebar-ws" style="position:fixed;left:0;top:0;bottom:var(--taskbar-h);width:var(--sidebar-w);z-index:100;background:var(--bg-glass);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;backdrop-filter:blur(20px)">
+      <button class="sb-btn" onclick="wsOpenApp(3,'luokai')" title="LUOKAI">🤖<div class="sb-tooltip">LUOKAI AI</div></button>
+      <div class="sb-sep"></div>
+      <button class="sb-btn" onclick="wsOpenApp(3,'files')">📁<div class="sb-tooltip">Files</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(3,'terminal')">⌨️<div class="sb-tooltip">Terminal</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(3,'browser')">🌐<div class="sb-tooltip">Browser</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(3,'code')">💻<div class="sb-tooltip">Code</div></button>
+      <button class="sb-btn" onclick="wsOpenApp(3,'notes')">📝<div class="sb-tooltip">Notes</div></button>
+      <div style="flex:1"></div>
+      <button class="sb-btn" onclick="wsOpenApp(3,'settings')">⚙️<div class="sb-tooltip">Settings</div></button>
+    </nav>
+    <div class="ws-icon-area" id="ws-icons-3" style="position:fixed;top:0;left:var(--sidebar-w);width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));padding:20px;z-index:1;pointer-events:none"></div>
+    <div class="ws-windows" id="ws-windows-3" style="position:fixed;left:var(--sidebar-w);top:0;width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));z-index:50;pointer-events:none"></div>
+  </div>
+
+</div><!-- /workspace-cube -->
+</div><!-- /workspace-root -->
+
+<!-- Mission Control overlay -->
+<div id="mission-control">
+  <div id="mc-title">Mission Control — Workspaces</div>
+  <div id="mc-workspaces">
+    <div class="mc-thumb active" id="mc-ws-0" onclick="switchWorkspace(0);closeMC()">
+      <div class="mc-ws-preview"></div>
+      <div class="mc-mini-bar"><div class="mc-mini-dot a"></div><div class="mc-mini-dot"></div><div class="mc-mini-dot"></div></div>
+      <div class="mc-thumb-num">1</div>
+      <div class="mc-thumb-label">Main</div>
+    </div>
+    <div class="mc-thumb" id="mc-ws-1" onclick="switchWorkspace(1);closeMC()">
+      <div class="mc-ws-preview"></div>
+      <div class="mc-mini-bar"><div class="mc-mini-dot"></div></div>
+      <div class="mc-thumb-num">2</div>
+      <div class="mc-thumb-label">Work</div>
+    </div>
+    <div class="mc-thumb" id="mc-ws-2" onclick="switchWorkspace(2);closeMC()">
+      <div class="mc-ws-preview"></div>
+      <div class="mc-mini-bar"><div class="mc-mini-dot"></div></div>
+      <div class="mc-thumb-num">3</div>
+      <div class="mc-thumb-label">Code</div>
+    </div>
+    <div class="mc-thumb" id="mc-ws-3" onclick="switchWorkspace(3);closeMC()">
+      <div class="mc-ws-preview"></div>
+      <div class="mc-mini-bar"><div class="mc-mini-dot"></div></div>
+      <div class="mc-thumb-num">4</div>
+      <div class="mc-thumb-label">Media</div>
+    </div>
+  </div>
+  <div id="mc-hint">Ctrl+1–4 switch · Ctrl+← → slide · Ctrl+↑ Mission Control · Esc close</div>
+</div>
+
+<!-- Workspace indicator -->
+<div id="ws-indicator">
+  <div class="ws-dot active" onclick="switchWorkspace(0)" title="Workspace 1"></div>
+  <div class="ws-dot" onclick="switchWorkspace(1)" title="Workspace 2"></div>
+  <div class="ws-dot" onclick="switchWorkspace(2)" title="Workspace 3"></div>
+  <div class="ws-dot" onclick="switchWorkspace(3)" title="Workspace 4"></div>
+  <span id="ws-label">Main</span>
+</div>
+
 
 <!-- TASKBAR -->
 <footer id="taskbar">
   <button id="tb-start" onclick="openApp('luokai')">LUO</button>
   <div id="tb-apps"></div>
   <div id="tb-right">
+    <button onclick="openMC()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:10px;font-family:var(--font-main);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" title="Mission Control (Ctrl+↑)">
+      ⊞ <span id="tb-ws-badge">WS 1</span>
+    </button>
     <div id="tb-voice-indicator" style="font-size:11px;color:#555">🎤 OFF</div>
     <div id="tb-coevo-indicator" style="font-size:11px;color:#555">🔄 —</div>
     <div id="tb-clock">
@@ -1963,6 +2177,170 @@ if (savedTheme === "light") { isDark = false; document.body.classList.add("theme
 
 // ── START ─────────────────────────────────────────────────────────
 init();
+
+
+// ════════════════════════════════════════════════════════════════
+// VIRTUAL WORKSPACE SYSTEM — 4 desktops, cube transition
+// Like macOS Spaces / Compiz Cube. Normal mouse on each workspace.
+// ════════════════════════════════════════════════════════════════
+(function() {
+  const TOTAL   = 4;
+  const NAMES   = ['Main', 'Work', 'Code', 'Media'];
+  const ANGLES  = [0, -90, -180, -270];   // cube face angles
+  let   current = 0;
+  let   switching = false;
+
+  const cube    = document.getElementById('workspace-cube');
+  const root    = document.getElementById('workspace-root');
+  const ind     = document.getElementById('ws-indicator');
+  const label   = document.getElementById('ws-label');
+  const ws0     = document.getElementById('ws-0');
+
+  // ── Position cube faces around a 4-sided carousel ──────────────
+  // Face 0 → front (rotateY 0)
+  // Face 1 → right (rotateY 90 from face 0)
+  // Face 2 → back  (rotateY 180)
+  // Face 3 → left  (rotateY 270)
+  const vw = window.innerWidth;
+
+  function positionFaces() {
+    const vw = window.innerWidth;
+    const faces = document.querySelectorAll('.workspace');
+    faces.forEach((face, i) => {
+      if (i === 0) return; // ws-0 needs no transform (sits at origin)
+      face.style.transform = `rotateY(${i * 90}deg) translateZ(${vw/2}px)`;
+    });
+    // ws-0: translateZ so it sits at cube face
+    ws0.style.transform = `translateZ(${vw/2}px)`;
+    // Set cube to look at face 0
+    cube.style.transform = `translateZ(-${vw/2}px) rotateY(0deg)`;
+  }
+  positionFaces();
+  window.addEventListener('resize', positionFaces);
+
+  // ── Switch to workspace n ───────────────────────────────────────
+  window.switchWorkspace = function(n) {
+    if (n === current || switching) return;
+    if (n < 0) n = TOTAL - 1;
+    if (n >= TOTAL) n = 0;
+
+    switching = true;
+    const prevWs = document.getElementById(`ws-${current}`);
+    const nextWs = document.getElementById(`ws-${n}`);
+
+    // Rotate cube to show face n
+    const vw = window.innerWidth;
+    const angle = -n * 90;
+    cube.style.transform = `translateZ(-${vw/2}px) rotateY(${angle}deg)`;
+
+    // Update which workspace hosts the real sidebar+taskbar input
+    // (they're always in ws-0 but we reparent window-container visibility)
+    current = n;
+
+    // Show/hide workspace content
+    document.querySelectorAll('.workspace').forEach((ws, i) => {
+      ws.style.pointerEvents = i === n ? 'auto' : 'none';
+      ws.style.zIndex = i === n ? '1' : '0';
+    });
+
+    updateIndicator();
+
+    // After transition finishes
+    setTimeout(() => { switching = false; }, 580);
+    showIndicator();
+  };
+
+  window.currentWorkspace = () => current;
+
+  // ── Show indicator briefly on switch ───────────────────────────
+  let indTimer;
+  function showIndicator() {
+    ind.classList.add('show');
+    clearTimeout(indTimer);
+    indTimer = setTimeout(() => ind.classList.remove('show'), 2500);
+  }
+
+  function updateIndicator() {
+    // Dots
+    document.querySelectorAll('.ws-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+    // Mission Control thumbs
+    document.querySelectorAll('.mc-thumb').forEach((t, i) => {
+      t.classList.toggle('active', i === current);
+    });
+    // Label
+    if (label) label.textContent = NAMES[current] || `Workspace ${current + 1}`;
+    // Taskbar workspace badge
+    const badge = document.getElementById('tb-ws-badge');
+    if (badge) badge.textContent = `WS ${current + 1}`;
+  }
+
+  // ── Open app on a specific workspace ───────────────────────────
+  window.wsOpenApp = function(wsIdx, appId) {
+    if (wsIdx !== current) switchWorkspace(wsIdx);
+    setTimeout(() => openApp(appId), 300);
+  };
+
+  // ── Mission Control ─────────────────────────────────────────────
+  window.openMC = function() {
+    document.getElementById('mission-control').classList.add('open');
+  };
+  window.closeMC = function() {
+    document.getElementById('mission-control').classList.remove('open');
+  };
+
+  // ── Keyboard shortcuts ──────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.ctrlKey || e.metaKey) {
+      if (e.code === 'ArrowRight') { e.preventDefault(); switchWorkspace(current + 1); }
+      if (e.code === 'ArrowLeft')  { e.preventDefault(); switchWorkspace(current - 1); }
+      if (e.code === 'Digit1')     { e.preventDefault(); switchWorkspace(0); }
+      if (e.code === 'Digit2')     { e.preventDefault(); switchWorkspace(1); }
+      if (e.code === 'Digit3')     { e.preventDefault(); switchWorkspace(2); }
+      if (e.code === 'Digit4')     { e.preventDefault(); switchWorkspace(3); }
+      if (e.code === 'ArrowUp')    { e.preventDefault(); openMC(); }
+    }
+    if (e.key === 'Escape') closeMC();
+  });
+
+  // ── Three-finger swipe on trackpad (touch events) ───────────────
+  let touchStartX = 0;
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length >= 3) touchStartX = e.touches[0].clientX;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (e.changedTouches.length >= 3) {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 80) switchWorkspace(dx < 0 ? current + 1 : current - 1);
+    }
+  }, { passive: true });
+
+  // ── Edge swipe with mouse (drag from screen edge 10px) ──────────
+  let edgeDrag = false, edgeStart = 0;
+  document.addEventListener('mousedown', e => {
+    if (e.clientX < 10) { edgeDrag = true; edgeStart = e.clientX; }
+    if (e.clientX > window.innerWidth - 10) { edgeDrag = true; edgeStart = e.clientX; }
+  });
+  document.addEventListener('mouseup', e => {
+    if (!edgeDrag) return;
+    edgeDrag = false;
+    const dx = e.clientX - edgeStart;
+    if (Math.abs(dx) > 60) switchWorkspace(dx < 0 ? current + 1 : current - 1);
+  });
+
+  // Init
+  updateIndicator();
+  // Show indicator on first load briefly
+  setTimeout(showIndicator, 1200);
+  // Make ws-0 active initially
+  document.querySelectorAll('.workspace').forEach((ws, i) => {
+    ws.style.pointerEvents = i === 0 ? 'auto' : 'none';
+  });
+})();
+
 </script>
 </body>
 </html>
