@@ -505,6 +505,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
 .mc-mini-dot.a { background: var(--accent); width: 26px; }
 #mc-hint { color: var(--tex3,var(--text3)); font-size: 10px; font-family: var(--font-main); margin-top: 12px; }
 
+
+@keyframes bload {
+  from { opacity:.4; transform:scaleX(.3); transform-origin:left; }
+  to   { opacity:1;  transform:scaleX(1);  transform-origin:left; }
+}
 </style>
 </head>
 <body>
@@ -979,14 +984,36 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
       </div>`;
 
     case "browser": return `
-      <div class="browser-bar">
-        <button class="browser-nav-btn" onclick="browserNav('back')">←</button>
-        <button class="browser-nav-btn" onclick="browserNav('fwd')">→</button>
-        <button class="browser-nav-btn" onclick="browserNav('reload')">↺</button>
-        <input class="browser-url" id="browser-url" value="https://google.com" onkeydown="if(event.key==='Enter')browserGo()"/>
-        <button class="browser-nav-btn" onclick="browserGo()">→</button>
+      <div class="browser-bar" style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap">
+        <button class="browser-nav-btn" id="btn-bback" onclick="browserBack()" title="Back">←</button>
+        <button class="browser-nav-btn" id="btn-bfwd"  onclick="browserFwd()"  title="Forward">→</button>
+        <button class="browser-nav-btn" id="btn-breload" onclick="browserReload()" title="Reload">↺</button>
+        <input class="browser-url" id="browser-url" value="https://duckduckgo.com"
+          placeholder="Search or enter URL..."
+          onkeydown="if(event.key==='Enter')browserGo()"
+          style="flex:1"/>
+        <button class="browser-nav-btn" onclick="browserGo()" style="background:var(--accent);color:#000;font-weight:700">Go</button>
+        <button class="browser-nav-btn" onclick="browserHome()" title="Home">⌂</button>
       </div>
-      <iframe class="browser-content" id="browser-frame" src="https://google.com" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>`;
+      <div id="browser-loading" style="display:none;position:absolute;top:40px;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));animation:bload .8s infinite alternate;z-index:10"></div>
+      <div id="browser-content" style="flex:1;overflow:hidden;position:relative;background:#fff">
+        <div id="browser-homepage" style="position:absolute;inset:0;background:var(--bg-desktop);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px">
+          <div style="font-size:48px;font-weight:900;color:var(--accent);font-family:var(--font-ui);letter-spacing:-.03em">Luo Browser</div>
+          <div style="color:var(--text2);font-size:13px">Powered by server-side proxy — most sites work</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:500px">
+            \${["DuckDuckGo|https://duckduckgo.com","Wikipedia|https://en.wikipedia.org","GitHub|https://github.com","HackerNews|https://news.ycombinator.com","MDN|https://developer.mozilla.org","Reddit|https://old.reddit.com"].map(s=>{const[n,u]=s.split("|");return \`<button onclick="browserLoad('\${u}')" style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">\${n}</button>\`;}).join("")}
+          </div>
+          <div style="color:var(--text3);font-size:11px;margin-top:8px">Type a URL or search term above and press Enter · Ctrl+L to focus address bar</div>
+        </div>
+        <div id="browser-frame-wrap" style="position:absolute;inset:0;display:none;overflow:auto;background:#fff">
+          <div id="browser-page" style="padding:0;transform-origin:top left"></div>
+        </div>
+        <div id="browser-error" style="position:absolute;inset:0;background:var(--bg-desktop);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+          <div style="font-size:48px">⚠️</div>
+          <div id="browser-error-msg" style="color:var(--text);font-size:14px;text-align:center;max-width:400px"></div>
+          <button onclick="browserHome()" style="padding:8px 20px;background:var(--accent);border:none;border-radius:8px;color:#000;font-weight:700;cursor:pointer">Home</button>
+        </div>
+      </div>`;
 
     case "code": return `
       <div class="code-toolbar">
@@ -1706,20 +1733,145 @@ function filesUp() {
 }
 
 // ── BROWSER ───────────────────────────────────────────────────────
-function browserGo() {
-  const urlInput = document.getElementById("browser-url");
-  const frame    = document.getElementById("browser-frame");
-  let url        = urlInput?.value?.trim() || "";
-  if (!url.startsWith("http")) url = "https://" + url;
-  if (frame) frame.src = url;
+// ── LUO BROWSER — server-side proxy ──────────────────────────────
+const _bHistory = [], _bHistoryPos = [-1];  // [-1] = boxed int
+
+function _bShowLoading(on) {
+  const el = document.getElementById("browser-loading");
+  if (el) el.style.display = on ? "block" : "none";
 }
 
+function _bShowPage(html, url, title) {
+  const homepage = document.getElementById("browser-homepage");
+  const wrap     = document.getElementById("browser-frame-wrap");
+  const page     = document.getElementById("browser-page");
+  const errEl    = document.getElementById("browser-error");
+  const urlInput = document.getElementById("browser-url");
+  if (homepage) homepage.style.display = "none";
+  if (errEl)    errEl.style.display = "none";
+  if (wrap)     wrap.style.display = "block";
+  if (page)     page.innerHTML = html;
+  if (urlInput) urlInput.value = url;
+  // Intercept links inside the rendered page
+  if (page) {
+    page.querySelectorAll("a[href]").forEach(a => {
+      a.addEventListener("click", e => {
+        e.preventDefault();
+        const href = a.getAttribute("href");
+        if (href && !href.startsWith("#") && !href.startsWith("javascript:")) {
+          browserLoad(href);
+        }
+      });
+    });
+    page.querySelectorAll("form").forEach(form => {
+      form.addEventListener("submit", e => {
+        e.preventDefault();
+        const input = form.querySelector("input[type=text],input[type=search],input:not([type])");
+        if (input && input.value) browserSearch(input.value);
+      });
+    });
+  }
+  // Update history
+  _bHistory.push({url, title});
+  _bHistoryPos[0] = _bHistory.length - 1;
+}
+
+function _bShowError(msg, url) {
+  const homepage = document.getElementById("browser-homepage");
+  const wrap     = document.getElementById("browser-frame-wrap");
+  const errEl    = document.getElementById("browser-error");
+  const errMsg   = document.getElementById("browser-error-msg");
+  if (homepage) homepage.style.display = "none";
+  if (wrap)     wrap.style.display = "none";
+  if (errEl)    errEl.style.display = "flex";
+  if (errMsg)   errMsg.textContent = `Could not load: ${url}\n\nError: ${msg}`;
+}
+
+async function browserLoad(url) {
+  if (!url) return;
+  if (!url.startsWith("http")) url = "https://" + url;
+  const urlInput = document.getElementById("browser-url");
+  if (urlInput) urlInput.value = url;
+  _bShowLoading(true);
+  try {
+    const r = await fetch(API + "/api/browser/fetch", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({url})
+    });
+    const d = await r.json();
+    _bShowLoading(false);
+    if (d.ok) {
+      _bShowPage(d.html, d.url, d.title);
+    } else {
+      _bShowError(d.error || "Unknown error", url);
+    }
+  } catch(e) {
+    _bShowLoading(false);
+    _bShowError(e.message, url);
+  }
+}
+
+async function browserSearch(query) {
+  const r = await fetch(API + "/api/browser/search", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({query})
+  });
+  const d = await r.json();
+  if (d.ok && d.redirect) await browserLoad(d.redirect);
+  else if (d.ok && d.search_url) await browserLoad(d.search_url);
+}
+
+function browserGo() {
+  const urlInput = document.getElementById("browser-url");
+  let val = (urlInput?.value || "").trim();
+  if (!val) return;
+  // If it looks like a URL, load it; else search
+  if (val.includes(".") && !val.includes(" ")) {
+    browserLoad(val);
+  } else {
+    browserSearch(val);
+  }
+}
+
+function browserBack() {
+  const pos = _bHistoryPos[0];
+  if (pos > 0) {
+    _bHistoryPos[0] = pos - 1;
+    browserLoad(_bHistory[pos - 1].url);
+  }
+}
+
+function browserFwd() {
+  const pos = _bHistoryPos[0];
+  if (pos < _bHistory.length - 1) {
+    _bHistoryPos[0] = pos + 1;
+    browserLoad(_bHistory[pos + 1].url);
+  }
+}
+
+function browserReload() {
+  const pos = _bHistoryPos[0];
+  if (pos >= 0) browserLoad(_bHistory[pos].url);
+}
+
+function browserHome() {
+  const homepage = document.getElementById("browser-homepage");
+  const wrap     = document.getElementById("browser-frame-wrap");
+  const errEl    = document.getElementById("browser-error");
+  if (homepage) homepage.style.display = "flex";
+  if (wrap)     wrap.style.display = "none";
+  if (errEl)    errEl.style.display = "none";
+  const urlInput = document.getElementById("browser-url");
+  if (urlInput) urlInput.value = "";
+}
+
+// Legacy alias (called from old code)
 function browserNav(action) {
-  const frame = document.getElementById("browser-frame");
-  if (!frame) return;
-  if (action === "back")   frame.contentWindow?.history?.back();
-  if (action === "fwd")    frame.contentWindow?.history?.forward();
-  if (action === "reload") frame.contentWindow?.location?.reload();
+  if (action === "back")   browserBack();
+  if (action === "fwd")    browserFwd();
+  if (action === "reload") browserReload();
 }
 
 // ── CODE EDITOR ───────────────────────────────────────────────────

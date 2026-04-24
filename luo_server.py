@@ -688,6 +688,87 @@ def model_list():
     except Exception as e:
         return jsonify({"ok": False, "models": [], "error": str(e)})
 
+
+
+@app.route("/api/browser/fetch", methods=["POST"])
+def browser_fetch():
+    """Server-side proxy — bypasses X-Frame-Options and CORS restrictions."""
+    body = request.json or {}
+    url  = body.get("url", "").strip()
+    if not url:
+        return jsonify({"ok": False, "error": "No URL"})
+    if not url.startswith("http"):
+        url = "https://" + url
+    try:
+        import urllib.request as ur, re
+        from urllib.parse import urljoin, quote
+        req = ur.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0",
+            "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        })
+        with ur.urlopen(req, timeout=12) as resp:
+            raw       = resp.read(2 * 1024 * 1024)
+            ctype     = resp.headers.get("Content-Type", "text/html")
+            final_url = resp.url
+        charset = "utf-8"
+        for p in ctype.split(";"):
+            p = p.strip()
+            if p.lower().startswith("charset="):
+                charset = p.split("=", 1)[1].strip()
+        html = raw.decode(charset, errors="replace")
+
+        # Rewrite relative URLs to absolute using a simple approach
+        def abs_url(val):
+            if not val or val.startswith(("http", "data:", "mailto:", "javascript:", "#", "blob:")):
+                return val
+            return urljoin(final_url, val)
+
+        # Replace src="..." href="..." action="..."
+        def repl_attr(m):
+            attr = m.group(1)
+            q    = m.group(2)
+            val  = m.group(3)
+            return attr + "=" + q + abs_url(val) + q
+
+        import re as _re
+        # Use \x22 for " and \x27 for ' to avoid quote issues
+        html = _re.sub(
+            r'(src|href|action)=(\x22)([^\x22]*)(\x22)',
+            lambda m: m.group(1)+"="+m.group(2)+abs_url(m.group(3))+m.group(4),
+            html, flags=_re.IGNORECASE
+        )
+        html = _re.sub(
+            r"(src|href|action)=(\x27)([^\x27]*)(\x27)",
+            lambda m: m.group(1)+"="+m.group(2)+abs_url(m.group(3))+m.group(4),
+            html, flags=_re.IGNORECASE
+        )
+
+        # Inject base tag
+        html = _re.sub(r"(<head[^>]*>)", "<base href=\"" + final_url + "\">\\1", html, count=1, flags=_re.IGNORECASE)
+
+        # Extract title
+        tm    = _re.search(r"<title[^>]*>(.*?)</title>", html, _re.IGNORECASE | _re.DOTALL)
+        title = tm.group(1).strip() if tm else final_url
+
+        return jsonify({"ok": True, "html": html, "url": final_url, "title": title})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "url": url})
+
+
+@app.route("/api/browser/search", methods=["POST"])
+def browser_search():
+    """Return DuckDuckGo search URL for client to proxy-fetch."""
+    body  = request.json or {}
+    query = body.get("query", "").strip()
+    if not query:
+        return jsonify({"ok": False, "error": "No query"})
+    import urllib.parse
+    url = "https://html.duckduckgo.com/html/?q=" + urllib.parse.quote(query)
+    return jsonify({"ok": True, "redirect": url, "search_url": url})
+
+
+
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"
