@@ -510,6 +510,23 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   from { opacity:.4; transform:scaleX(.3); transform-origin:left; }
   to   { opacity:1;  transform:scaleX(1);  transform-origin:left; }
 }
+
+/* ── LuoOS IDE (Monaco) styles ─────────────────────────────────── */
+.luovs-menu-item {
+  padding: 0 8px; height: 30px; display: flex; align-items: center;
+  font-size: 12px; color: #ccc; cursor: pointer; transition: background .12s;
+  user-select: none;
+}
+.luovs-menu-item:hover { background: #555; }
+
+.luovs-actbtn {
+  width: 48px; height: 48px; display: flex; align-items: center;
+  justify-content: center; cursor: pointer; font-size: 22px;
+  color: #858585; transition: color .15s; border-left: 2px solid transparent;
+  user-select: none;
+}
+.luovs-actbtn:hover { color: #ccc; }
+.luovs-act-active { color: #fff !important; border-left-color: #4fc3f7 !important; }
 </style>
 </head>
 <body>
@@ -1028,58 +1045,76 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
       <div class="code-output-panel" id="code-output">Output will appear here...</div>`;
 
     case "vscode": return `
-      <div class="vscode-wrap" id="vscode-wrap">
-        <!-- Toolbar -->
-        <div class="vscode-toolbar" id="vscode-toolbar">
-          <div style="display:flex;align-items:center;gap:8px">
-            <svg viewBox="0 0 20 20" width="18" height="18"><path d="M15 4.5L9.5 9.5 6.5 7 5 8l3.5 2.5L5 13l1.5 1 4-2.5L15 17l1-.6V5.1L15 4.5z" fill="#4fc3f7"/></svg>
-            <span style="font-size:12px;font-weight:600;color:var(--text)">Luo VS Code</span>
-            <span style="font-size:11px;color:var(--text3)" id="vscode-status-badge">● checking...</span>
-          </div>
-          <div style="display:flex;gap:6px">
-            <button class="vscode-tb-btn" onclick="vscodOpenExternal()" title="Open in new tab">⬡ New Tab</button>
-            <button class="vscode-tb-btn" onclick="vscodeRefresh()" title="Reload">↺ Reload</button>
-            <button class="vscode-tb-btn danger" onclick="vscodeStop()" id="vscode-stop-btn" style="display:none">■ Stop</button>
-          </div>
+      <div id="luovs-root" style="display:flex;flex-direction:column;height:100%;background:#1e1e1e;font-family:'Consolas','Courier New',monospace;color:#ccc;overflow:hidden">
+
+        <!-- Menu bar -->
+        <div style="height:30px;background:#3c3c3c;display:flex;align-items:center;padding:0 4px;flex-shrink:0;user-select:none">
+          \${['File','Edit','Selection','View','Go','Run','Terminal','Help'].map(m=>
+            \`<div class="luovs-menu-item" onclick="luovsMenu('\${m}')">\${m}</div>\`
+          ).join('')}
+          <div style="flex:1"></div>
+          <div style="font-size:11px;color:#858585;padding:0 12px" id="luovs-luokai-status">🤖 LUOKAI ready</div>
+          <div style="font-size:11px;color:#858585;padding:0 8px" id="luovs-model-badge">⚡</div>
         </div>
-        <!-- State panels (only one visible at a time) -->
-        <div class="vscode-panel" id="vscode-panel-loading">
-          <div class="vscode-splash">
-            <div class="vscode-spinner"></div>
-            <div style="font-size:15px;font-weight:600;color:var(--text);margin-top:18px">Starting VS Code…</div>
-            <div style="font-size:12px;color:var(--text3);margin-top:6px">code-server is launching on port 8080</div>
+
+        <!-- Body: activity bar + sidebar + editors -->
+        <div style="display:flex;flex:1;overflow:hidden">
+
+          <!-- Activity bar -->
+          <div style="width:48px;background:#333;display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0">
+            \${[['explorer','📁','Explorer'],['search','🔍','Search'],['git','⑂','Source Control'],['run','▷','Run & Debug'],['extensions','⊞','Extensions']].map(([id,icon,tip],i)=>
+              \`<div id="luovs-act-\${id}" class="luovs-actbtn\${i===0?' luovs-act-active':''}" onclick="luovsActivity('\${id}')" title="\${tip}" style="border-left:2px solid \${i===0?'#4fc3f7':'transparent'}">\${icon}</div>\`
+            ).join('')}
+            <div style="flex:1"></div>
+            <div class="luovs-actbtn" onclick="luovsActivity('settings')" title="Settings">⚙</div>
           </div>
-        </div>
-        <div class="vscode-panel" id="vscode-panel-install" style="display:none">
-          <div class="vscode-splash">
-            <svg viewBox="0 0 80 80" width="72" height="72" style="margin-bottom:16px"><rect width="80" height="80" rx="18" fill="#0065a9"/><path d="M58 20L40 36.5 26 26 21 30l13 10-13 10 5 4 15-10.5L58 60l4-2.5V22.5L58 20z" fill="white"/></svg>
-            <div style="font-size:17px;font-weight:700;color:var(--text)">VS Code not installed</div>
-            <div style="font-size:13px;color:var(--text2);margin:8px 0 20px;max-width:340px;text-align:center;line-height:1.6">
-              code-server brings the full VS Code experience to your browser.<br>Shared workspace syncs with Luo Files.
+
+          <!-- Sidebar -->
+          <div id="luovs-sidebar" style="width:220px;background:#252526;border-right:1px solid #3c3c3c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden">
+            <div style="padding:8px 12px 6px;font-size:10px;font-weight:700;color:#bbb;letter-spacing:.12em;text-transform:uppercase;flex-shrink:0" id="luovs-sidebar-title">EXPLORER</div>
+            <div id="luovs-sidebar-body" style="flex:1;overflow-y:auto;font-size:12px"></div>
+          </div>
+
+          <!-- Editor + terminal -->
+          <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+
+            <!-- Tab bar -->
+            <div id="luovs-tabs" style="display:flex;background:#2d2d2d;border-bottom:1px solid #252526;overflow-x:auto;flex-shrink:0;min-height:35px;align-items:stretch"></div>
+
+            <!-- Monaco container -->
+            <div id="luovs-monaco" style="flex:1;overflow:hidden;position:relative;min-height:0"></div>
+
+            <!-- Integrated terminal -->
+            <div id="luovs-terminal" style="height:180px;background:#1e1e1e;border-top:1px solid #3c3c3c;display:flex;flex-direction:column;flex-shrink:0">
+              <div style="height:27px;background:#252526;border-bottom:1px solid #3c3c3c;display:flex;align-items:center;padding:0 10px;gap:12px;flex-shrink:0;user-select:none">
+                <span style="font-size:11px;color:#e0e0e0;cursor:pointer" onclick="luovsTermFocus()">TERMINAL</span>
+                <span style="font-size:11px;color:#858585;cursor:pointer" onclick="luovsRunFile()">▶ Run File</span>
+                <span style="font-size:11px;color:#c586c0;cursor:pointer" onclick="luovsAskLUOKAI()">🤖 Ask LUOKAI</span>
+                <div style="flex:1"></div>
+                <span style="font-size:11px;color:#858585;cursor:pointer" onclick="luovsNewTerminal()">＋</span>
+                <span style="font-size:11px;color:#858585;cursor:pointer;margin-left:6px" onclick="luovsToggleTerminal()">⌄</span>
+              </div>
+              <div id="luovs-term-out" style="flex:1;overflow-y:auto;padding:4px 12px;font-size:12px;white-space:pre-wrap;color:#ccc"></div>
+              <div style="display:flex;align-items:center;padding:2px 12px 6px;gap:6px;flex-shrink:0">
+                <span style="color:#4ec9b0;font-size:12px">luoos@luo:~$</span>
+                <input id="luovs-term-in" autocomplete="off" spellcheck="false"
+                  style="flex:1;background:transparent;border:none;outline:none;color:#ccc;font-size:12px;font-family:'Consolas','Courier New',monospace"
+                  onkeydown="if(event.key==='Enter'){luovsTermRun(this.value);this.value='';event.preventDefault()}">
+              </div>
             </div>
-            <button class="vscode-install-btn" onclick="vscodeInstall()" id="vscode-install-btn">
-              ⬇ Install VS Code (code-server)
-            </button>
-            <div style="font-size:11px;color:var(--text3);margin-top:12px">Downloads latest release • ~50MB • Takes ~2 min</div>
-            <div class="vscode-install-log" id="vscode-install-log" style="display:none"></div>
           </div>
         </div>
-        <div class="vscode-panel" id="vscode-panel-frame" style="display:none">
-          <iframe
-            id="vscode-iframe"
-            src="about:blank"
-            class="vscode-iframe"
-            allow="clipboard-read; clipboard-write"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
-          ></iframe>
-        </div>
-        <div class="vscode-panel" id="vscode-panel-error" style="display:none">
-          <div class="vscode-splash">
-            <div style="font-size:32px;margin-bottom:12px">⚠️</div>
-            <div style="font-size:15px;font-weight:600;color:var(--text)">Connection failed</div>
-            <div style="font-size:12px;color:var(--text3);margin:8px 0 18px" id="vscode-error-msg">Could not reach code-server</div>
-            <button class="vscode-tb-btn" onclick="vscodeInit()" style="padding:9px 22px;font-size:13px">Try Again</button>
-          </div>
+
+        <!-- Status bar -->
+        <div style="height:22px;background:#007acc;display:flex;align-items:center;padding:0 10px;gap:14px;flex-shrink:0;font-size:11px;color:#fff;user-select:none">
+          <span id="luovs-branch">⑂ main</span>
+          <span id="luovs-errs">✓ 0 errors, 0 warnings</span>
+          <div style="flex:1"></div>
+          <span id="luovs-lang">Python</span>
+          <span id="luovs-pos">Ln 1, Col 1</span>
+          <span>UTF-8</span>
+          <span>LF</span>
+          <span>LuoOS IDE</span>
         </div>
       </div>`;
 
@@ -1354,7 +1389,7 @@ function initApp(id) {
     filesLoad("~");
   }
   if (id === "vscode") {
-    vscodeInit();
+    luovsInit();
   }
   if (id === "settings") {
     // Update live stats
@@ -2206,112 +2241,587 @@ function _vsBadge(text, color) {
   el.style.color = color || "var(--text3)";
 }
 
-async function vscodeInit() {
-  _vsPanel("loading");
-  _vsBadge("● checking…", "var(--text3)");
-  try {
-    const res = await fetch(`${API}/api/vscode/status`);
-    const d   = await res.json();
-    if (!d.installed) {
-      _vsPanel("install");
-      _vsBadge("● not installed", "#ff4d6d");
-      return;
+
+// ════════════════════════════════════════════════════════════════
+// LUO IDE — Monaco Editor (VS Code engine, runs in browser)
+// No code-server, no binary, no install. Works immediately.
+// ════════════════════════════════════════════════════════════════
+
+// File system (in-memory, persisted to localStorage)
+const luovsFS = {
+  files: (()=>{ try { return JSON.parse(localStorage.getItem('luovs-files') || 'null'); } catch(e) { return null; } })() || {
+    'main.py':        '# LuoOS Python script\n# Ask LUOKAI to help with your code\n\ndef greet(name):\n    """Return a greeting."""\n    return f"Hello from LuoOS, {name}!"\n\nif __name__ == "__main__":\n    print(greet("World"))\n',
+    'index.html':     '<!DOCTYPE html>\n<html>\n<head><title>My App</title></head>\n<body>\n  <h1>Built with LuoOS</h1>\n</body>\n</html>\n',
+    'notes.md':       '# Notes\n\n## Ideas\n- Build something cool\n\n## TODO\n- [ ] Task 1\n- [ ] Task 2\n',
+    'luokai_test.py': '# Test LUOKAI inference\nimport sys, os\nsys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))\n\ntry:\n    from luokai.core.inference import get_inference\n    eng = get_inference()\n    r = eng.generate([{"role":"user","content":"what is binary search"}])\n    print("LUOKAI:", r[:200])\nexcept Exception as e:\n    print("Error:", e)\n',
+  },
+  save() { try { localStorage.setItem('luovs-files', JSON.stringify(this.files)); } catch(e) {} }
+};
+
+let luovsEditor = null;       // Monaco editor instance
+let luovsCurrentFile = 'main.py';
+let luovsOpenTabs = ['main.py'];
+let luovsMonacoReady = false;
+let luovsTermHistory = [];
+let luovsTermHistIdx = -1;
+
+// Language map
+const luovsLangMap = {
+  py:'python', js:'javascript', ts:'typescript', html:'html',
+  css:'css', json:'json', md:'markdown', sh:'shell',
+  txt:'plaintext', yaml:'yaml', yml:'yaml', xml:'xml',
+  cpp:'cpp', c:'c', rs:'rust', go:'go', java:'java',
+};
+
+function luovsGetLang(fname) {
+  const ext = fname.split('.').pop().toLowerCase();
+  return luovsLangMap[ext] || 'plaintext';
+}
+
+// ── Init Monaco (loads from CDN once, then cached) ────────────────
+function luovsInit() {
+  // Ensure Monaco is loaded
+  if (!window.monaco) {
+    luovsLoadMonaco();
+  } else {
+    luovsBootEditor();
+  }
+  luovsRefreshSidebar();
+  luovsRefreshTabs();
+  luovsPrintTerm('LuoOS IDE ready. Type "help" for commands.\n$ ');
+  // Poll model status
+  luovsCheckModel();
+}
+
+function luovsLoadMonaco() {
+  if (document.getElementById('monaco-loader')) {
+    // Already loading — wait
+    const check = setInterval(() => {
+      if (window.monaco) { clearInterval(check); luovsBootEditor(); }
+    }, 300);
+    return;
+  }
+  luovsPrintTerm('Loading Monaco editor from CDN...\n');
+  const loader = document.createElement('script');
+  loader.id  = 'monaco-loader';
+  loader.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js';
+  loader.onload = () => {
+    // AMD require is now available via the loaded script
+    window.require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+    window.require(['vs/editor/editor.main'], () => {
+      luovsPrintTerm('Monaco loaded.\n$ ');
+      luovsBootEditor();
+    });
+  };
+  loader.onerror = () => {
+    luovsPrintTerm('CDN unavailable — using textarea fallback.\n$ ');
+    luovsBootFallback();
+  };
+  document.head.appendChild(loader);
+}
+
+function luovsBootEditor() {
+  const container = document.getElementById('luovs-monaco');
+  if (!container || !window.monaco) return;
+  container.innerHTML = '';
+
+  luovsEditor = monaco.editor.create(container, {
+    value:     luovsFS.files[luovsCurrentFile] || '',
+    language:  luovsGetLang(luovsCurrentFile),
+    theme:     'vs-dark',
+    fontSize:  13,
+    fontFamily: "'Consolas','Courier New',monospace",
+    minimap:   { enabled: true },
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    wordWrap:  'off',
+    lineNumbers: 'on',
+    renderWhitespace: 'selection',
+    quickSuggestions: true,
+    suggestOnTriggerCharacters: true,
+    tabSize: 2,
+  });
+
+  // Save on change
+  luovsEditor.onDidChangeModelContent(() => {
+    luovsFS.files[luovsCurrentFile] = luovsEditor.getValue();
+    luovsFS.save();
+    // Update cursor position in status bar
+    const pos = luovsEditor.getPosition();
+    if (pos) {
+      const el = document.getElementById('luovs-pos');
+      if (el) el.textContent = `Ln ${pos.lineNumber}, Col ${pos.column}`;
     }
-    if (!d.running) {
-      // Try to start it
-      _vsBadge("● starting…", "#f5c842");
-      const sr = await fetch(`${API}/api/vscode/start`, {method:"POST"});
-      const sd = await sr.json();
-      if (!sd.ok && !sd.running) {
-        _vsPanel("error");
-        document.getElementById("vscode-error-msg").textContent = sd.msg || "Failed to start code-server";
-        _vsBadge("● error", "#ff4d6d");
-        return;
+  });
+
+  // Update cursor pos on move
+  luovsEditor.onDidChangeCursorPosition(e => {
+    const el = document.getElementById('luovs-pos');
+    if (el) el.textContent = `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+  });
+
+  // Ctrl+S to save
+  luovsEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+    luovsSaveFile();
+    luovsPrintTerm(`Saved ${luovsCurrentFile}\n$ `);
+  });
+
+  // Ctrl+` to focus terminal
+  luovsEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Backquote, () => {
+    document.getElementById('luovs-term-in')?.focus();
+  });
+
+  // F5 to run
+  luovsEditor.addCommand(monaco.KeyCode.F5, () => luovsRunFile());
+
+  luovsMonacoReady = true;
+  luovsUpdateLangStatus();
+}
+
+function luovsBootFallback() {
+  // Textarea fallback when CDN unavailable (offline)
+  const container = document.getElementById('luovs-monaco');
+  if (!container) return;
+  container.innerHTML = `
+    <textarea id="luovs-fallback-ta" spellcheck="false"
+      style="width:100%;height:100%;background:#1e1e1e;color:#d4d4d4;border:none;outline:none;
+             padding:14px;font-family:'Consolas','Courier New',monospace;font-size:13px;
+             resize:none;line-height:1.6;tab-size:2"
+      oninput="luovsFS.files[luovsCurrentFile]=this.value;luovsFS.save()"
+    ></textarea>`;
+  const ta = document.getElementById('luovs-fallback-ta');
+  if (ta) ta.value = luovsFS.files[luovsCurrentFile] || '';
+  luovsPrintTerm('Offline mode — using textarea editor. Monaco needs internet for first load.\n$ ');
+}
+
+// ── File operations ────────────────────────────────────────────────
+function luovsOpenFile(fname) {
+  if (!luovsFS.files[fname] && luovsFS.files[fname] !== '') return;
+  luovsCurrentFile = fname;
+  if (!luovsOpenTabs.includes(fname)) luovsOpenTabs.push(fname);
+
+  if (luovsMonacoReady && window.monaco) {
+    const model = monaco.editor.createModel(
+      luovsFS.files[fname], luovsGetLang(fname)
+    );
+    luovsEditor.setModel(model);
+    luovsEditor.onDidChangeModelContent(() => {
+      luovsFS.files[fname] = luovsEditor.getValue();
+      luovsFS.save();
+    });
+  } else {
+    const ta = document.getElementById('luovs-fallback-ta');
+    if (ta) ta.value = luovsFS.files[fname];
+  }
+
+  luovsRefreshTabs();
+  luovsRefreshSidebar();
+  luovsUpdateLangStatus();
+}
+
+function luovsSaveFile() {
+  if (luovsMonacoReady && luovsEditor) {
+    luovsFS.files[luovsCurrentFile] = luovsEditor.getValue();
+  }
+  luovsFS.save();
+}
+
+function luovsNewFile() {
+  const name = prompt('File name:', 'untitled.py');
+  if (!name) return;
+  luovsFS.files[name] = '';
+  luovsFS.save();
+  luovsOpenFile(name);
+  luovsRefreshSidebar();
+}
+
+function luovsDeleteFile(fname, e) {
+  e.stopPropagation();
+  if (!confirm(`Delete ${fname}?`)) return;
+  delete luovsFS.files[fname];
+  luovsFS.save();
+  luovsOpenTabs = luovsOpenTabs.filter(t => t !== fname);
+  if (luovsCurrentFile === fname) {
+    luovsCurrentFile = luovsOpenTabs[0] || Object.keys(luovsFS.files)[0] || 'main.py';
+    if (!luovsFS.files[luovsCurrentFile]) luovsFS.files[luovsCurrentFile] = '';
+    luovsOpenFile(luovsCurrentFile);
+  }
+  luovsRefreshSidebar();
+  luovsRefreshTabs();
+}
+
+function luovsCloseTab(fname, e) {
+  e.stopPropagation();
+  luovsOpenTabs = luovsOpenTabs.filter(t => t !== fname);
+  if (luovsCurrentFile === fname) {
+    luovsCurrentFile = luovsOpenTabs[0] || Object.keys(luovsFS.files)[0] || 'main.py';
+    luovsOpenFile(luovsCurrentFile);
+  }
+  luovsRefreshTabs();
+}
+
+// ── UI refresh ─────────────────────────────────────────────────────
+function luovsRefreshSidebar() {
+  const body = document.getElementById('luovs-sidebar-body');
+  if (!body) return;
+  const files = Object.keys(luovsFS.files).sort();
+  body.innerHTML = `
+    <div style="padding:4px 8px 4px 16px;display:flex;align-items:center;justify-content:space-between">
+      <span style="color:#bbb;font-size:11px;font-weight:600">LUO PROJECT</span>
+      <span onclick="luovsNewFile()" style="cursor:pointer;color:#858585;font-size:16px;line-height:1" title="New File">+</span>
+    </div>
+    ${files.map(f => `
+      <div onclick="luovsOpenFile('${f}')"
+           style="padding:3px 8px 3px 28px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+                  background:${f===luovsCurrentFile?'#37373d':'transparent'};
+                  color:${f===luovsCurrentFile?'#fff':'#ccc'}"
+           onmouseover="this.style.background='${f===luovsCurrentFile?'#37373d':'#2a2d2e'}'"
+           onmouseout="this.style.background='${f===luovsCurrentFile?'#37373d':'transparent'}'">
+        <span style="font-size:12px">${_luovsFileIcon(f)} ${f}</span>
+        <span onclick="luovsDeleteFile('${f}',event)" style="opacity:0;color:#858585;font-size:11px;padding:0 4px"
+          onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0'">✕</span>
+      </div>`).join('')}`;
+}
+
+function luovsRefreshTabs() {
+  const bar = document.getElementById('luovs-tabs');
+  if (!bar) return;
+  bar.innerHTML = luovsOpenTabs.map(f => `
+    <div onclick="luovsOpenFile('${f}')"
+         style="display:flex;align-items:center;gap:6px;padding:0 14px;height:35px;
+                background:${f===luovsCurrentFile?'#1e1e1e':'#2d2d2d'};
+                border-top:2px solid ${f===luovsCurrentFile?'#4fc3f7':'transparent'};
+                border-right:1px solid #252526;cursor:pointer;
+                color:${f===luovsCurrentFile?'#fff':'#8a8a8a'};white-space:nowrap">
+      <span style="font-size:11px">${_luovsFileIcon(f)} ${f}</span>
+      <span onclick="luovsCloseTab('${f}',event)"
+            style="font-size:10px;color:#666;margin-left:4px;width:14px;text-align:center;border-radius:3px;line-height:14px"
+            onmouseover="this.style.background='#555';this.style.color='#fff'"
+            onmouseout="this.style.background='';this.style.color='#666'">✕</span>
+    </div>`).join('');
+}
+
+function _luovsFileIcon(f) {
+  const ext = f.split('.').pop();
+  const icons = {py:'🐍',js:'📜',ts:'📘',html:'🌐',css:'🎨',json:'📋',md:'📝',sh:'⚙',yaml:'⚙',yml:'⚙',rs:'⚙',go:'🟦',java:'☕'};
+  return icons[ext] || '📄';
+}
+
+function luovsUpdateLangStatus() {
+  const el = document.getElementById('luovs-lang');
+  if (el) {
+    const lang = luovsGetLang(luovsCurrentFile);
+    el.textContent = lang.charAt(0).toUpperCase() + lang.slice(1);
+  }
+}
+
+// ── Activity bar ───────────────────────────────────────────────────
+function luovsActivity(id) {
+  document.querySelectorAll('.luovs-actbtn').forEach(b => {
+    b.style.borderLeft = '2px solid transparent';
+    b.style.color = '#858585';
+  });
+  const btn = document.getElementById(`luovs-act-${id}`);
+  if (btn) { btn.style.borderLeft = '2px solid #4fc3f7'; btn.style.color = '#fff'; }
+
+  const sidebar = document.getElementById('luovs-sidebar');
+  const title   = document.getElementById('luovs-sidebar-title');
+  const body    = document.getElementById('luovs-sidebar-body');
+  if (!sidebar || !title || !body) return;
+
+  if (id === 'explorer') {
+    title.textContent = 'EXPLORER';
+    luovsRefreshSidebar();
+  } else if (id === 'search') {
+    title.textContent = 'SEARCH';
+    body.innerHTML = `
+      <div style="padding:8px">
+        <input placeholder="Search in files..." style="width:100%;background:#3c3c3c;border:1px solid #555;border-radius:4px;padding:5px 8px;color:#ccc;font-size:12px;outline:none"
+          oninput="luovsSearch(this.value)">
+        <div id="luovs-search-results" style="margin-top:8px;font-size:12px"></div>
+      </div>`;
+  } else if (id === 'git') {
+    title.textContent = 'SOURCE CONTROL';
+    body.innerHTML = `<div style="padding:12px;font-size:12px;color:#858585">Git integration via terminal.<br><br>Use the terminal below to run git commands.</div>`;
+  } else if (id === 'run') {
+    title.textContent = 'RUN & DEBUG';
+    body.innerHTML = `
+      <div style="padding:8px;font-size:12px">
+        <button onclick="luovsRunFile()" style="width:100%;padding:7px;background:#007acc;border:none;color:#fff;border-radius:4px;cursor:pointer;font-size:12px;margin-bottom:8px">▶ Run ${luovsCurrentFile}</button>
+        <button onclick="luovsAskLUOKAI()" style="width:100%;padding:7px;background:#6f42c1;border:none;color:#fff;border-radius:4px;cursor:pointer;font-size:12px">🤖 Ask LUOKAI about code</button>
+      </div>`;
+  } else if (id === 'extensions') {
+    title.textContent = 'EXTENSIONS';
+    body.innerHTML = `
+      <div style="padding:8px;font-size:12px">
+        ${['Python','JavaScript','TypeScript','Markdown','JSON','HTML/CSS','GitLens','LUOKAI AI'].map(e=>
+          `<div style="padding:6px 4px;border-bottom:1px solid #3c3c3c;color:#ccc">${e}
+           <span style="float:right;color:#4ec9b0;font-size:10px">installed</span></div>`
+        ).join('')}
+      </div>`;
+  } else if (id === 'settings') {
+    title.textContent = 'SETTINGS';
+    body.innerHTML = `
+      <div style="padding:8px;font-size:12px">
+        <div style="color:#858585;margin-bottom:8px">IDE Settings</div>
+        <div style="margin-bottom:8px"><label style="color:#ccc">Font Size <input type="number" value="13" min="10" max="24" onchange="if(luovsEditor)luovsEditor.updateOptions({fontSize:+this.value})" style="width:50px;background:#3c3c3c;border:1px solid #555;color:#ccc;padding:2px 4px;border-radius:3px;margin-left:8px"></label></div>
+        <div style="margin-bottom:8px"><label style="color:#ccc">Word Wrap <input type="checkbox" onchange="if(luovsEditor)luovsEditor.updateOptions({wordWrap:this.checked?'on':'off'})" style="margin-left:8px"></label></div>
+        <div style="margin-bottom:8px"><label style="color:#ccc">Minimap <input type="checkbox" checked onchange="if(luovsEditor)luovsEditor.updateOptions({minimap:{enabled:this.checked}})" style="margin-left:8px"></label></div>
+      </div>`;
+  }
+}
+
+// ── Search ─────────────────────────────────────────────────────────
+function luovsSearch(q) {
+  const res = document.getElementById('luovs-search-results');
+  if (!res || !q) { if(res) res.innerHTML=''; return; }
+  const hits = [];
+  Object.entries(luovsFS.files).forEach(([fname, code]) => {
+    const lines = code.split('\n');
+    lines.forEach((line, i) => {
+      if (line.toLowerCase().includes(q.toLowerCase())) {
+        hits.push({fname, line: i+1, text: line.trim()});
+      }
+    });
+  });
+  res.innerHTML = hits.slice(0,20).map(h =>
+    `<div onclick="luovsOpenFile('${h.fname}')" style="padding:4px;cursor:pointer;border-bottom:1px solid #3c3c3c"
+          onmouseover="this.style.background='#2a2d2e'" onmouseout="this.style.background=''">
+      <div style="color:#ccc">${h.fname}:${h.line}</div>
+      <div style="color:#858585">${h.text.slice(0,60)}</div>
+    </div>`
+  ).join('') || '<div style="color:#858585;padding:8px">No results</div>';
+}
+
+// ── Menu bar ───────────────────────────────────────────────────────
+function luovsSetActivity(name) {
+  // Highlight the active activity bar icon
+  ['explorer','search','git','debug'].forEach(id => {
+    const el = document.getElementById('act-' + id);
+    if (el) {
+      el.style.borderLeft = id === name ? '2px solid #4fc3f7' : '2px solid transparent';
+      el.style.color      = id === name ? '#ccc' : '#858585';
+    }
+  });
+  // Toggle sidebar visibility based on activity
+  const sidebar = document.getElementById('luovs-sidebar-body')?.parentElement;
+  if (name === 'explorer') {
+    luovsRefreshSidebar();
+    if (sidebar) sidebar.style.display = 'flex';
+  } else if (name === 'search') {
+    if (sidebar) {
+      sidebar.style.display = 'flex';
+      sidebar.querySelector && (sidebar.innerHTML = `
+        <div style="padding:8px 12px;font-size:10px;font-weight:700;color:#bbb;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #3c3c3c">SEARCH</div>
+        <div style="padding:8px">
+          <input id="luovs-search-in" placeholder="Search in files..." style="width:100%;background:#3c3c3c;border:1px solid #555;border-radius:4px;padding:5px 8px;color:#ccc;font-size:12px;outline:none"
+            onkeydown="if(event.key==='Enter')luovsSearch(this.value)">
+          <div id="luovs-search-results" style="margin-top:8px;font-size:11px;color:#858585"></div>
+        </div>`);
+    }
+  } else if (name === 'git') {
+    if (sidebar) sidebar.style.display = 'flex';
+    const body = sidebar?.querySelector('#luovs-sidebar-body') || sidebar;
+    if (body) body.innerHTML = `
+      <div style="padding:8px 12px;font-size:10px;font-weight:700;color:#bbb;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #3c3c3c">SOURCE CONTROL</div>
+      <div style="padding:12px;color:#858585;font-size:12px">No git repository detected.<br><br>
+        <span onclick="luovsPrintTerm('git init\n$ ')" style="color:#4fc3f7;cursor:pointer">Initialize repository</span>
+      </div>`;
+  }
+}
+
+function luovsSearch(query) {
+  if (!query) return;
+  const results = [];
+  Object.entries(luovsFS.files).forEach(([fname, code]) => {
+    const lines = code.split('\n');
+    lines.forEach((line, i) => {
+      if (line.toLowerCase().includes(query.toLowerCase())) {
+        results.push({fname, line: line.trim(), lineNum: i + 1});
+      }
+    });
+  });
+  const el = document.getElementById('luovs-search-results');
+  if (!el) return;
+  if (!results.length) { el.textContent = 'No results'; return; }
+  el.innerHTML = results.map(r =>
+    `<div onclick="luovsOpenFile('${r.fname}')" style="padding:4px;cursor:pointer;border-radius:3px" onmouseover="this.style.background='#2a2d2e'" onmouseout="this.style.background=''">
+      <div style="color:#ccc;font-size:11px">${r.fname}:${r.lineNum}</div>
+      <div style="color:#858585;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.line}</div>
+    </div>`
+  ).join('');
+}
+
+function luovsMenu(m) {
+  if (m==='File') {
+    const choice = prompt('File menu:\n1) New File\n2) Save (Ctrl+S)\n3) Rename current file\n4) Download file\n\nEnter number:');
+    if (choice==='1') luovsNewFile();
+    if (choice==='2') { luovsSaveFile(); luovsPrintTerm(`Saved ${luovsCurrentFile}\n$ `); }
+    if (choice==='3') {
+      const name = prompt('New name:', luovsCurrentFile);
+      if (name && name!==luovsCurrentFile) {
+        luovsFS.files[name] = luovsFS.files[luovsCurrentFile];
+        delete luovsFS.files[luovsCurrentFile];
+        luovsFS.save();
+        luovsOpenTabs = luovsOpenTabs.map(t => t===luovsCurrentFile ? name : t);
+        luovsCurrentFile = name;
+        luovsRefreshSidebar(); luovsRefreshTabs();
       }
     }
-    // Load iframe
-    _vsPanel("frame");
-    const iframe = document.getElementById("vscode-iframe");
-    const stopBtn = document.getElementById("vscode-stop-btn");
-    if (stopBtn) stopBtn.style.display = "inline-flex";
-    // Build authed URL — code-server accepts ?password= on first load
-    const url = `${VSCODE_URL}/?password=${encodeURIComponent(VSCODE_PASS)}`;
-    iframe.src = url;
-    _vsBadge("● running", "#00ff9d");
-    iframe.onload = () => _vsBadge("● running", "#00ff9d");
-    iframe.onerror = () => { _vsPanel("error"); _vsBadge("● error", "#ff4d6d"); };
-  } catch(err) {
-    _vsPanel("error");
-    document.getElementById("vscode-error-msg").textContent = "VS Code integration loading";
-    _vsBadge("● offline", "#ff4d6d");
-  }
-}
-
-async function vscodeInstall() {
-  const btn = document.getElementById("vscode-install-btn");
-  const log  = document.getElementById("vscode-install-log");
-  if (btn) { btn.disabled = true; btn.textContent = "⏳ Installing…"; }
-  if (log)  { log.style.display = "block"; log.textContent = "Starting install…\n"; }
-
-  try {
-    const res = await fetch(`${API}/api/vscode/install`, {method:"POST"});
-    const d   = await res.json();
-    if (d.ok) {
-      if (log) log.textContent += `Install running (PID ${d.pid})\nThis takes ~2 minutes…\n`;
-      // Poll until code-server appears
-      let attempts = 0;
-      const poll = setInterval(async () => {
-        attempts++;
-        if (log) log.textContent += ".";
-        try {
-          const sr = await fetch(`${API}/api/vscode/status`);
-          const sd = await sr.json();
-          if (sd.installed) {
-            clearInterval(poll);
-            if (log) log.textContent += "\n✅ Installed! Starting VS Code…\n";
-            setTimeout(vscodeInit, 1500);
-          }
-        } catch {}
-        if (attempts > 60) {
-          clearInterval(poll);
-          if (log) log.textContent += "\n⚠️ Timeout. Try: bash vscode/install_code_server.sh\n";
-          if (btn) { btn.disabled = false; btn.textContent = "⬇ Retry Install"; }
-        }
-      }, 3000);
-    } else {
-      if (log) log.textContent += `Error: ${d.msg}\n`;
-      if (btn) { btn.disabled = false; btn.textContent = "⬇ Retry Install"; }
+    if (choice==='4') {
+      const a = document.createElement('a');
+      a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(luovsFS.files[luovsCurrentFile]||'');
+      a.download = luovsCurrentFile;
+      a.click();
     }
-  } catch(err) {
-    if (log) log.textContent += `Network error: ${err.message}\n`;
-    if (btn) { btn.disabled = false; btn.textContent = "⬇ Retry Install"; }
+  }
+  if (m==='Run') luovsRunFile();
+  if (m==='Terminal') document.getElementById('luovs-term-in')?.focus();
+  if (m==='View') {
+    const choice = prompt('View:\n1) Toggle Minimap\n2) Toggle Terminal\n3) Toggle Sidebar\n\nEnter number:');
+    if (choice==='1' && luovsEditor) luovsEditor.updateOptions({minimap:{enabled:!luovsEditor.getOption(61)?.enabled}});
+    if (choice==='2') luovsToggleTerminal();
+    if (choice==='3') {
+      const sb = document.getElementById('luovs-sidebar');
+      if (sb) sb.style.display = sb.style.display==='none' ? 'flex' : 'none';
+    }
   }
 }
 
-function vscodeRefresh() {
-  const iframe = document.getElementById("vscode-iframe");
-  if (iframe && iframe.src !== "about:blank") {
-    iframe.src = iframe.src; // reload
-  } else {
-    vscodeInit();
+// ── Terminal ───────────────────────────────────────────────────────
+function luovsPrintTerm(text) {
+  const out = document.getElementById('luovs-term-out');
+  if (!out) return;
+  out.textContent += text;
+  out.scrollTop = out.scrollHeight;
+}
+
+function luovsTermFocus() { document.getElementById('luovs-term-in')?.focus(); }
+
+function luovsToggleTerminal() {
+  const t = document.getElementById('luovs-terminal');
+  if (t) t.style.display = t.style.display==='none' ? 'flex' : 'none';
+  if (luovsEditor) luovsEditor.layout();
+}
+
+function luovsNewTerminal() { luovsPrintTerm('\n--- New terminal ---\n$ '); }
+
+async function luovsTermRun(cmd) {
+  if (!cmd.trim()) { luovsPrintTerm('$ '); return; }
+  luovsTermHistory.unshift(cmd);
+  luovsTermHistIdx = -1;
+  luovsPrintTerm(cmd + '\n');
+
+  const c = cmd.trim().toLowerCase();
+  // Built-in commands
+  if (c === 'help') {
+    luovsPrintTerm('Commands: help  clear  ls  pwd  run  save  files  luokai <question>\n$ ');
+    return;
   }
-}
-
-function vscodOpenExternal() {
-  window.open(`${VSCODE_URL}/?password=${encodeURIComponent(VSCODE_PASS)}`, "_blank");
-}
-
-async function vscodeStop() {
+  if (c === 'clear') { document.getElementById('luovs-term-out').textContent = ''; luovsPrintTerm('$ '); return; }
+  if (c === 'ls')    { luovsPrintTerm(Object.keys(luovsFS.files).join('  ') + '\n$ '); return; }
+  if (c === 'pwd')   { luovsPrintTerm('/home/luoos/project\n$ '); return; }
+  if (c === 'save')  { luovsSaveFile(); luovsPrintTerm('Saved.\n$ '); return; }
+  if (c === 'run')   { await luovsRunFile(); return; }
+  if (c === 'files') { luovsPrintTerm(Object.keys(luovsFS.files).map(f=>`  ${_luovsFileIcon(f)} ${f}`).join('\n') + '\n$ '); return; }
+  if (c.startsWith('luokai ')) {
+    const q = cmd.slice(7);
+    luovsPrintTerm('Asking LUOKAI...\n');
+    try {
+      const r = await fetch(`${API}/api/chat`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q})});
+      const d = await r.json();
+      luovsPrintTerm((d.response||'No response') + '\n$ ');
+    } catch { luovsPrintTerm('LUOKAI unreachable\n$ '); }
+    return;
+  }
+  // Try to run via server
   try {
-    await fetch(`${API}/api/vscode/stop`, {method:"POST"});
-    const iframe = document.getElementById("vscode-iframe");
-    if (iframe) iframe.src = "about:blank";
-    const stopBtn = document.getElementById("vscode-stop-btn");
-    if (stopBtn) stopBtn.style.display = "none";
-    _vsPanel("install");
-    _vsBadge("● stopped", "#ff4d6d");
+    const r = await fetch(`${API}/api/execute`, {method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({code:`import subprocess,sys\nr=subprocess.run(${JSON.stringify(cmd.split(' '))},capture_output=True,text=True,timeout=15)\nprint(r.stdout)\nif r.stderr:print(r.stderr,file=sys.stderr)`,language:'python'})});
+    const d = await r.json();
+    luovsPrintTerm((d.output||d.stdout||'') + (d.error||d.stderr||'') + '\n$ ');
+  } catch { luovsPrintTerm(`${cmd}: command not found\n$ `); }
+}
+
+// Arrow keys for terminal history
+document.addEventListener('keydown', e => {
+  if (document.activeElement?.id !== 'luovs-term-in') return;
+  if (e.key === 'ArrowUp') {
+    luovsTermHistIdx = Math.min(luovsTermHistIdx+1, luovsTermHistory.length-1);
+    document.getElementById('luovs-term-in').value = luovsTermHistory[luovsTermHistIdx]||'';
+    e.preventDefault();
+  }
+  if (e.key === 'ArrowDown') {
+    luovsTermHistIdx = Math.max(luovsTermHistIdx-1, -1);
+    document.getElementById('luovs-term-in').value = luovsTermHistIdx<0 ? '' : luovsTermHistory[luovsTermHistIdx];
+    e.preventDefault();
+  }
+});
+
+// ── Run file ───────────────────────────────────────────────────────
+async function luovsRunFile() {
+  luovsSaveFile();
+  const code = luovsFS.files[luovsCurrentFile] || '';
+  const lang = luovsGetLang(luovsCurrentFile);
+  luovsPrintTerm(`\n▶ Running ${luovsCurrentFile}...\n`);
+  const t = document.getElementById('luovs-terminal');
+  if (t && t.style.display==='none') t.style.display='flex';
+  try {
+    const r = await fetch(`${API}/api/execute`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({code, language: lang==='python'?'python':'python', filename: luovsCurrentFile})
+    });
+    const d = await r.json();
+    const out = d.output || d.stdout || d.result || '';
+    const err = d.error  || d.stderr || '';
+    if (out) luovsPrintTerm(out + '\n');
+    if (err) luovsPrintTerm('STDERR: ' + err + '\n');
+    if (!out && !err) luovsPrintTerm('(no output)\n');
+    luovsPrintTerm('$ ');
+  } catch(e) {
+    luovsPrintTerm(`Error: ${e.message}\n$ `);
+  }
+}
+
+// ── Ask LUOKAI about current code ─────────────────────────────────
+async function luovsAskLUOKAI() {
+  const code = luovsMonacoReady && luovsEditor
+    ? luovsEditor.getValue()
+    : (document.getElementById('luovs-fallback-ta')?.value || luovsFS.files[luovsCurrentFile] || '');
+  const q = `Explain this ${luovsGetLang(luovsCurrentFile)} code and suggest improvements:\n\n${code.slice(0,1200)}`;
+  luovsPrintTerm('\n🤖 LUOKAI analysing...\n');
+  const t = document.getElementById('luovs-terminal');
+  if (t && t.style.display==='none') t.style.display='flex';
+  try {
+    const r = await fetch(`${API}/api/chat`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q})});
+    const d = await r.json();
+    luovsPrintTerm((d.response||'No response') + '\n$ ');
+  } catch { luovsPrintTerm('LUOKAI unreachable\n$ '); }
+}
+
+// ── Model status ───────────────────────────────────────────────────
+async function luovsCheckModel() {
+  try {
+    const r = await fetch(`${API}/api/model/status`);
+    const d = await r.json();
+    const el = document.getElementById('luovs-model-badge');
+    if (el) el.textContent = d.ready ? '🟢 AI ready' : d.loading ? '⏳' : '⚡';
   } catch {}
 }
+
+// ── Legacy stubs (called from old event handlers still in HTML) ───
+async function vscodeInit()    { luovsInit(); }
+function vscodeInstall() { /* replaced by Monaco IDE */ }
+function vscodeRefresh() { /* replaced by Monaco IDE */ }
+function vscodOpenExternal() { /* replaced by Monaco IDE */ }
+async function vscodeStop() { /* replaced by Monaco IDE */ }
+
+function mcSetActivity(id)  { luovsActivity(id); }
+function mcMenu(m)          { luovsMenu(m); }
+function mcRunCode()         { luovsRunFile(); }
+function mcAskLUOKAI()      { luovsAskLUOKAI(); }
+function mcTermRun(v)        { luovsTermRun(v); }
+
 
 // ── KEYBOARD SHORTCUTS ────────────────────────────────────────────
 document.addEventListener("keydown", e => {
