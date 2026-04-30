@@ -436,6 +436,10 @@ def run_setup():
         status = f"{G}✅ on {R}" if config["features"].get(key) else f"{DIM}○ off{R}"
         print(f"    {status}  {name}")
     print()
+    print(f"  {W}Browser Engine:{R}")
+    # chromium_installed not set yet at summary — show pending
+    print(f"    {DIM}Will ask after this step{R}")
+    print()
     hr()
     print()
 
@@ -445,6 +449,38 @@ def run_setup():
         sys.exit(0)
 
     # ── Save config ──────────────────────────────────────────────────
+    # ── Install playwright + Chromium ───────────────────────────────
+    print()
+    install_chromium = ask_yn(
+        "  Install headless Chromium browser? Enables Google, YouTube, any site (~170MB)",
+        default=True
+    )
+    if install_chromium:
+        print(f"  {DIM}Installing... this takes ~1-2 minutes{R}")
+        import subprocess as _sp
+        r1 = _sp.run(
+            [sys.executable, "-m", "pip", "install", "playwright",
+             "--quiet", "--break-system-packages"],
+            capture_output=True, timeout=300
+        )
+        if r1.returncode == 0:
+            r2 = _sp.run(
+                [sys.executable, "-m", "playwright", "install", "chromium"],
+                capture_output=True, timeout=600
+            )
+            if r2.returncode == 0:
+                tick("Headless Chromium installed — browser works on every site")
+                config["chromium_installed"] = True
+            else:
+                warn(f"Chromium download failed — browser uses urllib mode")
+                config["chromium_installed"] = False
+        else:
+            warn("playwright install failed — browser uses urllib fallback")
+            config["chromium_installed"] = False
+    else:
+        info("Skipped — add later: python3 -m playwright install chromium")
+        config["chromium_installed"] = False
+
     config["setup_complete"]  = True
     config["setup_version"]   = "1.0"
     config["setup_timestamp"] = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -453,34 +489,6 @@ def run_setup():
         json.dump(config, f, indent=2)
 
     tick(f"Config saved → {CONFIG_PATH}")
-
-    # ── Install playwright + Chromium for the browser ────────────────
-    print()
-    install_chromium = ask_yn(
-        "  Install headless Chromium browser? (enables Google, YouTube, all sites)",
-        default=True
-    )
-    if install_chromium:
-        print(f"  {DIM}Installing playwright + Chromium (~170MB, one-time)...{R}")
-        import subprocess as _sp
-        r1 = _sp.run([sys.executable,"-m","pip","install","playwright","--quiet",
-                      "--break-system-packages"],
-                     capture_output=True, timeout=300)
-        if r1.returncode == 0:
-            r2 = _sp.run([sys.executable,"-m","playwright","install","chromium"],
-                         capture_output=True, timeout=600)
-            if r2.returncode == 0:
-                tick("Headless Chromium installed — browser can load any site")
-                config["chromium_installed"] = True
-            else:
-                warn("Chromium install failed — browser uses fallback mode")
-                config["chromium_installed"] = False
-        else:
-            warn("playwright install failed — browser uses urllib fallback")
-            config["chromium_installed"] = False
-    else:
-        info("Skipped — browser will use urllib mode (most HTML sites work)")
-        config["chromium_installed"] = False
 
     # ── Apply theme to index.html ────────────────────────────────────
     _apply_config(config)
