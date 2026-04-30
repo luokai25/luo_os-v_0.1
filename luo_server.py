@@ -690,83 +690,348 @@ def model_list():
 
 
 
+# ════════════════════════════════════════════════════════════════
+# LUO BROWSER ENGINE — Headless Chromium via Playwright
+# Full JS execution, cookies, sessions — every site works
+# ════════════════════════════════════════════════════════════════
+
+_pw_browser   = None   # persistent browser instance
+_pw_context   = None   # persistent browser context (cookies/session)
+_pw_lock      = threading.Lock()
+_pw_ready     = False
+_pw_error     = None
+
+def _ensure_playwright():
+    """Boot Playwright + Chromium once, reuse across all requests."""
+    global _pw_browser, _pw_context, _pw_ready, _pw_error
+    if _pw_ready:
+        return True
+    with _pw_lock:
+        if _pw_ready:
+            return True
+        try:
+            from playwright.sync_api import sync_playwright
+            import subprocess, sys as _sys
+
+            # Auto-install Chromium if not present
+            try:
+                _pw_instance = sync_playwright().start()
+                _pw_browser  = _pw_instance.chromium.launch(
+                    headless=True,
+                    args=[
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-dev-shm-usage",
+                        "--disable-gpu",
+                        "--disable-web-security",
+                        "--disable-features=IsolateOrigins,site-per-process",
+                        "--window-size=1280,800",
+                    ]
+                )
+            except Exception:
+                # Chromium not installed — install it now
+                subprocess.run(
+                    [_sys.executable, "-m", "playwright", "install", "chromium"],
+                    capture_output=True, timeout=300
+                )
+                _pw_instance = sync_playwright().start()
+                _pw_browser  = _pw_instance.chromium.launch(
+                    headless=True,
+                    args=["--no-sandbox","--disable-setuid-sandbox",
+                          "--disable-dev-shm-usage","--disable-gpu"]
+                )
+
+            _pw_context = _pw_browser.new_context(
+                user_agent=(
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/120.0.0.0 Safari/537.36"
+                ),
+                viewport={"width": 1280, "height": 800},
+                locale="en-US",
+                timezone_id="America/New_York",
+            )
+            _pw_ready = True
+            print("[LuoBrowser] ✅ Headless Chromium ready")
+            return True
+        except Exception as e:
+            _pw_error = str(e)
+            print(f"[LuoBrowser] ❌ Chromium unavailable: {e}")
+            return False
+
+def _fallback_fetch(url):
+    """urllib fallback for environments without Chromium."""
+    import urllib.request as ur, re as _re
+    from urllib.parse import urljoin
+    req = ur.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0",
+        "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    })
+    with ur.urlopen(req, timeout=15) as resp:
+        raw        = resp.read(3 * 1024 * 1024)
+        ctype      = resp.headers.get("Content-Type", "text/html")
+        final_url  = resp.url
+    charset = "utf-8"
+    for p in ctype.split(";"):
+        p = p.strip()
+        if p.lower().startswith("charset="):
+            charset = p.split("=", 1)[1].strip()
+    html = raw.decode(charset, errors="replace")
+    def abs_url(v):
+        if not v or v.startswith(("http","data:","mailto:","javascript:","#","blob:")):
+            return v
+        return urljoin(final_url, v)
+    html = _re.sub(r'(src|href|action)=(\x22)([^\x22]*)(\x22)',
+        lambda m: m.group(1)+"="+m.group(2)+abs_url(m.group(3))+m.group(4),
+        html, flags=_re.I)
+    html = _re.sub(r"(src|href|action)=(\x27)([^\x27]*)(\x27)",
+        lambda m: m.group(1)+"="+m.group(2)+abs_url(m.group(3))+m.group(4),
+        html, flags=_re.I)
+    html = _re.sub(r"(<head[^>]*>)",
+        '<base href="' + final_url + '">\\1', html, count=1, flags=_re.I)
+    tm    = _re.search(r"<title[^>]*>(.*?)</title>", html, _re.I|_re.S)
+    title = tm.group(1).strip() if tm else final_url
+    return {"ok": True, "html": html, "url": final_url,
+            "title": title, "engine": "urllib"}
+
+
 @app.route("/api/browser/fetch", methods=["POST"])
 def browser_fetch():
-    """Server-side proxy — bypasses X-Frame-Options and CORS restrictions."""
+    """
+    Fetch any URL using headless Chromium (full JS, no iframe limits).
+    Falls back to urllib proxy if Chromium is unavailable.
+    """
     body = request.json or {}
     url  = body.get("url", "").strip()
     if not url:
         return jsonify({"ok": False, "error": "No URL"})
     if not url.startswith("http"):
         url = "https://" + url
+
+    # ── Try Playwright / Chromium first ──────────────────────────
+    if _ensure_playwright():
+        try:
+            with _pw_lock:
+                page = _pw_context.new_page()
+                try:
+                    # Block heavy media to speed up loading
+                    page.route("**/*.{mp4,webm,ogg,mp3,wav,flac,aac,woff,woff2,ttf,eot}",
+                               lambda r: r.abort())
+
+                    page.goto(url, timeout=25000, wait_until="domcontentloaded")
+                    # Give JS a moment to render
+                    page.wait_for_timeout(1800)
+
+                    final_url = page.url
+                    title     = page.title()
+                    html      = page.content()
+
+                    # Take screenshot for thumbnail (base64 PNG, max 400px wide)
+                    screenshot = page.screenshot(
+                        type="png", full_page=False,
+                        clip={"x":0,"y":0,"width":1280,"height":800}
+                    )
+                    import base64
+                    thumb_b64 = base64.b64encode(screenshot).decode()
+
+                    return jsonify({
+                        "ok":        True,
+                        "html":      html,
+                        "url":       final_url,
+                        "title":     title,
+                        "thumb":     thumb_b64,   # PNG screenshot
+                        "engine":    "chromium",
+                    })
+                finally:
+                    page.close()
+        except Exception as e:
+            print(f"[LuoBrowser] Chromium page error: {e}")
+            # fall through to urllib
+
+    # ── urllib fallback ───────────────────────────────────────────
     try:
-        import urllib.request as ur, re
-        from urllib.parse import urljoin, quote
-        req = ur.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0",
-            "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
-        })
-        with ur.urlopen(req, timeout=12) as resp:
-            raw       = resp.read(2 * 1024 * 1024)
-            ctype     = resp.headers.get("Content-Type", "text/html")
-            final_url = resp.url
-        charset = "utf-8"
-        for p in ctype.split(";"):
-            p = p.strip()
-            if p.lower().startswith("charset="):
-                charset = p.split("=", 1)[1].strip()
-        html = raw.decode(charset, errors="replace")
-
-        # Rewrite relative URLs to absolute using a simple approach
-        def abs_url(val):
-            if not val or val.startswith(("http", "data:", "mailto:", "javascript:", "#", "blob:")):
-                return val
-            return urljoin(final_url, val)
-
-        # Replace src="..." href="..." action="..."
-        def repl_attr(m):
-            attr = m.group(1)
-            q    = m.group(2)
-            val  = m.group(3)
-            return attr + "=" + q + abs_url(val) + q
-
-        import re as _re
-        # Use \x22 for " and \x27 for ' to avoid quote issues
-        html = _re.sub(
-            r'(src|href|action)=(\x22)([^\x22]*)(\x22)',
-            lambda m: m.group(1)+"="+m.group(2)+abs_url(m.group(3))+m.group(4),
-            html, flags=_re.IGNORECASE
-        )
-        html = _re.sub(
-            r"(src|href|action)=(\x27)([^\x27]*)(\x27)",
-            lambda m: m.group(1)+"="+m.group(2)+abs_url(m.group(3))+m.group(4),
-            html, flags=_re.IGNORECASE
-        )
-
-        # Inject base tag
-        html = _re.sub(r"(<head[^>]*>)", "<base href=\"" + final_url + "\">\\1", html, count=1, flags=_re.IGNORECASE)
-
-        # Extract title
-        tm    = _re.search(r"<title[^>]*>(.*?)</title>", html, _re.IGNORECASE | _re.DOTALL)
-        title = tm.group(1).strip() if tm else final_url
-
-        return jsonify({"ok": True, "html": html, "url": final_url, "title": title})
+        result = _fallback_fetch(url)
+        return jsonify(result)
     except Exception as e:
         return jsonify({"ok": False, "error": str(e), "url": url})
 
 
+@app.route("/api/browser/screenshot", methods=["POST"])
+def browser_screenshot():
+    """Return a PNG screenshot of a URL (base64 encoded)."""
+    body = request.json or {}
+    url  = body.get("url", "").strip()
+    if not url or not url.startswith("http"):
+        url = "https://" + url
+    if not _ensure_playwright():
+        return jsonify({"ok": False, "error": "Chromium not available"})
+    try:
+        with _pw_lock:
+            page = _pw_context.new_page()
+            try:
+                page.goto(url, timeout=20000, wait_until="domcontentloaded")
+                page.wait_for_timeout(2000)
+                import base64
+                png   = page.screenshot(full_page=False)
+                b64   = base64.b64encode(png).decode()
+                title = page.title()
+                url_f = page.url
+                return jsonify({"ok": True, "screenshot": b64,
+                                "title": title, "url": url_f})
+            finally:
+                page.close()
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
 @app.route("/api/browser/search", methods=["POST"])
 def browser_search():
-    """Return DuckDuckGo search URL for client to proxy-fetch."""
+    """Search DuckDuckGo via headless Chromium, return full results HTML."""
     body  = request.json or {}
     query = body.get("query", "").strip()
     if not query:
         return jsonify({"ok": False, "error": "No query"})
     import urllib.parse
-    url = "https://html.duckduckgo.com/html/?q=" + urllib.parse.quote(query)
-    return jsonify({"ok": True, "redirect": url, "search_url": url})
+    search_url = "https://duckduckgo.com/?q=" + urllib.parse.quote(query) + "&ia=web"
+    body["url"] = search_url
+    return browser_fetch()
 
+
+@app.route("/api/browser/status", methods=["GET"])
+def browser_status():
+    """Check if headless Chromium is ready."""
+    return jsonify({
+        "ok":     True,
+        "ready":  _pw_ready,
+        "engine": "chromium" if _pw_ready else "urllib",
+        "error":  _pw_error,
+    })
+
+
+
+
+# ════════════════════════════════════════════════════════════════
+# LUO-WORLDMONITOR — Global intelligence dashboard integration
+# Proxies live RSS feeds, serves worldmonitor data inside LuoOS
+# Source: https://github.com/koala73/worldmonitor (in apps/luo-worldmonitor)
+# ════════════════════════════════════════════════════════════════
+
+import xml.etree.ElementTree as _ET
+
+# Curated RSS feeds from worldmonitor source config — no API key needed
+_WM_FEEDS = {
+    "top":      "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "us":       "https://www.cbsnews.com/latest/rss/main",
+    "tech":     "https://feeds.feedburner.com/TechCrunch",
+    "defense":  "https://www.defensenews.com/arc/outboundfeeds/rss/?outputType=xml",
+    "finance":  "https://news.google.com/rss/search?q=markets+stocks+economy&hl=en-US&gl=US&ceid=US:en",
+    "science":  "https://export.arxiv.org/rss/cs.LG",
+    "middle_east": "https://www.theguardian.com/world/middleeast/rss",
+    "climate":  "https://news.google.com/rss/search?q=climate+disaster+extreme+weather&hl=en-US&gl=US&ceid=US:en",
+    "health":   "https://news.google.com/rss/search?q=health+disease+pandemic&hl=en-US&gl=US&ceid=US:en",
+    "space":    "https://www.nasa.gov/rss/dyn/breaking_news.rss",
+}
+
+def _fetch_rss(url, max_items=12):
+    """Fetch and parse RSS feed, return list of items."""
+    import urllib.request as _ur
+    req = _ur.Request(url, headers={
+        "User-Agent": "LuoOS-WorldMonitor/1.0",
+        "Accept": "application/rss+xml, application/xml, text/xml",
+    })
+    try:
+        with _ur.urlopen(req, timeout=8) as r:
+            raw = r.read(1024 * 512)
+    except Exception as e:
+        return []
+    try:
+        root = _ET.fromstring(raw.decode("utf-8", errors="replace"))
+    except Exception:
+        return []
+    ns   = {"media": "http://search.yahoo.com/mrss/"}
+    chan = root.find("channel") or root
+    items = []
+    for item in chan.findall("item")[:max_items]:
+        def t(tag):
+            el = item.find(tag)
+            return (el.text or "").strip() if el is not None else ""
+        # Extract image from media:thumbnail or enclosure
+        img = ""
+        mt = item.find("media:thumbnail", ns)
+        if mt is not None:
+            img = mt.get("url", "")
+        enc = item.find("enclosure")
+        if not img and enc is not None:
+            img = enc.get("url", "")
+        items.append({
+            "title":       t("title"),
+            "link":        t("link"),
+            "description": t("description")[:200],
+            "pubDate":     t("pubDate"),
+            "source":      t("source") or t("author"),
+            "image":       img,
+        })
+    return items
+
+
+@app.route("/api/worldmonitor/feed", methods=["GET", "POST"])
+def worldmonitor_feed():
+    """Fetch live news feed by category."""
+    body     = request.json or {}
+    category = (request.args.get("category") or body.get("category", "top")).lower()
+    max_items= int(request.args.get("max") or body.get("max", 12))
+    url      = _WM_FEEDS.get(category, _WM_FEEDS["top"])
+    items    = _fetch_rss(url, max_items)
+    return jsonify({"ok": True, "category": category, "items": items,
+                    "source_url": url, "count": len(items)})
+
+
+@app.route("/api/worldmonitor/multi", methods=["POST"])
+def worldmonitor_multi():
+    """Fetch multiple categories at once (parallel)."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    body       = request.json or {}
+    categories = body.get("categories", ["top", "tech", "finance", "defense"])[:6]
+    max_each   = body.get("max", 6)
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futures = {
+            ex.submit(_fetch_rss, _WM_FEEDS.get(c, _WM_FEEDS["top"]), max_each): c
+            for c in categories if c in _WM_FEEDS
+        }
+        for future in as_completed(futures, timeout=10):
+            cat = futures[future]
+            try:
+                results[cat] = future.result()
+            except Exception:
+                results[cat] = []
+
+    return jsonify({"ok": True, "results": results,
+                    "categories": list(results.keys())})
+
+
+@app.route("/api/worldmonitor/categories", methods=["GET"])
+def worldmonitor_categories():
+    """List available feed categories."""
+    return jsonify({
+        "ok":         True,
+        "categories": list(_WM_FEEDS.keys()),
+        "feeds":      {k: v for k, v in _WM_FEEDS.items()}
+    })
+
+
+@app.route("/api/worldmonitor/status", methods=["GET"])
+def worldmonitor_status():
+    """Health check for worldmonitor integration."""
+    return jsonify({
+        "ok":         True,
+        "integrated": True,
+        "feeds":      len(_WM_FEEDS),
+        "source":     "https://github.com/koala73/worldmonitor",
+        "local_path": "apps/luo-worldmonitor",
+    })
 
 
 @app.after_request
@@ -795,6 +1060,11 @@ def _run_server():
         boot_engine()
     except Exception:
         pass
+
+    # Pre-warm headless Chromium so first browser request is fast
+    threading.Thread(
+        target=_ensure_playwright, daemon=True, name="LuoBrowserInit"
+    ).start()
 
     threading.Thread(target=_vscode_autostart, daemon=True).start()
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True, use_reloader=False)

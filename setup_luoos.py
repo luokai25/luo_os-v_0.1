@@ -248,7 +248,7 @@ def run_setup():
     input(f"  {C}Press Enter to begin setup...{R} ")
 
     # ── Step 1: Your name ────────────────────────────────────────────
-    header("Step 1 of 5 — Who are you?",
+    header("Step 1 of 6 — Who are you?",
            "LUOKAI personalises responses using your name")
     print(f"  {DIM}This is stored locally, never sent anywhere.{R}\n")
     name = ask("Your name", default="User")
@@ -257,7 +257,7 @@ def run_setup():
 
     # ── Step 2: AI Model ─────────────────────────────────────────────
     recommended = _recommend_model()
-    header("Step 2 of 5 — Choose your AI model",
+    header("Step 2 of 6 — Choose your AI model",
            "LUOKAI's brain — runs fully offline on your machine")
 
     print(f"  {DIM}Your machine has {_ram_gb}GB RAM · {_cpu_cores} CPU cores{R}\n")
@@ -369,57 +369,6 @@ def run_setup():
     config["ui_mode"] = ui_mode
     tick(f"Desktop: {'3D Spatial' if ui_mode == '3d' else 'Classic'}")
 
-    # ── Step 3.5: API Keys ───────────────────────────────────────────
-    header("Step 4 of 6 — API Keys (optional)",
-           "Connect external services to LuoOS — skip any you don't need")
-
-    config["api_keys"] = {}
-    print(f"  {DIM}Keys are stored in ~/.luo_os/config.json (local only, never sent anywhere){R}")
-    print(f"  {DIM}Press Enter to skip any key. You can add keys later by editing config.json{R}")
-
-    add_keys = ask_yn("  Would you like to add any API keys now?", default=False)
-
-    if add_keys:
-        # Group by category
-        categories = [
-            ("🤖 AI & LLM",          ["openai","anthropic","google_ai","mistral","cohere","groq","together","replicate","huggingface","perplexity"]),
-            ("🔍 Search & Web",       ["serpapi","brave_search","tavily","bing_search","exa"]),
-            ("Cloud",              ["aws","gcp","azure","cloudflare","vercel"]),
-            ("💻 Dev & Code",          ["github","gitlab","linear","supabase","firebase"]),
-            ("💬 Communication",       ["twilio","sendgrid","slack","discord","telegram"]),
-            ("💳 Payments",            ["stripe","paypal","plaid"]),
-            ("📊 Data & Analytics",    ["pinecone","airtable","notion","mongodb"]),
-            ("Maps & Weather",     ["google_maps","mapbox","openweather"]),
-            ("🎵 Media & Voice",       ["cloudinary","elevenlabs","deepgram","spotify"]),
-            ("🔐 Auth & Monitoring",   ["auth0","datadog","sentry","posthog"]),
-            ("📰 Misc",                ["newsapi","alpha_vantage","coinbase"]),
-        ]
-
-        provider_map = {p[0]: p for p in API_PROVIDERS}
-
-        for cat_name, keys in categories:
-            print(f"\n  {B}{cat_name}{R}")
-            any_in_cat = False
-            for key in keys:
-                if key not in provider_map:
-                    continue
-                pid, name, desc = provider_map[key]
-                val = ask(f"  {name} {DIM}({desc}){R}", default="")
-                if val and val.strip():
-                    config["api_keys"][key] = val.strip()
-                    tick(f"{name} key saved")
-                    any_in_cat = True
-            if not any_in_cat:
-                pass  # silently skip empty categories
-
-        total_keys = len(config["api_keys"])
-        if total_keys:
-            tick(f"{total_keys} API key{'s' if total_keys > 1 else ''} saved")
-        else:
-            info("No keys added — you can add them later in ~/.luo_os/config.json")
-    else:
-        info("Skipped — add API keys later in ~/.luo_os/config.json")
-
     # ── Step 5: Features ─────────────────────────────────────────────
     header("Step 5 of 6 — Features",
            "Enable or disable LUOKAI capabilities")
@@ -504,6 +453,34 @@ def run_setup():
         json.dump(config, f, indent=2)
 
     tick(f"Config saved → {CONFIG_PATH}")
+
+    # ── Install playwright + Chromium for the browser ────────────────
+    print()
+    install_chromium = ask_yn(
+        "  Install headless Chromium browser? (enables Google, YouTube, all sites)",
+        default=True
+    )
+    if install_chromium:
+        print(f"  {DIM}Installing playwright + Chromium (~170MB, one-time)...{R}")
+        import subprocess as _sp
+        r1 = _sp.run([sys.executable,"-m","pip","install","playwright","--quiet",
+                      "--break-system-packages"],
+                     capture_output=True, timeout=300)
+        if r1.returncode == 0:
+            r2 = _sp.run([sys.executable,"-m","playwright","install","chromium"],
+                         capture_output=True, timeout=600)
+            if r2.returncode == 0:
+                tick("Headless Chromium installed — browser can load any site")
+                config["chromium_installed"] = True
+            else:
+                warn("Chromium install failed — browser uses fallback mode")
+                config["chromium_installed"] = False
+        else:
+            warn("playwright install failed — browser uses urllib fallback")
+            config["chromium_installed"] = False
+    else:
+        info("Skipped — browser will use urllib mode (most HTML sites work)")
+        config["chromium_installed"] = False
 
     # ── Apply theme to index.html ────────────────────────────────────
     _apply_config(config)

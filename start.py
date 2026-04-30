@@ -25,14 +25,25 @@ if sys.version_info < (3, 6):
 
 # ── Auto-install core deps ──────────────────────────────────────────
 import importlib.util
-missing = [pip for mod, pip in [("flask","flask"),("flask_cors","flask-cors")]
-           if not importlib.util.find_spec(mod)]
+missing = [pip for mod, pip in [
+    ("flask","flask"),("flask_cors","flask-cors"),("playwright","playwright"),
+] if not importlib.util.find_spec(mod)]
 if missing:
     print(f"\n  Installing: {', '.join(missing)}  (one-time)…\n")
     try:
         subprocess.check_call([sys.executable,"-m","pip","install","--quiet"]+missing,
                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         step(f"Installed: {', '.join(missing)}")
+        # Install Chromium binary if playwright was just installed
+        if "playwright" in missing:
+            try:
+                subprocess.check_call(
+                    [sys.executable, "-m", "playwright", "install", "chromium"],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                step("Headless Chromium installed — browser can load any site")
+            except Exception:
+                pass
     except Exception:
         warn(f"Run: pip install {' '.join(missing)}")
         input("Press Enter to exit..."); sys.exit(1)

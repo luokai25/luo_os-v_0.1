@@ -1021,6 +1021,10 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
             \${["DuckDuckGo|https://duckduckgo.com","Wikipedia|https://en.wikipedia.org","GitHub|https://github.com","HackerNews|https://news.ycombinator.com","MDN|https://developer.mozilla.org","Reddit|https://old.reddit.com"].map(s=>{const[n,u]=s.split("|");return \`<button onclick="browserLoad('\${u}')" style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">\${n}</button>\`;}).join("")}
           </div>
           <div style="color:var(--text3);font-size:11px;margin-top:8px">Type a URL or search term above and press Enter · Ctrl+L to focus address bar</div>
+          <div id="browser-engine-badge" style="margin-top:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:11px;color:var(--text2);display:inline-flex;align-items:center;gap:6px">
+            <span id="browser-engine-dot" style="width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block"></span>
+            <span id="browser-engine-label">Checking browser engine...</span>
+          </div>
         </div>
         <div id="browser-frame-wrap" style="position:absolute;inset:0;display:none;overflow:auto;background:#fff">
           <div id="browser-page" style="padding:0;transform-origin:top left"></div>
@@ -1373,7 +1377,54 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
         </div>
       </div>`;
 
-    default: return `<div style="padding:32px;color:var(--text2);text-align:center">🚧 ${id} — Coming soon</div>`;
+    case "worldmonitor": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-desktop);font-family:var(--font-main)">
+
+        <!-- Header bar -->
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--bg-glass);border-bottom:1px solid var(--border);flex-shrink:0">
+          <span style="font-size:20px">🌍</span>
+          <span style="font-size:14px;font-weight:700;color:var(--text)">Luo World Monitor</span>
+          <span style="font-size:10px;color:var(--text3);margin-left:4px">powered by worldmonitor</span>
+          <div style="flex:1"></div>
+          <div id="wm-feed-tabs" style="display:flex;gap:4px">
+            \${["top","tech","finance","defense","science","climate","health"].map((c,i)=>
+              \`<button onclick="wmLoadFeed('\${c}')" id="wm-tab-\${c}"
+                style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);
+                       background:\${i===0?'var(--accent)':'var(--bg-card)'};
+                       color:\${i===0?'#000':'var(--text2)'};font-size:10px;cursor:pointer;
+                       transition:all .15s;text-transform:capitalize"
+                onmouseover="this.style.borderColor='var(--accent)'"
+                onmouseout="if(!this.style.background.includes('accent'))this.style.borderColor='var(--border)'">\${c}</button>\`
+            ).join("")}
+          </div>
+          <button onclick="wmRefresh()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:10px;cursor:pointer">↺ Refresh</button>
+        </div>
+
+        <!-- LUOKAI analysis bar -->
+        <div style="padding:8px 16px;background:rgba(124,58,237,.08);border-bottom:1px solid rgba(124,58,237,.2);display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-size:12px">🤖</span>
+          <span id="wm-luokai-analysis" style="font-size:11px;color:var(--text2);flex:1">LUOKAI ready — select an article to get AI analysis</span>
+          <button onclick="wmAskLuokai()" style="padding:3px 10px;border-radius:5px;border:1px solid rgba(124,58,237,.4);background:rgba(124,58,237,.15);color:var(--accent2);font-size:10px;cursor:pointer">Ask LUOKAI</button>
+        </div>
+
+        <!-- Feed grid -->
+        <div id="wm-feed-grid" style="flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-content:start">
+          <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3);font-size:13px">
+            <div style="font-size:32px;margin-bottom:12px">🌍</div>
+            Loading world intelligence feed...
+          </div>
+        </div>
+
+        <!-- Status bar -->
+        <div style="padding:5px 16px;border-top:1px solid var(--border);background:var(--bg-glass);display:flex;align-items:center;gap:12px;flex-shrink:0">
+          <span id="wm-status" style="font-size:10px;color:var(--text3)">Ready</span>
+          <div style="flex:1"></div>
+          <a href="https://worldmonitor.app" target="_blank"
+             style="font-size:10px;color:var(--accent);text-decoration:none">worldmonitor.app ↗</a>
+          <span style="font-size:10px;color:var(--text3)">Source: github.com/koala73/worldmonitor</span>
+        </div>
+      </div>`;
+        default: return `<div style="padding:32px;color:var(--text2);text-align:center">🚧 ${id} — Coming soon</div>`;
   }
 }
 
@@ -1390,6 +1441,9 @@ function initApp(id) {
   }
   if (id === "vscode") {
     luovsInit();
+  }
+  if (id === "worldmonitor") {
+    setTimeout(initWorldMonitor, 100);
   }
   if (id === "settings") {
     // Update live stats
@@ -1771,12 +1825,36 @@ function filesUp() {
 // ── LUO BROWSER — server-side proxy ──────────────────────────────
 const _bHistory = [], _bHistoryPos = [-1];  // [-1] = boxed int
 
+// Check browser engine status and update badge
+async function checkBrowserEngine() {
+  try {
+    const r = await fetch(`${API}/api/browser/status`);
+    const d = await r.json();
+    const dot   = document.getElementById("browser-engine-dot");
+    const label = document.getElementById("browser-engine-label");
+    if (!dot || !label) return;
+    if (d.ready) {
+      dot.style.background   = "var(--accent3)";
+      label.textContent      = "⚡ Headless Chromium ready — full JS, all sites work";
+      label.style.color      = "var(--accent3)";
+    } else {
+      dot.style.background   = "var(--accent4)";
+      label.textContent      = "⏳ Chromium loading... (urllib fallback active)";
+      setTimeout(checkBrowserEngine, 3000);
+    }
+  } catch(e) {
+    const label = document.getElementById("browser-engine-label");
+    if (label) label.textContent = "urllib proxy mode";
+  }
+}
+setTimeout(checkBrowserEngine, 1000);
+
 function _bShowLoading(on) {
   const el = document.getElementById("browser-loading");
   if (el) el.style.display = on ? "block" : "none";
 }
 
-function _bShowPage(html, url, title) {
+function _bShowPage(html, url, title, thumb) {
   const homepage = document.getElementById("browser-homepage");
   const wrap     = document.getElementById("browser-frame-wrap");
   const page     = document.getElementById("browser-page");
@@ -1785,10 +1863,31 @@ function _bShowPage(html, url, title) {
   if (homepage) homepage.style.display = "none";
   if (errEl)    errEl.style.display = "none";
   if (wrap)     wrap.style.display = "block";
-  if (page)     page.innerHTML = html;
   if (urlInput) urlInput.value = url;
-  // Intercept links inside the rendered page
-  if (page) {
+
+  if (thumb) {
+    // Chromium returned a real screenshot — show as image overlay on HTML
+    // This gives pixel-perfect rendering of any site
+    page.innerHTML = `
+      <div style="position:relative;width:100%;min-height:100%">
+        <img src="data:image/png;base64,${thumb}"
+             style="width:100%;display:block;cursor:default"
+             draggable="false"
+             alt="${title}">
+        <div style="position:sticky;bottom:0;background:rgba(8,13,18,.85);
+                    backdrop-filter:blur(10px);padding:6px 12px;
+                    font-size:11px;color:var(--text2);border-top:1px solid var(--border);
+                    display:flex;align-items:center;gap:10px">
+          <span style="color:var(--accent3)">🖥 Rendered by headless Chromium</span>
+          <span style="color:var(--text3)">|</span>
+          <a href="${url}" style="color:var(--accent);text-decoration:none;font-size:10px" target="_blank">${url}</a>
+          <button onclick="browserLoad('${url}')" style="margin-left:auto;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:2px 8px;font-size:10px;cursor:pointer">↺ Reload</button>
+        </div>
+      </div>`;
+  } else {
+    // urllib fallback — render HTML directly
+    page.innerHTML = html;
+    // Intercept links inside the rendered page
     page.querySelectorAll("a[href]").forEach(a => {
       a.addEventListener("click", e => {
         e.preventDefault();
@@ -1806,6 +1905,8 @@ function _bShowPage(html, url, title) {
       });
     });
   }
+  // Update page title
+  document.title = title ? `${title} — Luo Browser` : "Luo Browser";
   // Update history
   _bHistory.push({url, title});
   _bHistoryPos[0] = _bHistory.length - 1;
@@ -1837,7 +1938,7 @@ async function browserLoad(url) {
     const d = await r.json();
     _bShowLoading(false);
     if (d.ok) {
-      _bShowPage(d.html, d.url, d.title);
+      _bShowPage(d.html, d.url, d.title, d.thumb || null);
     } else {
       _bShowError(d.error || "Unknown error", url);
     }
@@ -3002,6 +3103,143 @@ init();
     ws.style.pointerEvents = i === 0 ? 'auto' : 'none';
   });
 })();
+
+
+// ════════════════════════════════════════════════════════════════
+// LUO WORLD MONITOR — Global intelligence feed
+// ════════════════════════════════════════════════════════════════
+let _wmCurrentFeed = "top";
+let _wmCurrentItems = [];
+let _wmSelected = null;
+
+async function wmLoadFeed(category) {
+  _wmCurrentFeed = category;
+  const grid   = document.getElementById("wm-feed-grid");
+  const status = document.getElementById("wm-status");
+  if (!grid) return;
+
+  // Update tab styles
+  document.querySelectorAll('[id^="wm-tab-"]').forEach(btn => {
+    const isActive = btn.id === `wm-tab-${category}`;
+    btn.style.background = isActive ? "var(--accent)" : "var(--bg-card)";
+    btn.style.color      = isActive ? "#000" : "var(--text2)";
+  });
+
+  // Show loading
+  grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">
+    <div style="font-size:24px;margin-bottom:8px">⏳</div>Loading ${category} feed...</div>`;
+  if (status) status.textContent = `Fetching ${category}...`;
+
+  try {
+    const r = await fetch(API + "/api/worldmonitor/feed?category=" + category + "&max=18");
+    const d = await r.json();
+    if (!d.ok || !d.items?.length) {
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">
+        <div style="font-size:24px">📡</div><br>No items found. Feed may be unavailable.<br>
+        <a href="https://worldmonitor.app" target="_blank" style="color:var(--accent);font-size:12px;margin-top:8px;display:block">Open worldmonitor.app ↗</a></div>`;
+      if (status) status.textContent = "Feed unavailable — try another category";
+      return;
+    }
+    _wmCurrentItems = d.items;
+    wmRenderGrid(d.items);
+    if (status) status.textContent = `${d.items.length} articles · ${category} · ${new Date().toLocaleTimeString()}`;
+  } catch(e) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">
+      <div style="font-size:24px">⚠️</div><br>Could not reach server.<br><small>${e.message}</small></div>`;
+    if (status) status.textContent = "Connection error";
+  }
+}
+
+function wmRenderGrid(items) {
+  const grid = document.getElementById("wm-feed-grid");
+  if (!grid) return;
+  grid.innerHTML = items.map((item, i) => `
+    <div onclick="wmSelectItem(${i})" id="wm-card-${i}"
+         style="background:var(--bg-card);border:1px solid var(--border);border-radius:10px;
+                overflow:hidden;cursor:pointer;transition:all .2s;display:flex;flex-direction:column"
+         onmouseover="this.style.borderColor='var(--accent)';this.style.transform='translateY(-1px)'"
+         onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
+      ${item.image ? `<img src="${item.image}" style="width:100%;height:140px;object-fit:cover;flex-shrink:0" onerror="this.style.display='none'" loading="lazy">` : ''}
+      <div style="padding:12px;flex:1;display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4">${item.title || "Untitled"}</div>
+        ${item.description ? `<div style="font-size:10px;color:var(--text2);line-height:1.5;flex:1">${item.description}</div>` : ""}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+          ${item.source ? `<span style="font-size:9px;color:var(--text3)">${item.source}</span>` : "<span></span>"}
+          ${item.pubDate ? `<span style="font-size:9px;color:var(--text3)">${new Date(item.pubDate).toLocaleDateString()}</span>` : ""}
+        </div>
+        <div style="display:flex;gap:6px;margin-top:4px">
+          <button onclick="event.stopPropagation();wmOpenInBrowser('${(item.link||'').replace(/'/g,"\\'")}',event)"
+                  style="flex:1;padding:4px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:9px;cursor:pointer">
+            🌐 Open
+          </button>
+          <button onclick="event.stopPropagation();wmAnalyse(${i},event)"
+                  style="flex:1;padding:4px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--accent2);font-size:9px;cursor:pointer">
+            🤖 Analyse
+          </button>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+function wmSelectItem(i) {
+  _wmSelected = i;
+  // Highlight selected card
+  document.querySelectorAll('[id^="wm-card-"]').forEach((c, idx) => {
+    c.style.borderColor = idx === i ? "var(--accent)" : "var(--border)";
+  });
+  const item = _wmCurrentItems[i];
+  const analysis = document.getElementById("wm-luokai-analysis");
+  if (analysis && item) {
+    analysis.textContent = `Selected: "${item.title?.substring(0,80)}..." — click Analyse for AI brief`;
+  }
+}
+
+async function wmAnalyse(i, event) {
+  if (event) event.stopPropagation();
+  const item = _wmCurrentItems[i];
+  if (!item) return;
+  const analysis = document.getElementById("wm-luokai-analysis");
+  if (analysis) analysis.textContent = "🤖 LUOKAI analysing...";
+  try {
+    const prompt = `Briefly analyse this news headline and description in 2-3 sentences. Be concise and factual.
+Title: ${item.title}
+Description: ${item.description}
+Source: ${item.source}`;
+    const r = await fetch(API + "/api/chat", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({message: prompt})
+    });
+    const d = await r.json();
+    if (analysis) analysis.textContent = "🤖 " + (d.response || "No analysis available");
+  } catch(e) {
+    if (analysis) analysis.textContent = "Could not reach LUOKAI — " + e.message;
+  }
+}
+
+async function wmAskLuokai() {
+  if (_wmSelected !== null) {
+    wmAnalyse(_wmSelected, null);
+  } else if (_wmCurrentItems.length) {
+    wmAnalyse(0, null);
+  }
+}
+
+function wmRefresh() { wmLoadFeed(_wmCurrentFeed); }
+
+function wmOpenInBrowser(url, event) {
+  if (event) event.stopPropagation();
+  if (!url) return;
+  // Open in Luo Browser
+  openApp("browser");
+  setTimeout(() => {
+    const urlBar = document.getElementById("browser-url");
+    if (urlBar) { urlBar.value = url; browserLoad(url); }
+  }, 400);
+}
+
+function initWorldMonitor() {
+  wmLoadFeed("top");
+}
 
 </script>
 </body>
