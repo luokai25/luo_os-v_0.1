@@ -72,15 +72,6 @@ active_agent = react_agent or agent
 # ── Routes ───────────────────────────────────────────────────────────
 @app.route("/")
 def index():
-    ui = os.environ.get("LUO_UI", "classic")
-    return send_from_directory(".", "index_3d.html" if ui == "3d" else "index.html")
-
-@app.route("/3d")
-def index_3d():
-    return send_from_directory(".", "index_3d.html")
-
-@app.route("/classic")
-def index_classic():
     return send_from_directory(".", "index.html")
 
 @app.route("/<path:path>")
@@ -1032,6 +1023,209 @@ def worldmonitor_status():
         "source":     "https://github.com/koala73/worldmonitor",
         "local_path": "apps/luo-worldmonitor",
     })
+
+
+
+# ════════════════════════════════════════════════════════════════
+# CONVERSATION MEMORY — persists across sessions
+# Saves to ~/.luo_os/memory.json, injects context into every chat
+# ════════════════════════════════════════════════════════════════
+import json as _json_mem
+
+_MEMORY_FILE = Path.home() / ".luo_os" / "memory.json"
+_chat_history = []   # in-memory list of {role, content, ts}
+
+def _load_memory():
+    global _chat_history
+    try:
+        if _MEMORY_FILE.exists():
+            data = _json_mem.loads(_MEMORY_FILE.read_text())
+            _chat_history = data.get("history", [])[-200:]  # keep last 200
+    except Exception:
+        _chat_history = []
+
+def _save_memory():
+    try:
+        _MEMORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _MEMORY_FILE.write_text(_json_mem.dumps({
+            "history": _chat_history[-200:],
+            "saved_at": time.strftime("%Y-%m-%dT%H:%M:%S")
+        }, indent=2))
+    except Exception:
+        pass
+
+def _get_context_messages(new_msg: str, n: int = 12) -> list:
+    """Return last n turns as context for the inference engine."""
+    recent = _chat_history[-n*2:]
+    msgs = [{"role": m["role"], "content": m["content"]} for m in recent]
+    msgs.append({"role": "user", "content": new_msg})
+    return msgs
+
+# Load memory on startup
+_load_memory()
+
+@app.route("/api/memory/history", methods=["GET"])
+def memory_history():
+    n = int(request.args.get("n", 50))
+    return jsonify({"ok": True, "history": _chat_history[-n:],
+                    "total": len(_chat_history)})
+
+@app.route("/api/memory/clear", methods=["POST"])
+def memory_clear():
+    global _chat_history
+    _chat_history = []
+    _save_memory()
+    return jsonify({"ok": True, "message": "Memory cleared"})
+
+@app.route("/api/memory/save", methods=["POST"])
+def memory_save_endpoint():
+    _save_memory()
+    return jsonify({"ok": True})
+
+
+
+# ════════════════════════════════════════════════════════════════
+# FILE SYSTEM API
+# ════════════════════════════════════════════════════════════════
+import glob as _glob
+
+def _resolve_path(path: str) -> str:
+    """Resolve ~ and make safe."""
+    if not path or path == '~':
+        return str(Path.home())
+    path = path.replace('~', str(Path.home()))
+    return str(Path(path).resolve())
+
+@app.route("/api/fs/ls", methods=["POST"])
+def fs_ls():
+    body = request.json or {}
+    try:
+        p = Path(_resolve_path(body.get("path", "~")))
+        if not p.exists():
+            return jsonify({"ok": False, "error": "Path not found"})
+        items = []
+        for child in sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower())):
+            try:
+                stat = child.stat()
+                items.append({
+                    "name":   child.name,
+                    "type":   "dir" if child.is_dir() else "file",
+                    "size":   stat.st_size if child.is_file() else 0,
+                    "is_dir": child.is_dir(),
+                    "mtime":  stat.st_mtime,
+                })
+            except PermissionError:
+                pass
+        return jsonify({"ok": True, "items": items, "path": str(p)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/fs/read", methods=["POST"])
+def fs_read():
+    body = request.json or {}
+    try:
+        p = Path(_resolve_path(body.get("path", "")))
+        if not p.exists() or not p.is_file():
+            return jsonify({"ok": False, "error": "File not found"})
+        if p.stat().st_size > 2 * 1024 * 1024:
+            return jsonify({"ok": False, "error": "File too large (>2MB)"})
+        content_text = p.read_text(errors="replace")
+        return jsonify({"ok": True, "content": content_text, "path": str(p)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/fs/write", methods=["POST"])
+def fs_write():
+    body = request.json or {}
+    try:
+        p = Path(_resolve_path(body.get("path", "")))
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(body.get("content", ""))
+        return jsonify({"ok": True, "path": str(p)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/fs/delete", methods=["POST"])
+def fs_delete():
+    body = request.json or {}
+    try:
+        p = Path(_resolve_path(body.get("path", "")))
+        if not p.exists():
+            return jsonify({"ok": False, "error": "Not found"})
+        if p.is_dir():
+            import shutil
+            shutil.rmtree(p)
+        else:
+            p.unlink()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/fs/mkdir", methods=["POST"])
+def fs_mkdir():
+    body = request.json or {}
+    try:
+        p = Path(_resolve_path(body.get("path", "")))
+        p.mkdir(parents=True, exist_ok=True)
+        return jsonify({"ok": True, "path": str(p)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+# ════════════════════════════════════════════════════════════════
+# TERMINAL EXECUTE API — real shell commands
+# ════════════════════════════════════════════════════════════════
+import subprocess as _subp
+
+_term_cwd = str(Path.home())
+
+@app.route("/api/execute", methods=["POST"])
+def execute_command():
+    global _term_cwd
+    body    = request.json or {}
+    command = body.get("command", "").strip()
+    cwd     = body.get("cwd", _term_cwd)
+    if not command:
+        return jsonify({"ok": False, "error": "No command"})
+
+    # Safety: block obviously dangerous commands
+    blocked = ["rm -rf /", "mkfs", "dd if=/dev/", ":(){:|:&}", "chmod 777 /"]
+    if any(b in command for b in blocked):
+        return jsonify({"ok": False, "output": "⛔ Command blocked for safety"})
+
+    # Handle cd specially
+    if command.startswith("cd "):
+        new_path = command[3:].strip().replace("~", str(Path.home()))
+        try:
+            resolved = str(Path(cwd).joinpath(new_path).resolve())
+            if Path(resolved).is_dir():
+                _term_cwd = resolved
+                return jsonify({"ok": True, "output": "", "cwd": _term_cwd})
+            return jsonify({"ok": True, "output": f"cd: {new_path}: No such directory", "cwd": _term_cwd})
+        except Exception as e:
+            return jsonify({"ok": True, "output": str(e), "cwd": _term_cwd})
+
+    if command == "cd":
+        _term_cwd = str(Path.home())
+        return jsonify({"ok": True, "output": "", "cwd": _term_cwd})
+
+    try:
+        # Resolve cwd
+        cwd_path = Path(cwd.replace("~", str(Path.home())))
+        if not cwd_path.exists():
+            cwd_path = Path.home()
+
+        result = _subp.run(
+            command, shell=True, cwd=str(cwd_path),
+            capture_output=True, text=True, timeout=15,
+            env={**os.environ, "TERM": "xterm-256color"}
+        )
+        output = (result.stdout + result.stderr).strip()
+        return jsonify({"ok": True, "output": output, "cwd": str(cwd_path),
+                        "returncode": result.returncode})
+    except _subp.TimeoutExpired:
+        return jsonify({"ok": False, "output": "Command timed out (15s limit)"})
+    except Exception as e:
+        return jsonify({"ok": False, "output": str(e)})
 
 
 @app.after_request

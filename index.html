@@ -406,109 +406,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 ::-webkit-scrollbar-thumb:hover{background:var(--text3)}
 
-/* ═══ VIRTUAL WORKSPACES (4-sided cube) ════════════════════════════
-   Normal LuoOS desktop, 4 workspaces.
-   Ctrl+→/← or Ctrl+1-4 to switch. Cube animates between them.
-   Each workspace is a full clone of the desktop shell.
-   Windows live on their workspace — not shared.
-══════════════════════════════════════════════════════════════════ */
 
-#workspace-root {
-  position: fixed; inset: 0; z-index: 0;
-  perspective: 2000px;
-  perspective-origin: 50% 50%;
-}
-
-#workspace-cube {
-  position: absolute; width: 100%; height: 100%;
-  transform-style: preserve-3d;
-  transition: transform .55s cubic-bezier(.77,0,.175,1);
-}
-
-.workspace {
-  position: absolute; width: 100%; height: 100%;
-  transform-style: preserve-3d;
-  backface-visibility: hidden;
-  /* Each face positioned by JS */
-}
-
-/* Workspace indicator — bottom centre strip */
-#ws-indicator {
-  position: fixed; bottom: calc(var(--taskbar-h) + 8px); left: 50%;
-  transform: translateX(-50%);
-  display: flex; gap: 8px; align-items: center;
-  background: rgba(6,12,20,.85);
-  backdrop-filter: blur(16px);
-  border: 1px solid var(--border);
-  border-radius: 20px; padding: 5px 12px;
-  z-index: 9999; pointer-events: auto;
-  opacity: 0; transition: opacity .3s;
-}
-#ws-indicator.show { opacity: 1; }
-.ws-dot {
-  width: 26px; height: 6px; border-radius: 3px;
-  background: var(--border); cursor: pointer;
-  transition: background .2s, width .2s;
-}
-.ws-dot.active { background: var(--accent); width: 32px; }
-#ws-label {
-  font-size: 10px; color: var(--text2);
-  font-family: var(--font-main); margin-left: 4px;
-}
-
-/* Thumbnail strip for Mission Control */
-#mission-control {
-  position: fixed; inset: 0; z-index: 9998;
-  background: rgba(2,4,8,.92);
-  backdrop-filter: blur(40px);
-  display: none; align-items: center; justify-content: center; gap: 24px;
-  flex-direction: column;
-}
-#mission-control.open { display: flex; }
-#mc-title { color: var(--text2); font-size: 12px; font-family: var(--font-main); letter-spacing: .15em; text-transform: uppercase; margin-bottom: 8px; }
-#mc-workspaces { display: flex; gap: 20px; }
-.mc-thumb {
-  width: 260px; height: 165px;
-  background: var(--bg-panel);
-  border: 2px solid var(--border);
-  border-radius: 12px; cursor: pointer;
-  position: relative; overflow: hidden;
-  transition: border-color .2s, transform .2s;
-  flex-shrink: 0;
-}
-.mc-thumb:hover, .mc-thumb.active { border-color: var(--accent); transform: scale(1.04); }
-.mc-thumb-label {
-  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
-  font-size: 11px; color: var(--text2); font-family: var(--font-main);
-  background: rgba(6,12,20,.8); padding: 2px 10px; border-radius: 10px;
-}
-.mc-thumb-num {
-  position: absolute; top: 8px; right: 10px;
-  font-size: 18px; font-weight: 800; color: var(--border);
-  font-family: var(--font-ui);
-}
-.mc-thumb.active .mc-thumb-num { color: var(--accent); }
-.mc-ws-preview {
-  position: absolute; inset: 0;
-  background: var(--bg-desktop);
-  overflow: hidden;
-}
-.mc-mini-bar {
-  position: absolute; bottom: 0; width: 100%; height: 14px;
-  background: var(--bg-glass); border-top: 1px solid var(--border);
-  display: flex; align-items: center; padding: 0 6px; gap: 4px;
-}
-.mc-mini-dot { width: 20px; height: 4px; background: var(--border); border-radius: 2px; }
-.mc-mini-dot.a { background: var(--accent); width: 26px; }
-#mc-hint { color: var(--tex3,var(--text3)); font-size: 10px; font-family: var(--font-main); margin-top: 12px; }
-
-
-@keyframes bload {
-  from { opacity:.4; transform:scaleX(.3); transform-origin:left; }
-  to   { opacity:1;  transform:scaleX(1);  transform-origin:left; }
-}
-
-/* ── LuoOS IDE (Monaco) styles ─────────────────────────────────── */
 .luovs-menu-item {
   padding: 0 8px; height: 30px; display: flex; align-items: center;
   font-size: 12px; color: #ccc; cursor: pointer; transition: background .12s;
@@ -535,14 +433,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <div id="boot-bar-container"><div id="boot-bar"></div></div>
   <div id="boot-status">Initializing kernel...</div>
 </div>
-
-
-<!-- ═══ WORKSPACE ROOT — 4-sided cube ══════════════════════════════ -->
-<div id="workspace-root">
-<div id="workspace-cube">
-
-  <!-- Workspace 0 — main (existing desktop shell) -->
-  <div class="workspace" id="ws-0" data-ws="0">
 <!-- WALLPAPER -->
 <div id="wallpaper"><div id="wallpaper-text">LUO</div></div>
 
@@ -584,108 +474,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
 
 
   <div class="workspace" id="ws-1" data-ws="1">
-    <!-- Workspace 1 — clean desktop -->
-    <div class="wallpaper-ws" style="position:fixed;inset:0;background:var(--bg-desktop);display:flex;align-items:center;justify-content:center;overflow:hidden">
-      <div style="font-size:min(22vw,300px);font-weight:900;color:transparent;background:linear-gradient(135deg,#00c8ff06,#7c3aed08,#00ff9d05);-webkit-background-clip:text;background-clip:text;font-family:var(--font-ui)">LUO</div>
-    </div>
-    <nav class="sidebar-ws" style="position:fixed;left:0;top:0;bottom:var(--taskbar-h);width:var(--sidebar-w);z-index:100;background:var(--bg-glass);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;backdrop-filter:blur(20px)">
-      <button class="sb-btn" onclick="wsOpenApp(1,'luokai')" title="LUOKAI">🤖<div class="sb-tooltip">LUOKAI AI</div></button>
-      <div class="sb-sep"></div>
-      <button class="sb-btn" onclick="wsOpenApp(1,'files')">📁<div class="sb-tooltip">Files</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(1,'terminal')">⌨️<div class="sb-tooltip">Terminal</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(1,'browser')">🌐<div class="sb-tooltip">Browser</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(1,'code')">💻<div class="sb-tooltip">Code</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(1,'notes')">📝<div class="sb-tooltip">Notes</div></button>
-      <div style="flex:1"></div>
-      <button class="sb-btn" onclick="wsOpenApp(1,'settings')">⚙️<div class="sb-tooltip">Settings</div></button>
-    </nav>
-    <div class="ws-icon-area" id="ws-icons-1" style="position:fixed;top:0;left:var(--sidebar-w);width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));padding:20px;z-index:1;pointer-events:none"></div>
-    <div class="ws-windows" id="ws-windows-1" style="position:fixed;left:var(--sidebar-w);top:0;width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));z-index:50;pointer-events:none"></div>
-  </div>
-
-  <div class="workspace" id="ws-2" data-ws="2">
-    <!-- Workspace 2 — clean desktop -->
-    <div class="wallpaper-ws" style="position:fixed;inset:0;background:var(--bg-desktop);display:flex;align-items:center;justify-content:center;overflow:hidden">
-      <div style="font-size:min(22vw,300px);font-weight:900;color:transparent;background:linear-gradient(135deg,#00c8ff06,#7c3aed08,#00ff9d05);-webkit-background-clip:text;background-clip:text;font-family:var(--font-ui)">LUO</div>
-    </div>
-    <nav class="sidebar-ws" style="position:fixed;left:0;top:0;bottom:var(--taskbar-h);width:var(--sidebar-w);z-index:100;background:var(--bg-glass);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;backdrop-filter:blur(20px)">
-      <button class="sb-btn" onclick="wsOpenApp(2,'luokai')" title="LUOKAI">🤖<div class="sb-tooltip">LUOKAI AI</div></button>
-      <div class="sb-sep"></div>
-      <button class="sb-btn" onclick="wsOpenApp(2,'files')">📁<div class="sb-tooltip">Files</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(2,'terminal')">⌨️<div class="sb-tooltip">Terminal</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(2,'browser')">🌐<div class="sb-tooltip">Browser</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(2,'code')">💻<div class="sb-tooltip">Code</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(2,'notes')">📝<div class="sb-tooltip">Notes</div></button>
-      <div style="flex:1"></div>
-      <button class="sb-btn" onclick="wsOpenApp(2,'settings')">⚙️<div class="sb-tooltip">Settings</div></button>
-    </nav>
-    <div class="ws-icon-area" id="ws-icons-2" style="position:fixed;top:0;left:var(--sidebar-w);width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));padding:20px;z-index:1;pointer-events:none"></div>
-    <div class="ws-windows" id="ws-windows-2" style="position:fixed;left:var(--sidebar-w);top:0;width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));z-index:50;pointer-events:none"></div>
-  </div>
-
-  <div class="workspace" id="ws-3" data-ws="3">
-    <!-- Workspace 3 — clean desktop -->
-    <div class="wallpaper-ws" style="position:fixed;inset:0;background:var(--bg-desktop);display:flex;align-items:center;justify-content:center;overflow:hidden">
-      <div style="font-size:min(22vw,300px);font-weight:900;color:transparent;background:linear-gradient(135deg,#00c8ff06,#7c3aed08,#00ff9d05);-webkit-background-clip:text;background-clip:text;font-family:var(--font-ui)">LUO</div>
-    </div>
-    <nav class="sidebar-ws" style="position:fixed;left:0;top:0;bottom:var(--taskbar-h);width:var(--sidebar-w);z-index:100;background:var(--bg-glass);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;backdrop-filter:blur(20px)">
-      <button class="sb-btn" onclick="wsOpenApp(3,'luokai')" title="LUOKAI">🤖<div class="sb-tooltip">LUOKAI AI</div></button>
-      <div class="sb-sep"></div>
-      <button class="sb-btn" onclick="wsOpenApp(3,'files')">📁<div class="sb-tooltip">Files</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(3,'terminal')">⌨️<div class="sb-tooltip">Terminal</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(3,'browser')">🌐<div class="sb-tooltip">Browser</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(3,'code')">💻<div class="sb-tooltip">Code</div></button>
-      <button class="sb-btn" onclick="wsOpenApp(3,'notes')">📝<div class="sb-tooltip">Notes</div></button>
-      <div style="flex:1"></div>
-      <button class="sb-btn" onclick="wsOpenApp(3,'settings')">⚙️<div class="sb-tooltip">Settings</div></button>
-    </nav>
-    <div class="ws-icon-area" id="ws-icons-3" style="position:fixed;top:0;left:var(--sidebar-w);width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));padding:20px;z-index:1;pointer-events:none"></div>
-    <div class="ws-windows" id="ws-windows-3" style="position:fixed;left:var(--sidebar-w);top:0;width:calc(100% - var(--sidebar-w));height:calc(100% - var(--taskbar-h));z-index:50;pointer-events:none"></div>
-  </div>
-
-</div><!-- /workspace-cube -->
-</div><!-- /workspace-root -->
-
-<!-- Mission Control overlay -->
-<div id="mission-control">
-  <div id="mc-title">Mission Control — Workspaces</div>
-  <div id="mc-workspaces">
-    <div class="mc-thumb active" id="mc-ws-0" onclick="switchWorkspace(0);closeMC()">
-      <div class="mc-ws-preview"></div>
-      <div class="mc-mini-bar"><div class="mc-mini-dot a"></div><div class="mc-mini-dot"></div><div class="mc-mini-dot"></div></div>
-      <div class="mc-thumb-num">1</div>
-      <div class="mc-thumb-label">Main</div>
-    </div>
-    <div class="mc-thumb" id="mc-ws-1" onclick="switchWorkspace(1);closeMC()">
-      <div class="mc-ws-preview"></div>
-      <div class="mc-mini-bar"><div class="mc-mini-dot"></div></div>
-      <div class="mc-thumb-num">2</div>
-      <div class="mc-thumb-label">Work</div>
-    </div>
-    <div class="mc-thumb" id="mc-ws-2" onclick="switchWorkspace(2);closeMC()">
-      <div class="mc-ws-preview"></div>
-      <div class="mc-mini-bar"><div class="mc-mini-dot"></div></div>
-      <div class="mc-thumb-num">3</div>
-      <div class="mc-thumb-label">Code</div>
-    </div>
-    <div class="mc-thumb" id="mc-ws-3" onclick="switchWorkspace(3);closeMC()">
-      <div class="mc-ws-preview"></div>
-      <div class="mc-mini-bar"><div class="mc-mini-dot"></div></div>
-      <div class="mc-thumb-num">4</div>
-      <div class="mc-thumb-label">Media</div>
-    </div>
-  </div>
-  <div id="mc-hint">Ctrl+1–4 switch · Ctrl+← → slide · Ctrl+↑ Mission Control · Esc close</div>
-</div>
-
-<!-- Workspace indicator -->
-<div id="ws-indicator">
-  <div class="ws-dot active" onclick="switchWorkspace(0)" title="Workspace 1"></div>
-  <div class="ws-dot" onclick="switchWorkspace(1)" title="Workspace 2"></div>
-  <div class="ws-dot" onclick="switchWorkspace(2)" title="Workspace 3"></div>
-  <div class="ws-dot" onclick="switchWorkspace(3)" title="Workspace 4"></div>
-  <span id="ws-label">Main</span>
-</div>
 
 
 <!-- TASKBAR -->
@@ -693,9 +481,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <button id="tb-start" onclick="openApp('luokai')">LUO</button>
   <div id="tb-apps"></div>
   <div id="tb-right">
-    <button onclick="openMC()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text2);font-size:10px;font-family:var(--font-main);cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'" title="Mission Control (Ctrl+↑)">
-      ⊞ <span id="tb-ws-badge">WS 1</span>
-    </button>
     <div id="tb-voice-indicator" style="font-size:11px;color:#555">🎤 OFF</div>
     <div id="tb-coevo-indicator" style="font-size:11px;color:#555">🔄 —</div>
     <div id="tb-clock">
@@ -1205,11 +990,7 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
                   <option value="12">Small (12px)</option><option value="13" selected>Medium (13px)</option><option value="15">Large (15px)</option>
                 </select>
               </div>
-              <div class="settings-row"><label>UI Mode</label>
-                <select onchange="switchUI(this.value)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
-                  <option value="classic">Classic Desktop</option><option value="3d">3D Spatial</option>
-                </select>
-              </div>
+
             </div>
           </div>
 
@@ -1346,6 +1127,9 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
               <div class="settings-row"><label>Clear conversation history</label>
                 <button onclick="clearHistory()" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer">Clear History</button>
               </div>
+              <div class="settings-row"><label>Clear LUOKAI memory</label>
+                <button onclick="clearMemory()" style="background:var(--bg-card);border:1px solid var(--border);color:#f44;border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer">Clear Memory</button>
+              </div>
               <p style="color:var(--text3);font-size:11px;margin-top:12px;line-height:1.6">
                 LuoOS runs entirely on your machine. No data is sent to external servers unless you enable API keys. Your conversations stay local.
               </p>
@@ -1465,32 +1249,148 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
         </div>
       </div>`;
 
-    default: return `<div style="padding:32px;color:var(--text2);text-align:center">🚧 ${id} — Coming soon</div>`;
+    case "notes": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-desktop)">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-glass);border-bottom:1px solid var(--border);flex-shrink:0">
+          <span style="font-size:15px">📝</span>
+          <span style="font-weight:600;font-size:13px">Notes</span>
+          <div style="flex:1"></div>
+          <select id="note-list" onchange="noteSwitch(this.value)" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 6px;border-radius:5px;max-width:160px"></select>
+          <button onclick="noteNew()" style="padding:3px 10px;background:var(--accent);color:#000;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">+ New</button>
+          <button onclick="noteDelete()" style="padding:3px 8px;background:transparent;color:var(--text3);border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer">🗑</button>
+          <button onclick="noteAI()" style="padding:3px 8px;background:var(--accent2);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer">🤖 AI</button>
+        </div>
+        <textarea id="note-body" placeholder="Start writing..." style="flex:1;background:transparent;border:none;outline:none;padding:20px 24px;color:var(--text);font-size:14px;line-height:1.8;resize:none;font-family:var(--font-main)" oninput="noteSave()"></textarea>
+        <div style="padding:4px 12px;background:var(--bg-glass);border-top:1px solid var(--border);font-size:10px;color:var(--text3);display:flex;gap:16px">
+          <span id="note-wc">0 words</span><span id="note-saved">saved</span>
+        </div>
+      </div>`;
+
+    case "music": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-desktop);align-items:center">
+        <div style="width:100%;padding:10px 14px;background:var(--bg-glass);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+          <span style="font-size:15px">🎵</span><span style="font-weight:600;font-size:13px">Music Player</span>
+        </div>
+        <div style="flex:1;overflow-y:auto;width:100%;padding:12px">
+          <div style="margin-bottom:12px;font-size:11px;color:var(--text2)">Paste a YouTube URL or search for a track:</div>
+          <div style="display:flex;gap:6px;margin-bottom:16px">
+            <input id="music-url" placeholder="YouTube URL or search..." style="flex:1;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:7px;font-size:12px;outline:none">
+            <button onclick="musicPlay()" style="padding:7px 14px;background:var(--accent);color:#000;border:none;border-radius:7px;font-weight:700;cursor:pointer">▶ Play</button>
+          </div>
+          <div id="music-player-wrap" style="display:none;width:100%;border-radius:10px;overflow:hidden;background:#000">
+            <iframe id="music-yt-frame" width="100%" height="315" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen style="display:block"></iframe>
+          </div>
+          <div style="margin-top:16px">
+            <div style="font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.1em">Quick Play</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              \${[["Lo-fi Hip Hop","jfKfPfyJRdk"],["Deep Focus","WPni755-Krg"],["Jazz","Dn8BhJHggxU"],["Classical","DWcJFNfaw9c"],["Synthwave","4xDzrJKXOOY"],["Nature Sounds","eKFTSSKCzWA"]].map(([n,id])=>
+                \`<button onclick="musicLoadYT('\${id}')" style="padding:5px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:15px;font-size:11px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">\${n}</button>\`
+              ).join("")}
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    case "calculator": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:#1c1c1e;max-width:340px;margin:0 auto">
+        <div style="padding:20px 20px 10px;text-align:right">
+          <div id="calc-expr" style="font-size:14px;color:#888;min-height:20px;word-break:break-all"></div>
+          <div id="calc-display" style="font-size:48px;font-weight:300;color:#fff;word-break:break-all;min-height:60px">0</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#3a3a3c;flex:1">
+          \${[["AC","±","%","÷"],["7","8","9","×"],["4","5","6","−"],["1","2","3","+"],["0",".","=","="]].map((row,ri)=>
+            row.map((k,ki)=>{
+              const isOp = ["÷","×","−","+","="].includes(k);
+              const isGray = ["AC","±","%"].includes(k);
+              const wide = k==="0" && ki===0;
+              return \`<button onclick="calcPress('\${k}')"
+                style="background:\${isOp?"#ff9f0a":isGray?"#636366":"#2c2c2e"};
+                       color:\${isOp?"#000":"#fff"};font-size:22px;font-weight:300;
+                       border:none;padding:0;cursor:pointer;
+                       \${wide?"grid-column:span 2":""}
+                       transition:filter .1s;min-height:72px"
+                onmouseover="this.style.filter='brightness(1.2)'"
+                onmouseout="this.style.filter='brightness(1)'">\${k}</button>\`;
+            }).join("")
+          ).join("")}
+        </div>
+      </div>`;
+
+    case "calendar": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-desktop)">
+        <div style="display:flex;align-items:center;padding:10px 16px;background:var(--bg-glass);border-bottom:1px solid var(--border);gap:10px">
+          <button onclick="calNav(-1)" style="background:none;border:1px solid var(--border);color:var(--text);padding:3px 10px;border-radius:6px;cursor:pointer">←</button>
+          <span id="cal-month-label" style="font-weight:700;font-size:14px;flex:1;text-align:center"></span>
+          <button onclick="calNav(1)" style="background:none;border:1px solid var(--border);color:var(--text);padding:3px 10px;border-radius:6px;cursor:pointer">→</button>
+          <button onclick="calToday()" style="background:var(--accent);color:#000;border:none;padding:3px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:700">Today</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--bg-glass);border-bottom:1px solid var(--border)">
+          \${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>\`<div style="text-align:center;padding:8px;font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase">\${d}</div>\`).join("")}
+        </div>
+        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);flex:1;gap:1px;background:var(--border)"></div>
+        <div id="cal-events-panel" style="padding:12px 16px;background:var(--bg-glass);border-top:1px solid var(--border);min-height:60px">
+          <div style="font-size:11px;color:var(--text3)" id="cal-events-label">Click a day to add events</div>
+          <div id="cal-events-list" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
+      </div>`;
+
+    case "files": return `
+      <div style="display:flex;height:100%;background:var(--bg-desktop)">
+        <!-- Sidebar -->
+        <div style="width:170px;background:var(--bg-glass);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;padding:8px 0">
+          <div style="padding:6px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">Favourites</div>
+          \${[["🏠","Home","~"],["💻","Desktop","~/Desktop"],["📄","Documents","~/Documents"],["⬇","Downloads","~/Downloads"],["📁","LuoOS","."]].map(([ico,name,path])=>
+            \`<div onclick="filesNav('\${path}')" style="padding:7px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2);transition:background .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background=''">\${ico} \${name}</div>\`
+          ).join("")}
+          <div style="padding:6px 14px;margin-top:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">Devices</div>
+          <div style="padding:7px 14px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">💾 Local Disk</div>
+        </div>
+        <!-- Main area -->
+        <div style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--bg-glass);border-bottom:1px solid var(--border);flex-shrink:0">
+            <button onclick="filesBack()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:3px 8px;border-radius:5px;cursor:pointer">←</button>
+            <button onclick="filesForward()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:3px 8px;border-radius:5px;cursor:pointer">→</button>
+            <input id="files-path-bar" style="flex:1;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:6px;font-size:12px;outline:none;font-family:var(--font-main)" onkeydown="if(event.key==='Enter')filesNav(this.value)">
+            <button onclick="filesNewFolder()" style="padding:3px 10px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">📁+</button>
+            <button onclick="filesUpload()" style="padding:3px 10px;background:var(--accent);border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">↑ Upload</button>
+          </div>
+          <div id="files-grid" style="flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:12px;align-content:start"></div>
+          <div id="files-status" style="padding:4px 14px;background:var(--bg-glass);border-top:1px solid var(--border);font-size:10px;color:var(--text3)">Loading...</div>
+        </div>
+      </div>`;
+
+    case "terminal": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:#0d1117;font-family:'JetBrains Mono','Consolas',monospace">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:#161b22;border-bottom:1px solid #30363d;flex-shrink:0">
+          <div style="display:flex;gap:6px"><div style="width:12px;height:12px;border-radius:50%;background:#ff5f57"></div><div style="width:12px;height:12px;border-radius:50%;background:#febc2e"></div><div style="width:12px;height:12px;border-radius:50%;background:#28c840"></div></div>
+          <span style="font-size:12px;color:#8b949e;flex:1;text-align:center">LuoOS Terminal</span>
+          <button onclick="termClear()" style="background:none;border:1px solid #30363d;color:#8b949e;padding:2px 8px;border-radius:4px;font-size:10px;cursor:pointer">Clear</button>
+        </div>
+        <div id="term-output" style="flex:1;overflow-y:auto;padding:12px 14px;font-size:13px;line-height:1.7;color:#c9d1d9;white-space:pre-wrap;word-break:break-all">LuoOS Terminal v1.0.0
+Type 'help' for commands, 'luokai &lt;question&gt;' to ask LUOKAI.
+
+</div>
+        <div style="display:flex;align-items:center;padding:6px 12px;background:#0d1117;border-top:1px solid #30363d;gap:6px;flex-shrink:0">
+          <span id="term-prompt-label" style="color:#3fb950;font-size:13px">luoos $</span>
+          <input id="term-input" style="flex:1;background:transparent;border:none;outline:none;color:#c9d1d9;font-size:13px;font-family:inherit" autocomplete="off" spellcheck="false" onkeydown="termKeydown(event)">
+        </div>
+      </div>`;
+
+    default: return \`<div style="padding:32px;color:var(--text2);text-align:center">🚧 \${id} — Coming soon</div>\`;
   }
 }
 
 // ── APP INIT ──────────────────────────────────────────────────────
 function initApp(id) {
-  if (id === "terminal") {
-    document.getElementById("term-input")?.focus();
-  }
-  if (id === "luokai") {
-    document.getElementById("luokai-input")?.focus();
-  }
-  if (id === "files") {
-    filesLoad("~");
-  }
-  if (id === "vscode") {
-    luovsInit();
-  }
-  if (id === "worldmonitor") {
-    setTimeout(initWorldMonitor, 100);
-  }
-  if (id === "worldmonitor") {
-    wmLoad("top");
-  }
+  // Focus helpers
+  if (id === "terminal")   { setTimeout(()=>document.getElementById("term-input")?.focus(), 100); }
+  if (id === "luokai")     { document.getElementById("luokai-input")?.focus(); setTimeout(loadChatHistory, 200); }
+  if (id === "notes")      { setTimeout(noteInit, 50); }
+  if (id === "calendar")   { setTimeout(calRender, 50); }
+  if (id === "files")      { setTimeout(()=>filesNav("~"), 50); }
+  if (id === "worldmonitor"){ wmLoad("top"); }
+  if (id === "vscode")     { luovsInit(); }
   if (id === "settings") {
-    // Update live stats
     checkAgent().then(() => {
       document.getElementById("st-mem") && fetch(`${API}/api/status`).then(r=>r.json()).then(d=>{
         const m = document.getElementById("st-mem");
@@ -2286,9 +2186,6 @@ function setNeuralEngine(val) {
   notify("Neural Engine", "Switched to " + val, "info");
 }
 
-function switchUI(mode) {
-  window.location.href = mode === "3d" ? "/3d" : "/classic";
-}
 
 function testVoice() {
   if (window.speechSynthesis) {
@@ -2302,6 +2199,15 @@ function clearHistory() {
     document.querySelectorAll(".chat-msg").forEach(e=>e.remove());
     notify("History Cleared", "Conversation history cleared", "info");
   }
+}
+
+async function clearMemory() {
+  if (!confirm("Clear all LUOKAI conversation memory? This cannot be undone.")) return;
+  try {
+    await fetch(`${API}/api/memory/clear`, {method:"POST"});
+    document.querySelectorAll(".chat-msg").forEach(e=>e.remove());
+    notify("Memory Cleared", "LUOKAI memory cleared", "info");
+  } catch(e) { notify("Error", "Could not clear memory", "error"); }
 }
 
 function toggleSetting(key, btn) {
@@ -2986,168 +2892,6 @@ if (savedTheme === "light") { isDark = false; document.body.classList.add("theme
 init();
 
 
-// ════════════════════════════════════════════════════════════════
-// VIRTUAL WORKSPACE SYSTEM — 4 desktops, cube transition
-// Like macOS Spaces / Compiz Cube. Normal mouse on each workspace.
-// ════════════════════════════════════════════════════════════════
-(function() {
-  const TOTAL   = 4;
-  const NAMES   = ['Main', 'Work', 'Code', 'Media'];
-  const ANGLES  = [0, -90, -180, -270];   // cube face angles
-  let   current = 0;
-  let   switching = false;
-
-  const cube    = document.getElementById('workspace-cube');
-  const root    = document.getElementById('workspace-root');
-  const ind     = document.getElementById('ws-indicator');
-  const label   = document.getElementById('ws-label');
-  const ws0     = document.getElementById('ws-0');
-
-  // ── Position cube faces around a 4-sided carousel ──────────────
-  // Face 0 → front (rotateY 0)
-  // Face 1 → right (rotateY 90 from face 0)
-  // Face 2 → back  (rotateY 180)
-  // Face 3 → left  (rotateY 270)
-  const vw = window.innerWidth;
-
-  function positionFaces() {
-    const vw = window.innerWidth;
-    const faces = document.querySelectorAll('.workspace');
-    faces.forEach((face, i) => {
-      if (i === 0) return; // ws-0 needs no transform (sits at origin)
-      face.style.transform = `rotateY(${i * 90}deg) translateZ(${vw/2}px)`;
-    });
-    // ws-0: translateZ so it sits at cube face
-    ws0.style.transform = `translateZ(${vw/2}px)`;
-    // Set cube to look at face 0
-    cube.style.transform = `translateZ(-${vw/2}px) rotateY(0deg)`;
-  }
-  positionFaces();
-  window.addEventListener('resize', positionFaces);
-
-  // ── Switch to workspace n ───────────────────────────────────────
-  window.switchWorkspace = function(n) {
-    if (n === current || switching) return;
-    if (n < 0) n = TOTAL - 1;
-    if (n >= TOTAL) n = 0;
-
-    switching = true;
-    const prevWs = document.getElementById(`ws-${current}`);
-    const nextWs = document.getElementById(`ws-${n}`);
-
-    // Rotate cube to show face n
-    const vw = window.innerWidth;
-    const angle = -n * 90;
-    cube.style.transform = `translateZ(-${vw/2}px) rotateY(${angle}deg)`;
-
-    // Update which workspace hosts the real sidebar+taskbar input
-    // (they're always in ws-0 but we reparent window-container visibility)
-    current = n;
-
-    // Show/hide workspace content
-    document.querySelectorAll('.workspace').forEach((ws, i) => {
-      ws.style.pointerEvents = i === n ? 'auto' : 'none';
-      ws.style.zIndex = i === n ? '1' : '0';
-    });
-
-    updateIndicator();
-
-    // After transition finishes
-    setTimeout(() => { switching = false; }, 580);
-    showIndicator();
-  };
-
-  window.currentWorkspace = () => current;
-
-  // ── Show indicator briefly on switch ───────────────────────────
-  let indTimer;
-  function showIndicator() {
-    ind.classList.add('show');
-    clearTimeout(indTimer);
-    indTimer = setTimeout(() => ind.classList.remove('show'), 2500);
-  }
-
-  function updateIndicator() {
-    // Dots
-    document.querySelectorAll('.ws-dot').forEach((d, i) => {
-      d.classList.toggle('active', i === current);
-    });
-    // Mission Control thumbs
-    document.querySelectorAll('.mc-thumb').forEach((t, i) => {
-      t.classList.toggle('active', i === current);
-    });
-    // Label
-    if (label) label.textContent = NAMES[current] || `Workspace ${current + 1}`;
-    // Taskbar workspace badge
-    const badge = document.getElementById('tb-ws-badge');
-    if (badge) badge.textContent = `WS ${current + 1}`;
-  }
-
-  // ── Open app on a specific workspace ───────────────────────────
-  window.wsOpenApp = function(wsIdx, appId) {
-    if (wsIdx !== current) switchWorkspace(wsIdx);
-    setTimeout(() => openApp(appId), 300);
-  };
-
-  // ── Mission Control ─────────────────────────────────────────────
-  window.openMC = function() {
-    document.getElementById('mission-control').classList.add('open');
-  };
-  window.closeMC = function() {
-    document.getElementById('mission-control').classList.remove('open');
-  };
-
-  // ── Keyboard shortcuts ──────────────────────────────────────────
-  document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    if (e.ctrlKey || e.metaKey) {
-      if (e.code === 'ArrowRight') { e.preventDefault(); switchWorkspace(current + 1); }
-      if (e.code === 'ArrowLeft')  { e.preventDefault(); switchWorkspace(current - 1); }
-      if (e.code === 'Digit1')     { e.preventDefault(); switchWorkspace(0); }
-      if (e.code === 'Digit2')     { e.preventDefault(); switchWorkspace(1); }
-      if (e.code === 'Digit3')     { e.preventDefault(); switchWorkspace(2); }
-      if (e.code === 'Digit4')     { e.preventDefault(); switchWorkspace(3); }
-      if (e.code === 'ArrowUp')    { e.preventDefault(); openMC(); }
-    }
-    if (e.key === 'Escape') closeMC();
-  });
-
-  // ── Three-finger swipe on trackpad (touch events) ───────────────
-  let touchStartX = 0;
-  document.addEventListener('touchstart', e => {
-    if (e.touches.length >= 3) touchStartX = e.touches[0].clientX;
-  }, { passive: true });
-  document.addEventListener('touchend', e => {
-    if (e.changedTouches.length >= 3) {
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      if (Math.abs(dx) > 80) switchWorkspace(dx < 0 ? current + 1 : current - 1);
-    }
-  }, { passive: true });
-
-  // ── Edge swipe with mouse (drag from screen edge 10px) ──────────
-  let edgeDrag = false, edgeStart = 0;
-  document.addEventListener('mousedown', e => {
-    if (e.clientX < 10) { edgeDrag = true; edgeStart = e.clientX; }
-    if (e.clientX > window.innerWidth - 10) { edgeDrag = true; edgeStart = e.clientX; }
-  });
-  document.addEventListener('mouseup', e => {
-    if (!edgeDrag) return;
-    edgeDrag = false;
-    const dx = e.clientX - edgeStart;
-    if (Math.abs(dx) > 60) switchWorkspace(dx < 0 ? current + 1 : current - 1);
-  });
-
-  // Init
-  updateIndicator();
-  // Show indicator on first load briefly
-  setTimeout(showIndicator, 1200);
-  // Make ws-0 active initially
-  document.querySelectorAll('.workspace').forEach((ws, i) => {
-    ws.style.pointerEvents = i === 0 ? 'auto' : 'none';
-  });
-})();
-
 
 // ════════════════════════════════════════════════════════════════
 // LUO WORLD MONITOR — Global intelligence feed
@@ -3420,6 +3164,358 @@ async function wmLoadMulti(categories) {
     grid.innerHTML = html || `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3)">No results</div>`;
   } catch(e) { console.error("wmLoadMulti error:", e); }
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+// APP IMPLEMENTATIONS
+// ═══════════════════════════════════════════════════════════════
+
+// ── NOTES ─────────────────────────────────────────────────────
+const _notes = JSON.parse(localStorage.getItem('luo-notes') || '{"Untitled":{"body":"","ts":""}}');
+let _currentNote = Object.keys(_notes)[0] || "Untitled";
+
+function noteInit() {
+  const sel = document.getElementById('note-list');
+  if (!sel) return;
+  sel.innerHTML = Object.keys(_notes).map(n =>
+    `<option value="${n}" ${n===_currentNote?'selected':''}>${n}</option>`).join('');
+  const nb = document.getElementById('note-body');
+  if (nb) nb.value = _notes[_currentNote]?.body || '';
+  noteUpdateStats();
+}
+
+function noteSave() {
+  const body = document.getElementById('note-body')?.value || '';
+  _notes[_currentNote] = {body, ts: new Date().toISOString()};
+  localStorage.setItem('luo-notes', JSON.stringify(_notes));
+  const s = document.getElementById('note-saved');
+  if (s) { s.textContent = '✓ saved'; setTimeout(()=>s.textContent='',1500); }
+  noteUpdateStats();
+}
+
+function noteUpdateStats() {
+  const body = document.getElementById('note-body')?.value || '';
+  const wc = document.getElementById('note-wc');
+  if (wc) wc.textContent = body.trim() ? body.trim().split(/\s+/).length + ' words' : '0 words';
+}
+
+function noteNew() {
+  const name = prompt('Note name:', 'Note ' + (Object.keys(_notes).length+1));
+  if (!name) return;
+  _notes[name] = {body:'', ts:''};
+  _currentNote = name;
+  noteInit();
+}
+
+function noteDelete() {
+  if (Object.keys(_notes).length <= 1) return;
+  if (!confirm(`Delete "${_currentNote}"?`)) return;
+  delete _notes[_currentNote];
+  _currentNote = Object.keys(_notes)[0];
+  localStorage.setItem('luo-notes', JSON.stringify(_notes));
+  noteInit();
+}
+
+function noteSwitch(name) { _currentNote = name; noteInit(); }
+
+async function noteAI() {
+  const body = document.getElementById('note-body')?.value || '';
+  if (!body.trim()) return;
+  const r = await fetch(`${API}/api/chat`, {method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({message:`Improve and expand this note:\n${body.slice(0,800)}`})});
+  const d = await r.json();
+  const nb = document.getElementById('note-body');
+  if (nb && d.response) { nb.value = body + '\n\n--- LUOKAI suggestion ---\n' + d.response; noteSave(); }
+}
+
+// ── MUSIC ─────────────────────────────────────────────────────
+function musicLoadYT(videoId) {
+  const wrap = document.getElementById('music-player-wrap');
+  const frame = document.getElementById('music-yt-frame');
+  if (!wrap || !frame) return;
+  frame.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  wrap.style.display = 'block';
+}
+
+function musicPlay() {
+  const val = document.getElementById('music-url')?.value?.trim() || '';
+  if (!val) return;
+  // Extract YouTube ID
+  const m = val.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
+  if (m) { musicLoadYT(m[1]); return; }
+  // Treat as search — open in browser
+  openApp('browser');
+  setTimeout(() => { const u = document.getElementById('browser-url'); if(u){u.value='https://youtube.com/results?search_query='+encodeURIComponent(val); browserGo();} }, 400);
+}
+
+// ── CALCULATOR ────────────────────────────────────────────────
+let _calcExpr = '', _calcResult = '0', _calcJustEvaled = false;
+
+function calcPress(k) {
+  const disp = document.getElementById('calc-display');
+  const expr = document.getElementById('calc-expr');
+  if (k === 'AC') { _calcExpr=''; _calcResult='0'; _calcJustEvaled=false; }
+  else if (k === '±') { _calcResult = _calcResult.startsWith('-') ? _calcResult.slice(1) : '-'+_calcResult; }
+  else if (k === '%') { _calcResult = String(parseFloat(_calcResult)/100); }
+  else if (k === '=') {
+    try {
+      const safe = _calcExpr.replace(/÷/g,'/').replace(/×/g,'*').replace(/−/g,'-');
+      _calcResult = String(eval(safe + _calcResult));
+      if (expr) expr.textContent = _calcExpr + _calcResult + ' =';
+      _calcExpr=''; _calcJustEvaled=true;
+    } catch { _calcResult='Error'; }
+  } else if (['+','−','×','÷'].includes(k)) {
+    _calcExpr += _calcResult + k; _calcResult='0'; _calcJustEvaled=false;
+  } else {
+    if (_calcJustEvaled) { _calcExpr=''; _calcJustEvaled=false; }
+    _calcResult = _calcResult==='0'||_calcResult==='-0' ? k : _calcResult+k;
+  }
+  if (disp) disp.textContent = _calcResult.length > 9 ? parseFloat(_calcResult).toExponential(3) : _calcResult;
+  if (expr && k!=='=') expr.textContent = _calcExpr;
+}
+
+// ── CALENDAR ─────────────────────────────────────────────────
+let _calDate = new Date(), _calEvents = JSON.parse(localStorage.getItem('luo-cal-events')||'{}');
+const _months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function calRender() {
+  const label = document.getElementById('cal-month-label');
+  const grid  = document.getElementById('cal-grid');
+  if (!label || !grid) return;
+  label.textContent = `${_months[_calDate.getMonth()]} ${_calDate.getFullYear()}`;
+  const first = new Date(_calDate.getFullYear(), _calDate.getMonth(), 1).getDay();
+  const days  = new Date(_calDate.getFullYear(), _calDate.getMonth()+1, 0).getDate();
+  const today = new Date();
+  let html = '';
+  for (let i=0; i<first; i++) html += `<div style="background:var(--bg-desktop)"></div>`;
+  for (let d=1; d<=days; d++) {
+    const key = `${_calDate.getFullYear()}-${_calDate.getMonth()+1}-${d}`;
+    const isToday = d===today.getDate() && _calDate.getMonth()===today.getMonth() && _calDate.getFullYear()===today.getFullYear();
+    const hasEv = _calEvents[key]?.length > 0;
+    html += `<div onclick="calDayClick(${d})" style="padding:8px 6px;background:var(--bg-desktop);text-align:center;cursor:pointer;transition:background .15s;position:relative;border:1px solid var(--border);min-height:60px" onmouseover="this.style.background='var(--bg-card)'" onmouseout="this.style.background='var(--bg-desktop)'">
+      <span style="font-size:13px;${isToday?'background:var(--accent);color:#000;border-radius:50%;padding:2px 6px;font-weight:700':''}">${d}</span>
+      ${hasEv?`<div style="width:5px;height:5px;background:var(--accent2);border-radius:50%;margin:3px auto 0"></div>`:''}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function calNav(dir) { _calDate.setMonth(_calDate.getMonth()+dir); calRender(); }
+function calToday() { _calDate = new Date(); calRender(); }
+
+function calDayClick(d) {
+  const key = `${_calDate.getFullYear()}-${_calDate.getMonth()+1}-${d}`;
+  const label = document.getElementById('cal-events-label');
+  const list  = document.getElementById('cal-events-list');
+  if (label) label.textContent = `${_months[_calDate.getMonth()]} ${d} — ${_calDate.getFullYear()}`;
+  const evs = _calEvents[key] || [];
+  if (list) list.innerHTML = evs.map((e,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;font-size:11px">
+      <span style="width:6px;height:6px;border-radius:50%;background:var(--accent2);flex-shrink:0"></span>
+      ${e}
+      <button onclick="calDeleteEvent('${key}',${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;margin-left:auto;font-size:12px">✕</button>
+    </div>`).join('') +
+    `<button onclick="calAddEvent('${key}')" style="padding:4px 10px;background:var(--accent);color:#000;border:none;border-radius:6px;font-size:11px;cursor:pointer;font-weight:700">+ Add</button>`;
+}
+
+function calAddEvent(key) {
+  const ev = prompt('Event:'); if (!ev) return;
+  if (!_calEvents[key]) _calEvents[key]=[];
+  _calEvents[key].push(ev);
+  localStorage.setItem('luo-cal-events', JSON.stringify(_calEvents));
+  calRender(); calDayClick(parseInt(key.split('-')[2]));
+}
+
+function calDeleteEvent(key, idx) {
+  _calEvents[key].splice(idx,1);
+  if (!_calEvents[key].length) delete _calEvents[key];
+  localStorage.setItem('luo-cal-events', JSON.stringify(_calEvents));
+  calRender(); calDayClick(parseInt(key.split('-')[2]));
+}
+
+// ── FILE MANAGER ──────────────────────────────────────────────
+let _filesPath = '~', _filesHistory = [], _filesHistPos = -1;
+
+async function filesNav(path) {
+  if (!path) return;
+  _filesHistory = _filesHistory.slice(0, _filesHistPos+1);
+  _filesHistory.push(path); _filesHistPos++;
+  _filesPath = path;
+  const pb = document.getElementById('files-path-bar');
+  if (pb) pb.value = path;
+  const grid = document.getElementById('files-grid');
+  const stat = document.getElementById('files-status');
+  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">Loading...</div>';
+  try {
+    const r = await fetch(`${API}/api/fs/ls`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error||'Error');
+    const items = d.items || d.entries || [];
+    if (stat) stat.textContent = `${items.length} items  ·  ${path}`;
+    if (!grid) return;
+    grid.innerHTML = items.map(item => {
+      const isDir = item.type==='dir'||item.is_dir||item.isDirectory;
+      const ico = isDir ? '📁' : _fileIcon(item.name);
+      return `<div onclick="${isDir?`filesNav('${path}/${item.name}')`:`filesOpen('${path}/${item.name}')`}"
+        style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:8px;cursor:pointer;transition:background .15s;text-align:center"
+        onmouseover="this.style.background='var(--bg-card)'" onmouseout="this.style.background=''"
+        oncontextmenu="filesCtxMenu(event,'${path}/${item.name}',${isDir})">
+        <span style="font-size:32px">${ico}</span>
+        <span style="font-size:10px;color:var(--text);word-break:break-all;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.name}">${item.name}</span>
+        ${item.size ? `<span style="font-size:9px;color:var(--text3)">${_fmtSize(item.size)}</span>` : ''}
+      </div>`;
+    }).join('') || '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">Empty folder</div>';
+  } catch(e) {
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">Cannot access: ${e.message}</div>`;
+    if (stat) stat.textContent = 'Error loading directory';
+  }
+}
+
+function filesBack()    { if (_filesHistPos>0)  filesNav(_filesHistory[--_filesHistPos]); }
+function filesForward() { if (_filesHistPos<_filesHistory.length-1) filesNav(_filesHistory[++_filesHistPos]); }
+function filesUpload()  { const i=document.createElement('input'); i.type='file'; i.multiple=true; i.onchange=e=>filesUploadFiles(e.target.files); i.click(); }
+
+async function filesUploadFiles(files) {
+  for (const f of files) {
+    const text = await f.text();
+    await fetch(`${API}/api/fs/write`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:`${_filesPath}/${f.name}`, content:text})});
+  }
+  filesNav(_filesPath);
+}
+
+async function filesOpen(path) {
+  const r = await fetch(`${API}/api/fs/read`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
+  const d = await r.json();
+  if (d.ok) {
+    openApp('vscode');
+    setTimeout(()=>{ if(window.luovsNewFileWithContent) luovsNewFileWithContent(path.split('/').pop(), d.content||d.text||''); }, 500);
+  }
+}
+
+async function filesNewFolder() {
+  const name = prompt('Folder name:'); if (!name) return;
+  await fetch(`${API}/api/fs/mkdir`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:`${_filesPath}/${name}`})});
+  filesNav(_filesPath);
+}
+
+function filesCtxMenu(e, path, isDir) {
+  e.preventDefault();
+  // Simple context menu
+  const menu = document.createElement('div');
+  menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:4px;z-index:9999;min-width:140px;box-shadow:0 10px 40px rgba(0,0,0,.5)`;
+  menu.innerHTML = [
+    isDir ? '' : `<div onclick="filesOpen('${path}')" style="padding:7px 12px;font-size:12px;cursor:pointer;color:var(--text)">📂 Open</div>`,
+    `<div onclick="filesDelete('${path}')" style="padding:7px 12px;font-size:12px;cursor:pointer;color:#ff5252">🗑 Delete</div>`,
+  ].join('');
+  document.body.appendChild(menu);
+  setTimeout(()=>document.addEventListener('click',()=>menu.remove(),{once:true}),50);
+}
+
+async function filesDelete(path) {
+  if (!confirm(`Delete ${path.split('/').pop()}?`)) return;
+  await fetch(`${API}/api/fs/delete`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
+  filesNav(_filesPath);
+}
+
+function _fileIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const m = {py:'🐍',js:'📜',ts:'📘',html:'🌐',css:'🎨',json:'📋',md:'📄',txt:'📄',
+             png:'🖼',jpg:'🖼',jpeg:'🖼',gif:'🖼',svg:'🎨',mp4:'🎬',mp3:'🎵',
+             pdf:'📕',zip:'📦',tar:'📦',gz:'📦',sh:'⚙',bat:'⚙',exe:'⚙',
+             csv:'📊',xlsx:'📊',db:'🗄',sql:'🗄'};
+  return m[ext] || '📄';
+}
+function _fmtSize(b) { return b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB'; }
+
+// ── TERMINAL ─────────────────────────────────────────────────
+let _termHistory = [], _termHistIdx = -1;
+
+async function termRun(cmd) {
+  const out = document.getElementById('term-output');
+  if (!out) return;
+  const prompt = document.getElementById('term-prompt-label')?.textContent || 'luoos $';
+  out.innerHTML += `<span style="color:#3fb950">${prompt}</span> ${cmd}\n`;
+  _termHistory.unshift(cmd); _termHistIdx = -1;
+  if (!cmd.trim()) { out.scrollTop=out.scrollHeight; return; }
+
+  // Built-in commands
+  const lc = cmd.trim().toLowerCase();
+  const cmds = {
+    help: ()=>`Available commands:\n  help      — this list\n  clear     — clear terminal\n  ls [path] — list files\n  cat [f]   — read file\n  pwd       — current directory\n  echo [x]  — print text\n  luokai [q]— ask LUOKAI\n  date      — current date/time\n  whoami    — current user\n  uname     — system info`,
+    clear: ()=>{ out.innerHTML=''; return ''; },
+    date:  ()=>new Date().toString(),
+    whoami:()=>window._luoUser||'luokai25',
+    uname: ()=>`LuoOS v1.0 | ${navigator.platform} | ${navigator.userAgent.split(' ').pop()}`,
+    pwd:   ()=>window._termCwd||'~',
+  };
+
+  const parts = cmd.trim().split(/\s+/);
+  const base  = parts[0].toLowerCase();
+
+  if (base === 'clear') { out.innerHTML=''; return; }
+  if (base === 'echo')  { out.innerHTML += parts.slice(1).join(' ')+'\n'; out.scrollTop=out.scrollHeight; return; }
+
+  if (base === 'luokai') {
+    const q = parts.slice(1).join(' ');
+    if (!q) { out.innerHTML += 'Usage: luokai <question>\n'; out.scrollTop=out.scrollHeight; return; }
+    out.innerHTML += `<span style="color:#8b949e">LUOKAI thinking...\n</span>`;
+    try {
+      const r = await fetch(`${API}/api/chat`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({message:q})});
+      const d = await r.json();
+      out.innerHTML = out.innerHTML.replace('<span style="color:#8b949e">LUOKAI thinking...\n</span>', '');
+      out.innerHTML += `<span style="color:#79c0ff">${(d.response||'No response').replace(/</g,'&lt;')}\n</span>`;
+    } catch { out.innerHTML += 'Error connecting to LUOKAI\n'; }
+    out.scrollTop=out.scrollHeight; return;
+  }
+
+  if (cmds[base]) { const res = cmds[base](); if (res) out.innerHTML += res+'\n'; out.scrollTop=out.scrollHeight; return; }
+
+  // Send to server
+  try {
+    const r = await fetch(`${API}/api/execute`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({command:cmd, cwd:window._termCwd||'~'})});
+    const d = await r.json();
+    const result = d.output || d.stdout || d.result || d.error || '';
+    if (result) out.innerHTML += result.replace(/</g,'&lt;')+'\n';
+    if (d.cwd) window._termCwd = d.cwd;
+  } catch { out.innerHTML += `Command not found: ${base}\n`; }
+  out.scrollTop = out.scrollHeight;
+}
+
+function termKeydown(e) {
+  const inp = e.target;
+  if (e.key === 'Enter') { const v=inp.value; inp.value=''; termRun(v); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if(_termHistIdx<_termHistory.length-1){_termHistIdx++;inp.value=_termHistory[_termHistIdx]||'';} }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); _termHistIdx=Math.max(-1,_termHistIdx-1); inp.value=_termHistIdx>=0?_termHistory[_termHistIdx]:''; }
+  else if (e.key==='Tab') { e.preventDefault(); /* autocomplete stub */ }
+  else if (e.ctrlKey && e.key==='c') { termRun(''); inp.value=''; }
+}
+
+function termClear() { const o=document.getElementById('term-output'); if(o) o.innerHTML=''; }
+
+// ── MEMORY UI ───────────────────────────────────────────────
+async function loadChatHistory() {
+  try {
+    const r = await fetch(`${API}/api/memory/history?n=50`);
+    const d = await r.json();
+    if (!d.ok) return;
+    const msgs = document.getElementById('chat-messages') || document.getElementById('luokai-messages');
+    if (!msgs || !d.history.length) return;
+    // Prepend history messages (oldest first)
+    const frag = document.createDocumentFragment();
+    d.history.forEach(m => {
+      const div = document.createElement('div');
+      div.className = `chat-msg ${m.role==='user'?'user':'ai'}`;
+      div.innerHTML = (m.role==='assistant' ? '<strong>LUOKAI</strong><br>' : '') +
+        (m.content||'').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+      frag.appendChild(div);
+    });
+    msgs.insertBefore(frag, msgs.firstChild);
+    msgs.scrollTop = msgs.scrollHeight;
+  } catch(e) {}
+}
+
+
 
 </script>
 </body>

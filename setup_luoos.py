@@ -360,14 +360,7 @@ def run_setup():
     config["wallpaper"] = wallpaper
     tick(f"Wallpaper: {wallpaper}")
 
-    print()
-    print(f"  {C}Desktop mode:{R}\n")
-    ui_mode = ask("", options=[
-        ("3d",      f"3D Spatial    {DIM}Four floating screens, 3D parallax, drag anywhere{R}  {Y}← New{R}"),
-        ("classic", f"Classic       {DIM}Traditional desktop layout (default){R}"),
-    ])
-    config["ui_mode"] = ui_mode
-    tick(f"Desktop: {'3D Spatial' if ui_mode == '3d' else 'Classic'}")
+    config["ui_mode"] = "classic"
 
     # ── Step 5: Features ─────────────────────────────────────────────
     header("Step 5 of 6 — Features",
