@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LuoOS — Hand Tracker</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%;height:100%;background:#000;font-family:'JetBrains Mono',monospace;overflow:hidden;color:#fff; }
+#canvas-wrap { position:fixed;inset:0;display:flex;align-items:center;justify-content:center; }
+#input-video { display:none; }
+#output-canvas { max-width:100vw;max-height:100vh;transform:scaleX(-1); }
+#gesture-hud { position:fixed;top:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);backdrop-filter:blur(12px);border:1px solid rgba(0,212,255,.3);border-radius:12px;padding:10px 20px;display:flex;align-items:center;gap:16px;font-size:13px;z-index:100; }
+#gesture-icon { font-size:32px;min-width:40px;text-align:center; }
+#gesture-name { color:#4fc3f7;font-weight:700;min-width:120px; }
+#gesture-action { color:#aaa;font-size:11px; }
+#hand-cursor { position:fixed;z-index:9999;width:24px;height:24px;border-radius:50%;background:rgba(0,212,255,.6);border:2px solid #00d4ff;transform:translate(-50%,-50%);pointer-events:none;transition:width .08s,height .08s,background .08s;box-shadow:0 0 20px rgba(0,212,255,.8),0 0 40px rgba(0,212,255,.3);display:none; }
+#hand-cursor.pinch { width:16px;height:16px;background:rgba(124,58,237,.8);border-color:#7c3aed;box-shadow:0 0 20px rgba(124,58,237,.8); }
+#hand-cursor.fist { width:32px;height:32px;background:rgba(16,185,129,.6);border-color:#10b981; }
+#hand-cursor.point { width:12px;height:12px;background:rgba(0,212,255,.9); }
+#hand-cursor-2 { position:fixed;z-index:9998;width:20px;height:20px;border-radius:50%;background:rgba(245,158,11,.5);border:2px solid #f59e0b;transform:translate(-50%,-50%);pointer-events:none;box-shadow:0 0 16px rgba(245,158,11,.6);display:none; }
+.hand-ripple { position:fixed;z-index:9997;width:40px;height:40px;border-radius:50%;border:2px solid #00d4ff;transform:translate(-50%,-50%);pointer-events:none;animation:ripple-out .5s ease-out forwards; }
+@keyframes ripple-out { 0%{width:20px;height:20px;opacity:.8}100%{width:80px;height:80px;opacity:0} }
+.hand-trail { position:fixed;z-index:9996;width:6px;height:6px;border-radius:50%;background:rgba(0,212,255,.4);transform:translate(-50%,-50%);pointer-events:none;animation:trail-fade .4s ease-out forwards; }
+@keyframes trail-fade { 0%{opacity:.6;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0)} }
+#status-bar { position:fixed;bottom:0;left:0;right:0;height:28px;background:rgba(0,0,0,.8);display:flex;align-items:center;padding:0 16px;gap:16px;font-size:10px;color:#555; }
+#fps-counter { color:#4fc3f7; }
+#hand-count  { color:#10b981; }
+#start-screen { position:fixed;inset:0;background:#020407;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;z-index:200; }
+#start-screen h1 { font-size:32px;color:#4fc3f7;font-weight:700; }
+#start-screen p { color:#666;font-size:14px;max-width:400px;text-align:center;line-height:1.7; }
+#start-btn { padding:14px 40px;background:#4fc3f7;color:#000;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:transform .2s,box-shadow .2s; }
+#start-btn:hover { transform:scale(1.05);box-shadow:0 0 30px rgba(79,195,247,.4); }
+.gesture-legend { display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;color:#444;max-width:360px; }
+.gesture-legend span:nth-child(odd) { color:#aaa; }
+</style>
+</head>
+<body>
+
+<div id="start-screen">
+  <h1>🖐️ LuoOS Hand Tracking</h1>
+  <p>Control LuoOS with your hands.<br>Camera access required — nothing is recorded or sent anywhere.</p>
+  <div class="gesture-legend">
+    <span>☝️ Index finger</span><span>Move cursor</span>
+    <span>✊ Closed fist</span><span>Click</span>
+    <span>🤏 Pinch</span><span>Grab &amp; drag</span>
+    <span>✌️ Peace sign</span><span>Scroll</span>
+    <span>🖐️ Open hand</span><span>Release / right-click</span>
+    <span>👋 Wave</span><span>Show desktop</span>
+    <span>👍 Thumbs up</span><span>Confirm</span>
+    <span>👎 Thumbs down</span><span>Cancel / close</span>
+  </div>
+  <button id="start-btn" onclick="startTracking()">Enable Camera</button>
+  <p style="font-size:10px;color:#333">Works best with good lighting · Keep hands 30–60cm from camera</p>
+</div>
+
+<div id="canvas-wrap">
+  <video id="input-video" autoplay muted playsinline></video>
+  <canvas id="output-canvas"></canvas>
+</div>
+
+<div id="gesture-hud" style="display:none">
+  <span id="gesture-icon">🖐️</span>
+  <span id="gesture-name">Ready</span>
+  <span id="gesture-action">Move your hand into frame</span>
+</div>
+
+<div id="hand-cursor" class="point"></div>
+<div id="hand-cursor-2"></div>
+
+<div id="status-bar">
+  <span id="fps-counter">FPS: --</span>
+  <span id="hand-count">Hands: 0</span>
+  <span id="model-status">Loading model...</span>
+  <span style="flex:1"></span>
+  <span style="color:#333">LuoOS Hand Tracker · MediaPipe Hands · WebGL</span>
+</div>
+
+<script type="module">
+import {
+  HandLandmarker,
+  FilesetResolver,
+  DrawingUtils
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs";
+
+// ── State ──────────────────────────────────────────────────────────
+let handLandmarker = null;
+let lastVideoTime  = -1;
+let tracking       = false;
+
+const prevGesture = { primary: null, secondary: null };
+let cursorSmooth  = { x: window.innerWidth/2, y: window.innerHeight/2 };
+let lastPinchDist = null;
+let lastGestureTime = {};
+
+// FPS
+let frameCount = 0, lastFpsTime = performance.now(), fps = 0;
+
+// DOM
+const video      = document.getElementById("input-video");
+const canvas     = document.getElementById("output-canvas");
+const ctx        = canvas.getContext("2d");
+const cursor1    = document.getElementById("hand-cursor");
+const cursor2    = document.getElementById("hand-cursor-2");
+const gestureHUD = document.getElementById("gesture-hud");
+const gestIcon   = document.getElementById("gesture-icon");
+const gestName   = document.getElementById("gesture-name");
+const gestAction = document.getElementById("gesture-action");
+const fpsEl      = document.getElementById("fps-counter");
+const handCtEl   = document.getElementById("hand-count");
+const modelStat  = document.getElementById("model-status");
+
+// ── INIT ───────────────────────────────────────────────────────────
+async function init() {
+  modelStat.textContent = "Loading MediaPipe...";
+  const vision = await FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm"
+  );
+  handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+      delegate: "GPU"
+    },
+    runningMode: "VIDEO",
+    numHands:    2,
+    minHandDetectionConfidence: 0.6,
+    minHandPresenceConfidence:  0.6,
+    minTrackingConfidence:      0.5,
+  });
+  modelStat.textContent = "✅ Model ready";
+}
+
+// ── START ──────────────────────────────────────────────────────────
+window.startTracking = async function() {
+  document.getElementById("start-screen").style.display = "none";
+  gestureHUD.style.display = "flex";
+  cursor1.style.display    = "block";
+  if (!handLandmarker) await init();
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width:1280, height:720, facingMode:"user" }
+  });
+  video.srcObject = stream;
+  await new Promise(r => video.onloadedmetadata = r);
+  await video.play();
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  tracking = true;
+  loop();
+};
+
+// ── LOOP ───────────────────────────────────────────────────────────
+function loop() {
+  if (!tracking) return;
+  requestAnimationFrame(loop);
+  if (video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  const results = handLandmarker.detectForVideo(video, performance.now());
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+  if (results.landmarks.length) {
+    const du = new DrawingUtils(ctx);
+    for (const lm of results.landmarks) {
+      du.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS, { color:"rgba(0,212,255,0.4)", lineWidth:2 });
+      du.drawLandmarks(lm, { color:"rgba(0,212,255,0.8)", fillColor:"rgba(0,212,255,0.3)", radius:4 });
+    }
+  }
+  processHands(results);
+  updateFPS();
+  handCtEl.textContent = "Hands: " + results.landmarks.length;
+}
+
+// ── PROCESS ────────────────────────────────────────────────────────
+function processHands(results) {
+  if (!results.landmarks.length) {
+    cursor1.style.display = "none";
+    cursor2.style.display = "none";
+    updateHUD("🖐️", "No hand", "Move your hand into frame");
+    return;
+  }
+  cursor1.style.display = "block";
+  const lm0      = results.landmarks[0];
+  const gesture0 = classifyGesture(lm0);
+  const scr0     = landmarkToScreen(lm0[8]);
+  cursorSmooth.x += (scr0.x - cursorSmooth.x) * 0.35;
+  cursorSmooth.y += (scr0.y - cursorSmooth.y) * 0.35;
+  updateCursor(cursor1, cursorSmooth.x, cursorSmooth.y, gesture0);
+  spawnTrail(cursorSmooth.x, cursorSmooth.y);
+  handleGesture(gesture0, cursorSmooth.x, cursorSmooth.y, lm0, "primary");
+  updateHUD(gestureEmoji(gesture0), gesture0, gestureDesc(gesture0));
+
+  if (results.landmarks.length > 1) {
+    cursor2.style.display = "block";
+    const lm1      = results.landmarks[1];
+    const gesture1 = classifyGesture(lm1);
+    const scr1     = landmarkToScreen(lm1[8]);
+    updateCursor(cursor2, scr1.x, scr1.y, gesture1);
+    handleGesture(gesture1, scr1.x, scr1.y, lm1, "secondary");
+    if (gesture0 === "PINCH" && gesture1 === "PINCH") {
+      const d = Math.hypot(scr0.x - scr1.x, scr0.y - scr1.y);
+      if (lastPinchDist !== null) {
+        dispatch({ type:"PINCH_ZOOM", delta:d - lastPinchDist, x:(scr0.x+scr1.x)/2, y:(scr0.y+scr1.y)/2 });
+      }
+      lastPinchDist = d;
+    } else { lastPinchDist = null; }
+  } else {
+    cursor2.style.display = "none";
+    lastPinchDist = null;
+  }
+}
+
+function landmarkToScreen(lm) {
+  return { x: (1-lm.x)*window.innerWidth, y: lm.y*window.innerHeight };
+}
+
+// ── GESTURE CLASSIFIER ─────────────────────────────────────────────
+function classifyGesture(lm) {
+  const f = fingerStates(lm);
+  const thumbTip = lm[4], indexTip = lm[8];
+  const pinchDist = Math.hypot(thumbTip.x-indexTip.x, thumbTip.y-indexTip.y);
+  const allDown = !f[1]&&!f[2]&&!f[3]&&!f[4];
+  const allUp   = f[1]&&f[2]&&f[3]&&f[4];
+  if (pinchDist < 0.06) return "PINCH";
+  if (f[0]&&!f[1]&&!f[2]&&!f[3]&&!f[4]) return "THUMBS_UP";
+  if (!f[0]&&allDown&&lm[4].y>lm[0].y+0.05) return "THUMBS_DOWN";
+  if (f[0]&&allUp&&(lm[0].y-lm[9].y)>0.05) return "WAVE";
+  if (f[0]&&allUp) return "OPEN_HAND";
+  if (allDown) return "FIST";
+  if (f[1]&&f[2]&&!f[3]&&!f[4]) return "PEACE";
+  if (f[1]&&!f[2]&&!f[3]&&!f[4]) return "POINT";
+  return "UNKNOWN";
+}
+
+function fingerStates(lm) {
+  const tips = [4,8,12,16,20];
+  const dips = [3,6,10,14,18];
+  const mcps = [2,5,9,13,17];
+  return tips.map((tip,i) =>
+    i===0 ? Math.abs(lm[tip].x-lm[mcps[0]].x)>0.05 : lm[tip].y<lm[dips[i]].y
+  );
+}
+
+// ── GESTURE HANDLER ────────────────────────────────────────────────
+function handleGesture(gesture, x, y, lm, role) {
+  const now = performance.now();
+  const prev = prevGesture[role];
+
+  if (gesture === "POINT") dispatch({ type:"CURSOR_MOVE", x, y });
+
+  if (gesture === "PINCH" && prev !== "PINCH") {
+    dispatch({ type:"MOUSE_DOWN", x, y, button:0 });
+    ripple(x, y, "#00d4ff");
+  }
+  if (gesture === "OPEN_HAND" && prev === "PINCH") {
+    dispatch({ type:"MOUSE_UP", x, y, button:0 });
+  }
+  if (gesture === "FIST" && prev !== "FIST" && now-(lastGestureTime.FIST||0)>600) {
+    dispatch({ type:"CLICK", x, y });
+    ripple(x, y, "#10b981");
+    lastGestureTime.FIST = now;
+  }
+  if (gesture === "PEACE") {
+    const vy = (lm[8].y - lm[12].y) * 1000;
+    dispatch({ type:"SCROLL", x, y, deltaY: vy * -3 });
+  }
+  if (gesture === "WAVE" && prev !== "WAVE" && now-(lastGestureTime.WAVE||0)>1200) {
+    dispatch({ type:"WAVE" });
+    ripple(x, y, "#f59e0b");
+    lastGestureTime.WAVE = now;
+  }
+  if (gesture === "THUMBS_UP" && prev !== "THUMBS_UP" && now-(lastGestureTime.THUMBS_UP||0)>800) {
+    dispatch({ type:"CONFIRM" });
+    ripple(x, y, "#10b981");
+    lastGestureTime.THUMBS_UP = now;
+  }
+  if (gesture === "THUMBS_DOWN" && prev !== "THUMBS_DOWN" && now-(lastGestureTime.THUMBS_DOWN||0)>800) {
+    dispatch({ type:"CANCEL" });
+    ripple(x, y, "#f44336");
+    lastGestureTime.THUMBS_DOWN = now;
+  }
+  if (gesture === "OPEN_HAND" && prev !== "OPEN_HAND" && prev !== "PINCH" && now-(lastGestureTime.OPEN_HAND||0)>800) {
+    dispatch({ type:"RIGHT_CLICK", x, y });
+    lastGestureTime.OPEN_HAND = now;
+  }
+  prevGesture[role] = gesture;
+}
+
+function dispatch(event) {
+  const msg = { _luoHandEvent:true, ...event };
+  if (window.parent && window.parent !== window) window.parent.postMessage(msg, "*");
+  if (window.opener) window.opener.postMessage(msg, "*");
+}
+
+// ── UI ─────────────────────────────────────────────────────────────
+function updateCursor(el, x, y, gesture) {
+  el.style.left = x + "px"; el.style.top = y + "px";
+  el.className = gesture === "PINCH" ? "pinch" : gesture === "FIST" ? "fist" : "point";
+}
+function spawnTrail(x, y) {
+  if (Math.random() > 0.35) return;
+  const t = document.createElement("div");
+  t.className = "hand-trail";
+  t.style.left = x + "px"; t.style.top = y + "px";
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 400);
+}
+function ripple(x, y, color) {
+  const r = document.createElement("div");
+  r.className = "hand-ripple";
+  r.style.left = x + "px"; r.style.top = y + "px"; r.style.borderColor = color;
+  document.body.appendChild(r);
+  setTimeout(() => r.remove(), 500);
+}
+function updateHUD(icon, name, action) {
+  gestIcon.textContent = icon; gestName.textContent = name; gestAction.textContent = action;
+}
+function updateFPS() {
+  frameCount++;
+  const now = performance.now();
+  if (now - lastFpsTime >= 1000) {
+    fps = frameCount; frameCount = 0; lastFpsTime = now;
+    fpsEl.textContent = "FPS: " + fps;
+    fpsEl.style.color = fps>=25 ? "#10b981" : fps>=15 ? "#f59e0b" : "#f44";
+  }
+}
+const gestureEmoji = g => ({POINT:"☝️",PINCH:"🤏",FIST:"✊",PEACE:"✌️",OPEN_HAND:"🖐️",WAVE:"👋",THUMBS_UP:"👍",THUMBS_DOWN:"👎",UNKNOWN:"🖐️"}[g]||"🖐️");
+const gestureDesc  = g => ({POINT:"Moving cursor",PINCH:"Grabbing",FIST:"Click",PEACE:"Scrolling",OPEN_HAND:"Release",WAVE:"Show desktop",THUMBS_UP:"Confirm",THUMBS_DOWN:"Cancel",UNKNOWN:"Detecting..."}[g]||"");
+
+init().catch(e => { modelStat.textContent = "❌ Failed: " + e.message; });
+</script>
+</body>
+</html>

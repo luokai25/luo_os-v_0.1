@@ -1374,6 +1374,22 @@ def set_temperature():
     return jsonify({"ok": True, "temperature": temp})
 
 
+
+# ════════════════════════════════════════════════════════════════
+# HAND TRACKER — serves the MediaPipe gesture recognition page
+# ════════════════════════════════════════════════════════════════
+@app.route("/hand-tracker")
+@app.route("/hand-tracker/")
+def hand_tracker():
+    """Serve the hand tracking page."""
+    tracker_path = Path(__file__).parent / "luokai" / "vision"
+    return send_from_directory(str(tracker_path), "hand_tracker.html")
+
+@app.route("/hand-tracker/<path:filename>")
+def hand_tracker_assets(filename):
+    tracker_path = Path(__file__).parent / "luokai" / "vision"
+    return send_from_directory(str(tracker_path), filename)
+
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"

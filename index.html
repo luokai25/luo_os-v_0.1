@@ -1,5 +1,6 @@
 
-      <button class="sb-btn" onclick="openApp('blender')" title="3D Studio">🎨<div class="sb-tooltip">3D Studio</div></button><!DOCTYPE html>
+      <button class="sb-btn" onclick="openApp('blender')" title="3D Studio">🎨<div class="sb-tooltip">3D Studio</div></button>
+      <button class="sb-btn" onclick="openApp('handtracking')" title="Hand Tracking">🖐️<div class="sb-tooltip">Hand Tracking</div></button><!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -522,6 +523,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <button id="tb-start" onclick="openApp('luokai')">LUO</button>
   <div id="tb-apps"></div>
   <div id="tb-right">
+    <button onclick="handTrackingEnable()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)" title="Hand Tracking">🖐️</button>
     <button id="pomo-btn" onclick="pomodoroToggle()" oncontextmenu="event.preventDefault();pomodoroReset()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:monospace" title="Pomodoro (right-click to reset)">🍅 <span id="pomo-time">25:00</span></button>
     <button onclick="showClipboard()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)" title="Clipboard History">📋</button>
     <span id="tb-stock" style="font-size:10px;color:var(--text3);padding:0 4px;font-family:monospace" title="Stock ticker (add Alpha Vantage key in Settings)"></span>
@@ -1483,6 +1485,30 @@ Type 'help' for commands, 'luokai &lt;question&gt;' to ask LUOKAI.
         </div>
       </div>`;
 
+    case "handtracking": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:#000">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(0,212,255,.06);border-bottom:1px solid rgba(0,212,255,.15);flex-shrink:0">
+          <span style="font-size:16px">🖐️</span>
+          <span style="font-weight:700;font-size:13px;color:#4fc3f7">Hand Tracking</span>
+          <span style="font-size:10px;color:#444;font-family:monospace">MediaPipe · WebGL · 30fps</span>
+          <div style="flex:1"></div>
+          <button onclick="handTrackingFullscreen()" style="padding:3px 10px;background:rgba(0,212,255,.15);border:1px solid rgba(0,212,255,.3);color:#4fc3f7;border-radius:5px;font-size:11px;cursor:pointer">⬡ Pop Out</button>
+          <button onclick="handTrackingHelp()" style="padding:3px 10px;background:transparent;border:1px solid #333;color:#666;border-radius:5px;font-size:11px;cursor:pointer">? Gestures</button>
+        </div>
+        <iframe id="hand-tracker-frame" src="/hand-tracker"
+          style="flex:1;border:none;width:100%;background:#000"
+          allow="camera;microphone;fullscreen"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms">
+        </iframe>
+        <div style="padding:5px 12px;background:rgba(0,0,0,.8);border-top:1px solid #111;flex-shrink:0;display:flex;align-items:center;gap:16px">
+          <span id="ht-status" style="font-size:10px;color:#444">Waiting for camera...</span>
+          <span id="ht-gesture" style="font-size:12px;min-width:40px">🖐️</span>
+          <span id="ht-gesture-name" style="font-size:10px;color:#4fc3f7"></span>
+          <div style="flex:1"></div>
+          <span style="font-size:10px;color:#222">Powered by MediaPipe Hands · runs 100% locally</span>
+        </div>
+      </div>`;
+
     default: return \`<div style="padding:32px;color:var(--text2);text-align:center">🚧 \${id} — Coming soon</div>\`;
   }
 }
@@ -1496,6 +1522,12 @@ function initApp(id) {
   if (id === "calendar")   { setTimeout(calRender, 50); }
   if (id === "files")      { setTimeout(()=>filesNav("~"), 50); }
   if (id === "worldmonitor"){ wmLoad("top"); }
+  if (id === "handtracking") {
+    setTimeout(() => {
+      const f = document.getElementById("hand-tracker-frame");
+      if (f) f.src = "/hand-tracker";
+    }, 100);
+  }
   if (id === "blender") {
     setTimeout(() => {
       const f = document.getElementById("blender-frame");
@@ -4025,6 +4057,7 @@ const _AL_APPS = [
   {id:"calculator",icon:"🧮",name:"Calculator",     desc:"Calculate"},
   {id:"calendar",icon:"📅", name:"Calendar",         desc:"Events & dates"},
   {id:"settings",icon:"⚙️", name:"Settings",        desc:"Configure LuoOS"},
+  {id:"handtracking",icon:"🖐️", name:"Hand Tracking",   desc:"Gesture control via camera"},
 ];
 let _alIdx = 0;
 
@@ -4546,6 +4579,119 @@ function importOSState() {
   };
   inp.click();
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// GESTURE RECEIVER — receives postMessage from /hand-tracker iframe
+// ═══════════════════════════════════════════════════════════════════
+let _htDragEl = null, _htDragOffX = 0, _htDragOffY = 0, _htLastMove = 0;
+
+window.addEventListener("message", e => {
+  const msg = e.data;
+  if (!msg || !msg._luoHandEvent) return;
+  const statusEl = document.getElementById("ht-status");
+  const gestEl   = document.getElementById("ht-gesture");
+
+  // Ensure virtual cursor exists
+  let vcur = document.getElementById("ht-virtual-cursor");
+  if (!vcur && ["CURSOR_MOVE","CLICK","MOUSE_DOWN"].includes(msg.type)) {
+    vcur = document.createElement("div");
+    vcur.id = "ht-virtual-cursor";
+    vcur.style.cssText = "position:fixed;z-index:99997;width:18px;height:18px;border-radius:50%;background:rgba(0,212,255,.7);border:2px solid #00d4ff;transform:translate(-50%,-50%);pointer-events:none;transition:left .04s,top .04s;box-shadow:0 0 18px rgba(0,212,255,.7)";
+    document.body.appendChild(vcur);
+  }
+
+  switch(msg.type) {
+    case "CURSOR_MOVE":
+      if (vcur) { vcur.style.left=msg.x+"px"; vcur.style.top=msg.y+"px"; }
+      if (_htDragEl) {
+        _htDragEl.style.left = Math.max(0, msg.x-_htDragOffX)+"px";
+        _htDragEl.style.top  = Math.max(0, msg.y-_htDragOffY)+"px";
+      }
+      break;
+
+    case "CLICK":
+      (function(){
+        const el = document.elementFromPoint(msg.x, msg.y);
+        if (!el) return;
+        ["mousedown","mouseup","click"].forEach(t =>
+          el.dispatchEvent(new MouseEvent(t, {bubbles:true,clientX:msg.x,clientY:msg.y})));
+        if (el.tagName==="INPUT"||el.tagName==="TEXTAREA"||el.tagName==="BUTTON") el.focus();
+        // Visual flash
+        const os = el.style.boxShadow;
+        el.style.boxShadow = "0 0 0 3px rgba(0,212,255,.6)";
+        setTimeout(()=>el.style.boxShadow=os, 280);
+        if (statusEl) statusEl.textContent = "Clicked " + (el.id||el.className||el.tagName).slice(0,30);
+      })(); break;
+
+    case "MOUSE_DOWN":
+      (function(){
+        const el = document.elementFromPoint(msg.x, msg.y);
+        if (!el) return;
+        el.dispatchEvent(new MouseEvent("mousedown", {bubbles:true,clientX:msg.x,clientY:msg.y}));
+        const tb = el.closest(".window-titlebar,.titlebar,.dbar,[id*=titlebar]");
+        if (tb) {
+          const win = tb.closest(".window") || tb.parentElement?.parentElement;
+          if (win) { _htDragEl=win; _htDragOffX=msg.x-win.offsetLeft; _htDragOffY=msg.y-win.offsetTop; }
+        }
+      })(); break;
+
+    case "MOUSE_UP":
+      (function(){
+        const el = document.elementFromPoint(msg.x, msg.y);
+        if (el) el.dispatchEvent(new MouseEvent("mouseup", {bubbles:true,clientX:msg.x,clientY:msg.y}));
+        _htDragEl = null;
+      })(); break;
+
+    case "RIGHT_CLICK":
+      (function(){
+        const el = document.elementFromPoint(msg.x, msg.y);
+        if (el) el.dispatchEvent(new MouseEvent("contextmenu", {bubbles:true,clientX:msg.x,clientY:msg.y}));
+      })(); break;
+
+    case "SCROLL":
+      (function(){
+        const el = document.elementFromPoint(msg.x, msg.y);
+        if (el) el.dispatchEvent(new WheelEvent("wheel", {bubbles:true,deltaY:msg.deltaY,clientX:msg.x,clientY:msg.y}));
+      })(); break;
+
+    case "WAVE":
+      if (typeof windows !== "undefined") Object.keys(windows).forEach(id=>minimizeApp(id));
+      notify("👋 Wave", "Show desktop", "info"); break;
+
+    case "CONFIRM":
+      (function(){
+        const focused = document.activeElement;
+        if (focused&&focused!==document.body) focused.click();
+        notify("👍 Confirm", "", "info");
+      })(); break;
+
+    case "CANCEL":
+      (function(){
+        const wins = document.querySelectorAll(".window:not(.minimized)");
+        if (wins.length) { const w=wins[wins.length-1]; minimizeApp(w.id); }
+        notify("👎 Cancel", "Window minimized", "info");
+      })(); break;
+
+    case "PINCH_ZOOM":
+      (function(){
+        const focused = document.querySelector(".window:not(.minimized):last-child");
+        if (focused&&msg.delta) {
+          focused.style.width  = Math.max(320,(parseInt(focused.style.width)||focused.offsetWidth)  + msg.delta*2)+"px";
+          focused.style.height = Math.max(240,(parseInt(focused.style.height)||focused.offsetHeight) + msg.delta*1.5)+"px";
+        }
+      })(); break;
+  }
+
+  // Update gesture emoji in status bar
+  if (gestEl && msg.gesture) {
+    const emap = {POINT:"☝️",PINCH:"🤏",FIST:"✊",PEACE:"✌️",OPEN_HAND:"🖐️",WAVE:"👋",THUMBS_UP:"👍",THUMBS_DOWN:"👎"};
+    gestEl.textContent = emap[msg.gesture]||"🖐️";
+  }
+});
+
+function handTrackingFullscreen() { window.open("/hand-tracker","_blank","width=1280,height=720"); }
+function handTrackingHelp() { notify("Gestures","☝️ Point=move · ✊ Fist=click · 🤏 Pinch=drag · ✌️ Peace=scroll · 👋 Wave=desktop · 👍/👎 Confirm/Cancel","info"); }
+function handTrackingEnable() { openApp("handtracking"); }
 </script>
 </body>
 </html>
