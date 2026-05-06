@@ -1,3 +1,4 @@
+import json
 #!/usr/bin/env python3
 """
 LuoOS Server — Main backend
@@ -1389,6 +1390,205 @@ def hand_tracker():
 def hand_tracker_assets(filename):
     tracker_path = Path(__file__).parent / "luokai" / "vision"
     return send_from_directory(str(tracker_path), filename)
+
+
+# ════════════════════════════════════════════════════════════════
+# LUO ULTRA — Pillars 1, 3, 4, 6 server endpoints
+# ════════════════════════════════════════════════════════════════
+
+# ── Pillar 1: Perception ─────────────────────────────────────────
+@app.route("/perception")
+@app.route("/perception/")
+def perception_page():
+    return send_from_directory(
+        str(Path(__file__).parent / "luokai" / "vision"),
+        "perception.html"
+    )
+
+# ── Pillar 3: Agentic LUOKAI ─────────────────────────────────────
+@app.route("/api/agent/chat", methods=["POST"])
+def agent_chat():
+    """Run LUOKAI in agent mode — executes tools, multi-step plans."""
+    try:
+        from luokai.agent import run_agent
+        body = request.json or {}
+        msg  = body.get("message", "").strip()
+        if not msg:
+            return jsonify({"ok": False, "error": "Empty"})
+
+        eng = _get_inference()
+        def infer_fn(history):
+            return eng.generate(history)
+
+        result = run_agent(msg, infer_fn, max_steps=5)
+        return jsonify({"ok": True, **result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/agent/pending", methods=["GET"])
+def agent_pending():
+    """UI polls this to get pending tool actions."""
+    try:
+        from luokai.agent import get_pending_actions
+        return jsonify({"ok": True, "actions": get_pending_actions()})
+    except Exception:
+        return jsonify({"ok": True, "actions": []})
+
+
+@app.route("/api/agent/report", methods=["POST"])
+def agent_report():
+    """UI reports back the result of a tool execution."""
+    try:
+        from luokai.agent import report_result
+        body = request.json or {}
+        report_result(body.get("id", ""), body.get("result"))
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/agent/tools", methods=["GET"])
+def agent_tools():
+    """List all available tools."""
+    try:
+        from luokai.agent.tools import TOOLS
+        return jsonify({"ok": True, "tools": TOOLS})
+    except Exception:
+        return jsonify({"ok": False, "tools": {}})
+
+
+# ── Pillar 4: Mind Canvas (state persistence) ────────────────────
+_CANVAS_PATH = Path.home() / ".luo_os" / "mind_canvas.json"
+
+@app.route("/api/canvas/save", methods=["POST"])
+def canvas_save():
+    body = request.json or {}
+    try:
+        _CANVAS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _CANVAS_PATH.write_text(json.dumps(body, indent=2))
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/canvas/load", methods=["GET"])
+def canvas_load():
+    try:
+        if _CANVAS_PATH.exists():
+            return jsonify({"ok": True, "data": json.loads(_CANVAS_PATH.read_text())})
+        return jsonify({"ok": True, "data": {"nodes": [], "edges": []}})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+# ── Pillar 6: Dream Engine (background cognition) ────────────────
+_DREAMS_PATH = Path.home() / ".luo_os" / "dreams.json"
+_dream_state = {"running": False, "thread": None, "last_run": 0, "dreams": []}
+
+
+def _load_dreams():
+    if _DREAMS_PATH.exists():
+        try:
+            _dream_state["dreams"] = json.loads(_DREAMS_PATH.read_text())
+        except Exception:
+            _dream_state["dreams"] = []
+    else:
+        _dream_state["dreams"] = []
+
+
+def _save_dreams():
+    try:
+        _DREAMS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _DREAMS_PATH.write_text(json.dumps(_dream_state["dreams"][-50:], indent=2))
+    except Exception:
+        pass
+
+
+def _dream_loop():
+    """Run idle cognition: replay conversations, find patterns."""
+    import time as _t
+    while _dream_state["running"]:
+        _t.sleep(60)  # check every minute
+        # Only dream if user has been idle for 5 minutes
+        if _t.time() - _dream_state.get("last_activity", _t.time()) < 300:
+            continue
+        if _t.time() - _dream_state["last_run"] < 600:
+            continue  # don't dream more often than every 10 min
+
+        try:
+            # Get recent conversation
+            if not _chat_history:
+                continue
+            recent = _chat_history[-20:]
+            recent_text = "\n".join(f"{m['role']}: {m['content']}" for m in recent)
+
+            # Ask LUOKAI to extract patterns/insights
+            prompt = (
+                "You are LUOKAI in dream-state. Review the user's recent conversation and "
+                "extract: 1) 3 key topics, 2) 1 pattern you notice, 3) 1 question you'd "
+                "ask the user tomorrow, 4) 1 connection between ideas they may have missed.\n\n"
+                "Conversation:\n" + recent_text[:2000]
+            )
+            try:
+                eng = _get_inference()
+                response = eng.generate([{"role": "user", "content": prompt}])
+            except Exception:
+                response = "Cannot dream without inference engine."
+
+            dream = {
+                "ts":      _t.strftime("%Y-%m-%d %H:%M"),
+                "content": response[:600] if response else "",
+                "msgs_processed": len(recent),
+            }
+            _dream_state["dreams"].append(dream)
+            _save_dreams()
+            _dream_state["last_run"] = _t.time()
+            print(f"[LuoDream] Dream generated: {dream['ts']}")
+        except Exception as e:
+            print(f"[LuoDream] Error: {e}")
+
+
+@app.route("/api/dreams/list", methods=["GET"])
+def dreams_list():
+    _load_dreams()
+    return jsonify({
+        "ok":      True,
+        "dreams":  _dream_state["dreams"][-20:],
+        "running": _dream_state["running"],
+    })
+
+
+@app.route("/api/dreams/start", methods=["POST"])
+def dreams_start():
+    if _dream_state["running"]:
+        return jsonify({"ok": True, "status": "already running"})
+    _dream_state["running"] = True
+    _dream_state["last_run"] = time.time()
+    _dream_state["last_activity"] = time.time()
+    t = threading.Thread(target=_dream_loop, daemon=True, name="LuoDreamEngine")
+    t.start()
+    _dream_state["thread"] = t
+    return jsonify({"ok": True, "status": "started"})
+
+
+@app.route("/api/dreams/stop", methods=["POST"])
+def dreams_stop():
+    _dream_state["running"] = False
+    return jsonify({"ok": True, "status": "stopped"})
+
+
+@app.route("/api/dreams/poke", methods=["POST"])
+def dreams_poke():
+    """Update last activity timestamp — UI calls this on user interaction."""
+    _dream_state["last_activity"] = time.time()
+    return jsonify({"ok": True})
+
+
+# Auto-start dream engine
+threading.Thread(target=lambda: (time.sleep(30), dreams_start()),
+                 daemon=True, name="LuoDreamBoot").start()
+
 
 @app.after_request
 def cors(r):

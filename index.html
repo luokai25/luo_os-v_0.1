@@ -1,6 +1,10 @@
 
       <button class="sb-btn" onclick="openApp('blender')" title="3D Studio">🎨<div class="sb-tooltip">3D Studio</div></button>
-      <button class="sb-btn" onclick="openApp('handtracking')" title="Hand Tracking">🖐️<div class="sb-tooltip">Hand Tracking</div></button><!DOCTYPE html>
+      <button class="sb-btn" onclick="openApp('handtracking')" title="Hand Tracking">🖐️<div class="sb-tooltip">Hand Tracking</div></button>
+      <button class="sb-btn" onclick="openApp('perception')" title="Perception">👁️<div class="sb-tooltip">Perception</div></button>
+      <button class="sb-btn" onclick="openApp('agent')" title="LUOKAI Agent">⚡<div class="sb-tooltip">Agent</div></button>
+      <button class="sb-btn" onclick="openApp('canvas')" title="Mind Canvas">🧠<div class="sb-tooltip">Mind Canvas</div></button>
+      <button class="sb-btn" onclick="openApp('dreams')" title="LUOKAI Dreams">💭<div class="sb-tooltip">Dreams</div></button><!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -1508,6 +1512,72 @@ Type 'help' for commands, 'luokai &lt;question&gt;' to ask LUOKAI.
           <span style="font-size:10px;color:#222">Powered by MediaPipe Hands · runs 100% locally</span>
         </div>
       </div>`;
+
+    case "perception": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:#000">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(255,107,107,.06);border-bottom:1px solid rgba(255,107,107,.2);flex-shrink:0">
+          <span style="font-size:16px">👁️</span>
+          <span style="font-weight:700;font-size:13px;color:#ff6b6b">Perception</span>
+          <span style="font-size:10px;color:#444;font-family:monospace">468 facial landmarks · gaze · expression</span>
+          <div style="flex:1"></div>
+          <button onclick="window.open('/perception','_blank','width=1280,height=800')" style="padding:3px 10px;background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.3);color:#ff6b6b;border-radius:5px;font-size:11px;cursor:pointer">⬡ Pop Out</button>
+        </div>
+        <iframe src="/perception" style="flex:1;border:none;width:100%;background:#000" allow="camera"></iframe>
+      </div>`;
+
+    case "agent": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-desktop)">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(0,212,255,.08));border-bottom:1px solid rgba(124,58,237,.3);flex-shrink:0">
+          <span style="font-size:16px">⚡</span>
+          <span style="font-weight:700;font-size:13px;color:#c586c0">LUOKAI Agent</span>
+          <span style="font-size:10px;color:var(--text3);font-family:monospace">tool-calling · multi-step plans · acts on your behalf</span>
+          <div style="flex:1"></div>
+          <button onclick="agentShowTools()" style="padding:3px 10px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">🔧 Tools</button>
+        </div>
+        <div id="agent-log" style="flex:1;overflow-y:auto;padding:14px 20px;font-family:monospace;font-size:12px;line-height:1.7"></div>
+        <div style="display:flex;gap:6px;padding:10px 14px;background:var(--bg-glass);border-top:1px solid var(--border);flex-shrink:0">
+          <input id="agent-input" placeholder="Ask LUOKAI to do something... 'open my files', 'find tax docs', 'what's the weather'"
+            onkeydown="if(event.key==='Enter')agentSend()"
+            style="flex:1;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:7px;font-size:12px;outline:none;font-family:var(--font-main)">
+          <button onclick="agentSend()" style="padding:8px 16px;background:linear-gradient(135deg,#7c3aed,#4fc3f7);border:none;color:#fff;border-radius:7px;font-size:12px;cursor:pointer;font-weight:700">⚡ Run</button>
+        </div>
+      </div>`;
+
+    case "canvas": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:#0a0d12;position:relative;overflow:hidden">
+        <div style="position:absolute;top:8px;left:8px;display:flex;gap:6px;z-index:10;background:rgba(0,0,0,.6);backdrop-filter:blur(10px);padding:6px;border-radius:8px;border:1px solid var(--border)">
+          <button onclick="canvasAddNote()" style="padding:5px 10px;background:#fbbf24;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700" title="Add Note">📝 Note</button>
+          <button onclick="canvasAddImage()" style="padding:5px 10px;background:#06b6d4;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700" title="Add Image">🖼 Image</button>
+          <button onclick="canvasAddLink()" style="padding:5px 10px;background:#10b981;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700" title="Add Link">🔗 Link</button>
+          <button onclick="canvasOrganize()" style="padding:5px 10px;background:#7c3aed;border:none;color:#fff;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700" title="LUOKAI organise">🤖 Auto</button>
+          <button onclick="canvasReset()" style="padding:5px 10px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">↺ Reset</button>
+        </div>
+        <div style="position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:10;background:rgba(0,0,0,.6);backdrop-filter:blur(10px);padding:4px 10px;border-radius:8px;border:1px solid var(--border);font-family:monospace;font-size:10px;color:var(--text3)">
+          <span id="canvas-stats">0 nodes · 0 connections</span>
+          <span>·</span>
+          <span id="canvas-zoom">100%</span>
+        </div>
+        <div id="canvas-viewport" style="flex:1;position:relative;overflow:hidden;cursor:grab"
+          onmousedown="canvasStartPan(event)" onwheel="canvasZoom(event)">
+          <svg id="canvas-svg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></svg>
+          <div id="canvas-stage" style="position:absolute;top:0;left:0;width:5000px;height:5000px;transform-origin:0 0">
+            <div style="position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.04) 1px,transparent 1px);background-size:25px 25px;pointer-events:none"></div>
+          </div>
+        </div>
+      </div>`;
+
+    case "dreams": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:linear-gradient(180deg,#0c0f1a 0%,#080a12 100%);overflow:hidden">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(124,58,237,.08);border-bottom:1px solid rgba(124,58,237,.2);flex-shrink:0">
+          <span style="font-size:20px">💭</span>
+          <span style="font-weight:700;font-size:14px;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent">LUOKAI Dreams</span>
+          <span style="font-size:10px;color:var(--text3);font-family:monospace">Background cognition · idle reflection · pattern extraction</span>
+          <div style="flex:1"></div>
+          <button id="dream-toggle" onclick="dreamsToggle()" style="padding:4px 12px;background:rgba(124,58,237,.2);border:1px solid rgba(124,58,237,.4);color:#c4b5fd;border-radius:6px;font-size:11px;cursor:pointer;font-weight:700">⏵ Start</button>
+        </div>
+        <div id="dreams-list" style="flex:1;overflow-y:auto;padding:18px 20px"></div>
+      </div>`;
+
 
     default: return \`<div style="padding:32px;color:var(--text2);text-align:center">🚧 \${id} — Coming soon</div>\`;
   }
@@ -4058,6 +4128,10 @@ const _AL_APPS = [
   {id:"calendar",icon:"📅", name:"Calendar",         desc:"Events & dates"},
   {id:"settings",icon:"⚙️", name:"Settings",        desc:"Configure LuoOS"},
   {id:"handtracking",icon:"🖐️", name:"Hand Tracking",   desc:"Gesture control via camera"},
+  {id:"perception",  icon:"👁️", name:"Perception",      desc:"Face mesh + eye gaze"},
+  {id:"agent",       icon:"⚡", name:"LUOKAI Agent",    desc:"AI that acts on your behalf"},
+  {id:"canvas",      icon:"🧠", name:"Mind Canvas",     desc:"Infinite spatial thinking"},
+  {id:"dreams",      icon:"💭", name:"Dreams",          desc:"Background cognition"},
 ];
 let _alIdx = 0;
 
@@ -4692,6 +4766,385 @@ window.addEventListener("message", e => {
 function handTrackingFullscreen() { window.open("/hand-tracker","_blank","width=1280,height=720"); }
 function handTrackingHelp() { notify("Gestures","☝️ Point=move · ✊ Fist=click · 🤏 Pinch=drag · ✌️ Peace=scroll · 👋 Wave=desktop · 👍/👎 Confirm/Cancel","info"); }
 function handTrackingEnable() { openApp("handtracking"); }
+
+// ═══════════════════════════════════════════════════════════════
+// PILLAR 1 — PERCEPTION (face mesh + gaze)
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener("message", e => {
+  const m = e.data;
+  if (!m || !m._luoFaceEvent) return;
+
+  // Eye gaze cursor (fallback when no hand visible)
+  if (m.type === "GAZE_UPDATE") {
+    let g = document.getElementById("gaze-cursor");
+    if (!g) {
+      g = document.createElement("div");
+      g.id = "gaze-cursor";
+      g.style.cssText = "position:fixed;width:30px;height:30px;border-radius:50%;border:2px dashed rgba(255,107,107,.5);transform:translate(-50%,-50%);pointer-events:none;z-index:99996;transition:left .12s,top .12s;display:none";
+      document.body.appendChild(g);
+    }
+    // Show gaze cursor only if no hand cursor
+    const handCur = document.getElementById("ht-virtual-cursor");
+    g.style.display = (handCur && handCur.style.left) ? "none" : "block";
+    g.style.left = m.x + "px"; g.style.top = m.y + "px";
+
+    // Mood-aware UI
+    if (m.mood && m.mood !== window._luoMood) {
+      window._luoMood = m.mood;
+      if (m.mood.includes("happy")) {
+        // Subtle particle burst
+        for (let i=0; i<8; i++) {
+          const p = document.createElement("div");
+          p.style.cssText = `position:fixed;left:${m.x}px;top:${m.y}px;width:6px;height:6px;border-radius:50%;background:#ff6b6b;pointer-events:none;z-index:99995;animation:partFly .6s ease-out forwards`;
+          p.style.setProperty("--dx", (Math.random()*100-50)+"px");
+          p.style.setProperty("--dy", (Math.random()*100-50)+"px");
+          document.body.appendChild(p);
+          setTimeout(()=>p.remove(), 600);
+        }
+      }
+    }
+
+    // Stress-aware (low attention = simpler UI)
+    if (m.attention !== undefined) {
+      window._luoAttention = m.attention;
+      // Could dim distractions when focused
+    }
+
+    // Tired detection (high blink rate or eyes closed long)
+    const eyesClosed = (m.blendshapes?.eyeBlinkLeft||0) + (m.blendshapes?.eyeBlinkRight||0);
+    if (eyesClosed > 1.5 && !window._luoTiredAlerted) {
+      window._luoTiredAlerted = true;
+      notify("😴 Take a break", "You seem tired. Want to start a Pomodoro?", "info");
+      setTimeout(()=>{ window._luoTiredAlerted = false; }, 600000); // remind every 10 min max
+    }
+  }
+});
+
+// CSS for particle animation
+(function() {
+  const s = document.createElement("style");
+  s.textContent = "@keyframes partFly { to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0); opacity:0; } }";
+  document.head.appendChild(s);
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// PILLAR 3 — LUOKAI AGENT (tool-calling)
+// ═══════════════════════════════════════════════════════════════
+async function agentSend() {
+  const inp = document.getElementById("agent-input");
+  const log = document.getElementById("agent-log");
+  if (!inp || !log) return;
+  const msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = "";
+
+  // User message
+  log.innerHTML += `<div style="margin-bottom:14px"><span style="color:#10b981">▶ You:</span> <span style="color:var(--text)">${msg}</span></div>`;
+  log.innerHTML += `<div id="agent-thinking" style="color:#7c3aed;margin-bottom:14px"><span class="agent-loader">⚡ LUOKAI thinking...</span></div>`;
+  log.scrollTop = log.scrollHeight;
+
+  try {
+    const r = await fetch(`${API}/api/agent/chat`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({message: msg})
+    });
+    const d = await r.json();
+    document.getElementById("agent-thinking")?.remove();
+
+    if (d.actions?.length) {
+      log.innerHTML += `<div style="background:rgba(124,58,237,.08);border-left:3px solid #7c3aed;padding:8px 14px;margin-bottom:8px;border-radius:6px"><div style="font-size:10px;color:#a78bfa;margin-bottom:6px">⚡ Plan executed (${d.steps} steps)</div>`;
+      for (const a of d.actions) {
+        log.innerHTML += `<div style="font-size:11px;color:var(--text2);margin:3px 0">→ <code style="background:rgba(0,212,255,.1);padding:1px 6px;border-radius:3px;color:#4fc3f7">${a.tool}</code> <span style="color:var(--text3)">${JSON.stringify(a.args).slice(0,120)}</span></div>`;
+      }
+      log.innerHTML += `</div>`;
+    }
+    if (d.answer) {
+      log.innerHTML += `<div style="margin-bottom:18px"><span style="color:#c586c0">✦ LUOKAI:</span> <span style="color:var(--text)">${(d.answer||"").replace(/</g,"&lt;").replace(/\n/g,"<br>")}</span></div>`;
+    }
+    log.scrollTop = log.scrollHeight;
+
+    // Poll for UI actions
+    pollAgentActions();
+  } catch(e) {
+    document.getElementById("agent-thinking")?.remove();
+    log.innerHTML += `<div style="color:#f44">Error: ${e.message}</div>`;
+  }
+}
+
+async function pollAgentActions() {
+  try {
+    const r = await fetch(`${API}/api/agent/pending`);
+    const d = await r.json();
+    for (const action of (d.actions||[])) {
+      executeAgentAction(action);
+    }
+  } catch(e) {}
+}
+
+function executeAgentAction(a) {
+  switch(a.tool) {
+    case "open_app":     openApp(a.args.app); break;
+    case "close_app":    if (windows[a.args.app]) minimizeApp(a.args.app); break;
+    case "open_url":     openApp("browser"); setTimeout(()=>browserLoad(a.args.url),400); break;
+    case "search_web":   openApp("browser"); setTimeout(()=>browserSearch?.(a.args.query),400); break;
+    case "notify":       notify(a.args.title, a.args.body, a.args.type||"info"); break;
+    case "read_news":    openApp("worldmonitor"); setTimeout(()=>wmLoad(a.args.category||"top"),400); break;
+    case "create_note":  openApp("notes"); setTimeout(()=>{
+      _notes[a.args.title] = {body:a.args.content||"", ts:new Date().toISOString()};
+      _currentNote = a.args.title;
+      localStorage.setItem("luo-notes", JSON.stringify(_notes));
+      noteInit();
+    },400); break;
+    case "schedule_event":
+      if (!_calEvents[a.args.date]) _calEvents[a.args.date]=[];
+      _calEvents[a.args.date].push(a.args.event);
+      localStorage.setItem("luo-cal-events", JSON.stringify(_calEvents));
+      notify("📅 Event added", `${a.args.event} on ${a.args.date}`, "info");
+      break;
+  }
+  // Report back
+  fetch(`${API}/api/agent/report`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({id:a.id, result:{ok:true}})
+  }).catch(()=>{});
+}
+
+async function agentShowTools() {
+  const r = await fetch(`${API}/api/agent/tools`);
+  const d = await r.json();
+  const log = document.getElementById("agent-log");
+  if (!log) return;
+  log.innerHTML += `<div style="background:rgba(0,212,255,.05);border-left:3px solid #4fc3f7;padding:10px 14px;margin-bottom:14px;border-radius:6px;font-size:11px">
+    <div style="color:#4fc3f7;font-weight:700;margin-bottom:6px">🔧 Available Tools</div>
+    ${Object.entries(d.tools||{}).map(([n,t])=>`<div style="margin:3px 0;color:var(--text2)"><code style="color:#4fc3f7">${n}</code> — <span style="color:var(--text3)">${t.description}</span></div>`).join("")}
+  </div>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PILLAR 4 — MIND CANVAS (infinite spatial canvas)
+// ═══════════════════════════════════════════════════════════════
+let _canvasNodes = [], _canvasEdges = [];
+let _canvasZoom = 1, _canvasOffsetX = 0, _canvasOffsetY = 0;
+let _canvasDragNode = null, _canvasPanning = false;
+
+function canvasInit() {
+  // Load saved state
+  fetch(`${API}/api/canvas/load`).then(r=>r.json()).then(d => {
+    if (d.ok && d.data) {
+      _canvasNodes = d.data.nodes || [];
+      _canvasEdges = d.data.edges || [];
+      canvasRender();
+    }
+  }).catch(()=>{});
+}
+
+function canvasRender() {
+  const stage = document.getElementById("canvas-stage");
+  const svg   = document.getElementById("canvas-svg");
+  if (!stage || !svg) return;
+  // Clear and rebuild nodes
+  stage.querySelectorAll(".cn").forEach(e=>e.remove());
+  for (const n of _canvasNodes) {
+    const el = document.createElement("div");
+    el.className = "cn";
+    el.dataset.id = n.id;
+    const colors = {note:"#fbbf24",image:"#06b6d4",link:"#10b981",text:"#4fc3f7"};
+    el.style.cssText = `position:absolute;left:${n.x}px;top:${n.y}px;min-width:${n.w||180}px;min-height:${n.h||100}px;background:rgba(255,255,255,.06);border:2px solid ${colors[n.type]||"#4fc3f7"};border-radius:10px;padding:12px;cursor:move;color:var(--text);font-size:12px;backdrop-filter:blur(10px);transition:transform .15s;box-shadow:0 4px 20px rgba(0,0,0,.3)`;
+    el.onmousedown = e => { _canvasDragNode = n; canvasNodeDragStart(e); };
+    if (n.type === "note") el.innerHTML = `<div style="font-weight:700;color:${colors.note};margin-bottom:6px">📝 ${n.title||"Note"}</div><div style="font-size:11px;line-height:1.6">${(n.content||"").slice(0,300)}</div>`;
+    else if (n.type === "image") el.innerHTML = `<img src="${n.src||""}" style="width:100%;border-radius:6px">`;
+    else if (n.type === "link") el.innerHTML = `<div style="font-weight:700;color:${colors.link};margin-bottom:4px">🔗 Link</div><a href="${n.url}" target="_blank" style="color:${colors.link};text-decoration:none;font-size:11px;word-break:break-all">${n.url}</a>`;
+    else el.textContent = n.content || "Empty";
+    stage.appendChild(el);
+  }
+  // Render edges
+  svg.innerHTML = _canvasEdges.map(e => {
+    const a = _canvasNodes.find(n=>n.id===e.from);
+    const b = _canvasNodes.find(n=>n.id===e.to);
+    if (!a || !b) return "";
+    return `<line x1="${a.x+90}" y1="${a.y+50}" x2="${b.x+90}" y2="${b.y+50}" stroke="rgba(124,58,237,.6)" stroke-width="2" marker-end="url(#arrow)"/>`;
+  }).join("") + `<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="rgba(124,58,237,.8)"/></marker></defs>`;
+
+  document.getElementById("canvas-stats").textContent = `${_canvasNodes.length} nodes · ${_canvasEdges.length} connections`;
+  document.getElementById("canvas-zoom").textContent = Math.round(_canvasZoom*100) + "%";
+  canvasSave();
+}
+
+function canvasAddNote() {
+  const text = prompt("Note content:");
+  if (!text) return;
+  const stage = document.getElementById("canvas-stage");
+  const rect = stage.getBoundingClientRect();
+  _canvasNodes.push({
+    id: "n"+Date.now(), type:"note",
+    x: -rect.left + window.innerWidth/2 + Math.random()*200-100,
+    y: -rect.top + window.innerHeight/2 + Math.random()*200-100,
+    title: "Note", content: text
+  });
+  canvasRender();
+}
+
+function canvasAddImage() {
+  const inp = document.createElement("input"); inp.type="file"; inp.accept="image/*";
+  inp.onchange = e => {
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      _canvasNodes.push({
+        id:"n"+Date.now(), type:"image", src:ev.target.result,
+        x: 200 + Math.random()*400, y: 200 + Math.random()*200,
+        w: 220, h: 200
+      });
+      canvasRender();
+    };
+    reader.readAsDataURL(file);
+  };
+  inp.click();
+}
+
+function canvasAddLink() {
+  const url = prompt("URL:");
+  if (!url) return;
+  _canvasNodes.push({
+    id:"n"+Date.now(), type:"link", url,
+    x: 300+Math.random()*300, y: 300+Math.random()*200, w: 200
+  });
+  canvasRender();
+}
+
+async function canvasOrganize() {
+  if (_canvasNodes.length < 2) { notify("Need more nodes", "Add at least 2 nodes first", "info"); return; }
+  notify("🤖 LUOKAI organising", "Clustering related nodes...", "info");
+  try {
+    const summaries = _canvasNodes.map(n => `[${n.id}] ${n.type}: ${(n.content||n.url||n.title||"").slice(0,80)}`).join("\n");
+    const r = await fetch(`${API}/api/chat`, {method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:"Group these canvas nodes into 3 clusters by topic. Reply with: cluster1: [id1,id2], cluster2: [id3], etc.\n\n"+summaries})});
+    const d = await r.json();
+    notify("LUOKAI suggests:", d.response?.slice(0,200) || "no response", "info");
+    // Simple grid layout based on clusters
+    let row = 0, col = 0;
+    for (let i=0; i<_canvasNodes.length; i++) {
+      _canvasNodes[i].x = 100 + col * 250;
+      _canvasNodes[i].y = 100 + row * 200;
+      col++; if (col >= 3) { col = 0; row++; }
+    }
+    canvasRender();
+  } catch(e) { notify("Error", e.message, "error"); }
+}
+
+function canvasReset() {
+  if (!confirm("Clear canvas? This cannot be undone.")) return;
+  _canvasNodes = []; _canvasEdges = [];
+  canvasRender();
+}
+
+function canvasSave() {
+  fetch(`${API}/api/canvas/save`, {method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({nodes:_canvasNodes, edges:_canvasEdges})}).catch(()=>{});
+}
+
+function canvasNodeDragStart(e) {
+  e.stopPropagation();
+  const startX = e.clientX, startY = e.clientY;
+  const startNX = _canvasDragNode.x, startNY = _canvasDragNode.y;
+  document.onmousemove = mv => {
+    _canvasDragNode.x = startNX + (mv.clientX - startX) / _canvasZoom;
+    _canvasDragNode.y = startNY + (mv.clientY - startY) / _canvasZoom;
+    canvasRender();
+  };
+  document.onmouseup = () => { document.onmousemove = null; document.onmouseup = null; _canvasDragNode = null; };
+}
+
+function canvasStartPan(e) {
+  if (e.target.closest(".cn")) return;
+  _canvasPanning = true;
+  const sx = e.clientX, sy = e.clientY;
+  const sox = _canvasOffsetX, soy = _canvasOffsetY;
+  document.onmousemove = mv => {
+    _canvasOffsetX = sox + mv.clientX - sx;
+    _canvasOffsetY = soy + mv.clientY - sy;
+    const stage = document.getElementById("canvas-stage");
+    if (stage) stage.style.transform = `translate(${_canvasOffsetX}px,${_canvasOffsetY}px) scale(${_canvasZoom})`;
+  };
+  document.onmouseup = () => { document.onmousemove=null; document.onmouseup=null; _canvasPanning=false; };
+}
+
+function canvasZoom(e) {
+  e.preventDefault();
+  _canvasZoom = Math.max(0.3, Math.min(2.5, _canvasZoom + (e.deltaY < 0 ? 0.1 : -0.1)));
+  const stage = document.getElementById("canvas-stage");
+  if (stage) stage.style.transform = `translate(${_canvasOffsetX}px,${_canvasOffsetY}px) scale(${_canvasZoom})`;
+  document.getElementById("canvas-zoom").textContent = Math.round(_canvasZoom*100) + "%";
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PILLAR 6 — DREAMS (background cognition)
+// ═══════════════════════════════════════════════════════════════
+let _dreamsRunning = false;
+
+async function dreamsInit() {
+  await dreamsRefresh();
+}
+
+async function dreamsRefresh() {
+  try {
+    const r = await fetch(`${API}/api/dreams/list`);
+    const d = await r.json();
+    _dreamsRunning = d.running;
+    const btn = document.getElementById("dream-toggle");
+    if (btn) btn.textContent = d.running ? "⏸ Pause" : "⏵ Start";
+
+    const list = document.getElementById("dreams-list");
+    if (!list) return;
+    if (!d.dreams.length) {
+      list.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3)">
+        <div style="font-size:48px;margin-bottom:16px">💭</div>
+        <div style="font-size:14px;margin-bottom:8px">LUOKAI hasn't dreamed yet</div>
+        <div style="font-size:11px">Dreams generate after 5+ minutes of idle time, every 10 minutes.</div>
+        <div style="font-size:11px;margin-top:12px">Have a few conversations with LUOKAI, then walk away.</div>
+      </div>`;
+      return;
+    }
+    list.innerHTML = d.dreams.reverse().map((dr,i)=>`
+      <div style="background:rgba(124,58,237,.05);border-left:3px solid rgba(124,58,237,.4);border-radius:6px;padding:14px 18px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:16px">💭</span>
+          <span style="font-size:11px;color:#a78bfa;font-family:monospace">${dr.ts}</span>
+          <span style="font-size:10px;color:var(--text3);margin-left:auto">${dr.msgs_processed} msgs reflected</span>
+        </div>
+        <div style="font-size:12px;line-height:1.7;color:var(--text);white-space:pre-wrap">${(dr.content||"").replace(/</g,"&lt;")}</div>
+      </div>`).join("");
+  } catch(e) {}
+}
+
+async function dreamsToggle() {
+  const ep = _dreamsRunning ? "/api/dreams/stop" : "/api/dreams/start";
+  await fetch(`${API}${ep}`, {method:"POST"});
+  await dreamsRefresh();
+  notify(_dreamsRunning ? "💭 Dreams paused" : "💭 Dreams started",
+         _dreamsRunning ? "Background cognition stopped" : "LUOKAI will now reflect during idle time", "info");
+}
+
+// Poke dream engine on every user activity
+let _lastPoke = 0;
+document.addEventListener("mousemove", () => {
+  const now = Date.now();
+  if (now - _lastPoke > 30000) {  // throttle to 1/30s
+    _lastPoke = now;
+    fetch(`${API}/api/dreams/poke`, {method:"POST"}).catch(()=>{});
+  }
+});
+
+// Update initApp to handle new apps
+const _origInit = typeof initApp === "function" ? initApp : null;
+window.initApp = function(id) {
+  if (_origInit) _origInit(id);
+  if (id === "canvas")     setTimeout(canvasInit, 50);
+  if (id === "dreams")     setTimeout(dreamsInit, 50);
+  if (id === "agent")      setTimeout(()=>document.getElementById("agent-input")?.focus(), 100);
+};
 </script>
 </body>
 </html>
