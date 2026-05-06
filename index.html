@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+
+      <button class="sb-btn" onclick="openApp('blender')" title="3D Studio">🎨<div class="sb-tooltip">3D Studio</div></button><!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -422,6 +423,37 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
 }
 .luovs-actbtn:hover { color: #ccc; }
 .luovs-act-active { color: #fff !important; border-left-color: #4fc3f7 !important; }
+
+/* ── App Launcher ───────────────────────────────────────────── */
+#app-launcher {
+  position: fixed; inset: 0; z-index: 9990;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(20px);
+  display: none; align-items: flex-start; justify-content: center;
+  padding-top: 15vh;
+}
+#app-launcher.open { display: flex; }
+#app-launcher-box {
+  width: 520px; background: var(--bg-panel);
+  border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.7); overflow: hidden;
+}
+#app-launcher-input {
+  width: 100%; padding: 16px 20px;
+  background: transparent; border: none; border-bottom: 1px solid var(--border);
+  color: var(--text); font-size: 18px; outline: none;
+  font-family: var(--font-ui);
+}
+#app-launcher-results { padding: 8px; max-height: 320px; overflow-y: auto; }
+.al-result {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 8px; cursor: pointer;
+  transition: background .12s;
+}
+.al-result:hover, .al-result.selected { background: var(--border); }
+.al-result .al-icon { font-size: 22px; }
+.al-result .al-name { font-size: 13px; color: var(--text); }
+.al-result .al-desc { font-size: 11px; color: var(--text3); }
+
 </style>
 </head>
 <body>
@@ -434,7 +466,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <div id="boot-status">Initializing kernel...</div>
 </div>
 <!-- WALLPAPER -->
-<div id="wallpaper"><div id="wallpaper-text">LUO</div></div>
+<div id="wallpaper" oncontextmenu="desktopCtxMenu(event)"><div id="wallpaper-text">LUO</div></div>
 
 <!-- SIDEBAR -->
 <nav id="sidebar">
@@ -476,14 +508,26 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <div class="workspace" id="ws-1" data-ws="1">
 
 
+<!-- App Launcher (Ctrl+Space) -->
+<div id="app-launcher" onclick="if(event.target===this)closeAppLauncher()">
+  <div id="app-launcher-box">
+    <input id="app-launcher-input" placeholder="Search apps, ask LUOKAI..."
+      oninput="alFilter(this.value)" onkeydown="alKeydown(event)" autocomplete="off">
+    <div id="app-launcher-results"></div>
+  </div>
+</div>
+
 <!-- TASKBAR -->
 <footer id="taskbar">
   <button id="tb-start" onclick="openApp('luokai')">LUO</button>
   <div id="tb-apps"></div>
   <div id="tb-right">
+    <button id="pomo-btn" onclick="pomodoroToggle()" oncontextmenu="event.preventDefault();pomodoroReset()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:monospace" title="Pomodoro (right-click to reset)">🍅 <span id="pomo-time">25:00</span></button>
+    <button onclick="showClipboard()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)" title="Clipboard History">📋</button>
+    <span id="tb-weather" style="font-size:11px;color:var(--text2);padding:0 6px" title="Weather (add OpenWeatherMap key in Settings)"></span>
     <div id="tb-voice-indicator" style="font-size:11px;color:#555">🎤 OFF</div>
     <div id="tb-coevo-indicator" style="font-size:11px;color:#555">🔄 —</div>
-    <div id="tb-clock">
+    <div id="tb-clock" title="" onmouseover="this.title=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})" title="" onmouseenter="this.title=new Date().toDateString()">
       <span id="tb-time">--:--</span>
       <small id="tb-date">---</small>
     </div>
@@ -805,6 +849,7 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
         <button class="browser-nav-btn" onclick="browserGo()" style="background:var(--accent);color:#000;font-weight:700">Go</button>
         <button class="browser-nav-btn" onclick="browserHome()" title="Home">⌂</button>
       </div>
+      <div id="browser-bookmark-bar" style="display:flex;gap:4px;padding:3px 8px;background:var(--bg-glass);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;min-height:24px;align-items:center"></div>
       <div id="browser-loading" style="display:none;position:absolute;top:40px;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));animation:bload .8s infinite alternate;z-index:10"></div>
       <div id="browser-content" style="flex:1;overflow:hidden;position:relative;background:#fff">
         <div id="browser-homepage" style="position:absolute;inset:0;background:var(--bg-desktop);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px">
@@ -1000,6 +1045,13 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
               <div class="settings-row"><label>Always-On Voice</label><button class="toggle" id="tog-voice" onclick="toggleVoiceFromSettings()"></button></div>
               <div class="settings-row"><label>Co-Evolution Engine</label><button class="toggle" id="tog-coevo" onclick="toggleCoevo()"></button></div>
               <div class="settings-row"><label>Auto-Learn</label><button class="toggle on" id="tog-autolearn" onclick="toggleSetting('autolearn',this)"></button></div>
+              <div class="settings-row"><label>Response Style</label>
+                <select id="luokai-temperature" onchange="setLuokaiTemp(this.value)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
+                  <option value="0.3">Precise (focused)</option>
+                  <option value="0.7" selected>Balanced</option>
+                  <option value="1.0">Creative (diverse)</option>
+                </select>
+              </div>
               <div class="settings-row"><label>Neural Engine</label>
                 <select onchange="setNeuralEngine(this.value)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
                   <option value="luokai">LUOKAI (built-in)</option><option value="cl1">CL1 Hardware</option><option value="sim">Simulation</option>
@@ -1111,7 +1163,8 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
               <div class="settings-row"><label>AI Core</label><span style="color:var(--text2);font-size:13px">LUOKAI v1.0 — Independent</span></div>
               <div class="settings-row"><label>License</label><span style="color:var(--text2);font-size:13px">Open Source — Luo Kai © 2025</span></div>
               <div class="settings-row"><label>Skills Loaded</label><span style="color:var(--accent3);font-size:13px" id="st-skills2">4,146</span></div>
-              <div class="settings-row"><label>Knowledge DB</label><span style="color:var(--accent3);font-size:13px">78,063 entries</span></div>
+              <div class="settings-row"><label>Knowledge DB</label><span style="color:var(--accent3);font-size:13px" id="kb-count">78,063 entries</span></div>
+              <div class="settings-row"><label>Search Mode</label><span style="color:var(--text2);font-size:12px">FTS5 full-text + phrase scoring</span></div>
               <div class="settings-row"><label>Model</label><span id="sys-model" style="color:var(--text2);font-size:12px">checking...</span></div>
               <div class="settings-row"><label>Memory (session)</label><span style="color:var(--text2);font-size:13px" id="st-mem">—</span></div>
               <div class="settings-row"><label>Repo</label><a href="https://github.com/luokai25/luo_os-v_0.1" target="_blank" style="color:var(--accent);font-size:12px">github.com/luokai25/luo_os-v_0.1</a></div>
@@ -1144,6 +1197,7 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
               <div class="settings-row"><label>Auto-start server</label><button class="toggle on" onclick="toggleSetting('auto-start',this)"></button></div>
               <div class="settings-row"><label>Allow LAN access</label><button class="toggle" onclick="toggleSetting('lan-access',this)"></button></div>
               <div class="settings-row"><label>LUOKAI API URL</label><span style="color:var(--text2);font-size:11px;font-family:monospace" id="net-url">http://localhost:3000</span></div>
+              <div class="settings-row"><label>Health Check</label><button onclick="fetch(API+'/api/health').then(r=>r.json()).then(d=>notify('Health','Uptime: '+(d.uptime||'?'),'info')).catch(()=>notify('Error','Server unreachable','error'))" style="padding:4px 10px;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">Run Check</button></div>
             </div>
           </div>
 
@@ -1233,7 +1287,8 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
                 onmouseout="if(!this.classList.contains('wm-active')){this.style.borderColor='var(--border)';this.style.color='var(--text2)'}"
               >\${cat.replace('_',' ')}</button>
             \`).join("")}
-            <button onclick="wmRefresh()" style="padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--accent);font-size:10px;cursor:pointer">↺</button>
+            <input id="wm-filter" placeholder="Filter..." oninput="wmFilter(this.value)" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:3px 8px;border-radius:12px;font-size:10px;outline:none;width:100px">
+          <button onclick="wmRefresh()" style="padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--accent);font-size:10px;cursor:pointer">↺</button>
           </div>
         </div>
         <!-- Feed grid -->
@@ -1256,13 +1311,15 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
           <span style="font-weight:600;font-size:13px">Notes</span>
           <div style="flex:1"></div>
           <select id="note-list" onchange="noteSwitch(this.value)" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 6px;border-radius:5px;max-width:160px"></select>
+          <button onclick="noteSearch()" style="padding:3px 8px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">🔍</button>
           <button onclick="noteNew()" style="padding:3px 10px;background:var(--accent);color:#000;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">+ New</button>
           <button onclick="noteDelete()" style="padding:3px 8px;background:transparent;color:var(--text3);border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer">🗑</button>
           <button onclick="noteAI()" style="padding:3px 8px;background:var(--accent2);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer">🤖 AI</button>
+          <button onclick="noteExport()" style="padding:3px 8px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">⬇ Export</button>
         </div>
         <textarea id="note-body" placeholder="Start writing..." style="flex:1;background:transparent;border:none;outline:none;padding:20px 24px;color:var(--text);font-size:14px;line-height:1.8;resize:none;font-family:var(--font-main)" oninput="noteSave()"></textarea>
         <div style="padding:4px 12px;background:var(--bg-glass);border-top:1px solid var(--border);font-size:10px;color:var(--text3);display:flex;gap:16px">
-          <span id="note-wc">0 words</span><span id="note-saved">saved</span>
+          <span id="note-wc">0 words</span><span id="note-saved">saved</span><span onclick="noteTogglePreview()" style="cursor:pointer;color:var(--accent);font-size:10px" title="Toggle preview">👁 Preview</span>
         </div>
       </div>`;
 
@@ -1276,6 +1333,12 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
           <div style="display:flex;gap:6px;margin-bottom:16px">
             <input id="music-url" placeholder="YouTube URL or search..." style="flex:1;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:7px;font-size:12px;outline:none">
             <button onclick="musicPlay()" style="padding:7px 14px;background:var(--accent);color:#000;border:none;border-radius:7px;font-weight:700;cursor:pointer">▶ Play</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px" id="music-vol-row" style="display:none">
+            <span style="font-size:11px;color:var(--text2)">🔊</span>
+            <input type="range" min="0" max="100" value="100" id="music-vol"
+              style="flex:1;accent-color:var(--accent)" oninput="musicSetVol(this.value)">
+            <span id="music-vol-label" style="font-size:10px;color:var(--text3);width:30px">100%</span>
           </div>
           <div id="music-player-wrap" style="display:none;width:100%;border-radius:10px;overflow:hidden;background:#000">
             <iframe id="music-yt-frame" width="100%" height="315" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen style="display:block"></iframe>
@@ -1351,7 +1414,9 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
             <button onclick="filesBack()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:3px 8px;border-radius:5px;cursor:pointer">←</button>
             <button onclick="filesForward()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:3px 8px;border-radius:5px;cursor:pointer">→</button>
             <input id="files-path-bar" style="flex:1;background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:4px 10px;border-radius:6px;font-size:12px;outline:none;font-family:var(--font-main)" onkeydown="if(event.key==='Enter')filesNav(this.value)">
+            <button onclick="filesSearch()" style="padding:3px 10px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">🔍</button>
             <button onclick="filesNewFolder()" style="padding:3px 10px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">📁+</button>
+            <button onclick="filesPaste()" style="padding:3px 8px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer" title="Paste (Ctrl+V)">⎘ Paste</button>
             <button onclick="filesUpload()" style="padding:3px 10px;background:var(--accent);border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">↑ Upload</button>
           </div>
           <div id="files-grid" style="flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:12px;align-content:start"></div>
@@ -1376,6 +1441,28 @@ Type 'help' for commands, 'luokai &lt;question&gt;' to ask LUOKAI.
         </div>
       </div>`;
 
+    case "blender": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:#1a1a1a">
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:#2a2a2a;border-bottom:1px solid #333;flex-shrink:0">
+          <span style="font-size:16px">🎨</span>
+          <span style="font-weight:700;font-size:13px;color:#e8e8e8">Luo 3D Studio</span>
+          <span style="font-size:10px;color:#666;font-family:monospace">powered by Three.js Editor</span>
+          <div style="flex:1"></div>
+          <button onclick="blenderNewScene()" style="padding:3px 10px;background:#404040;border:1px solid #555;color:#ccc;border-radius:5px;font-size:11px;cursor:pointer">+ New Scene</button>
+          <button onclick="blenderOpenTab()" style="padding:3px 10px;background:#4fc3f7;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">⬡ Full Screen</button>
+        </div>
+        <iframe id="blender-frame" src="/luo-3d-editor/"
+          style="flex:1;border:none;width:100%;background:#1a1a1a"
+          allow="fullscreen; clipboard-read; clipboard-write"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads">
+        </iframe>
+        <div style="display:flex;align-items:center;gap:12px;padding:5px 12px;background:#2a2a2a;border-top:1px solid #333;flex-shrink:0">
+          <span style="font-size:10px;color:#666;font-family:monospace">Create/Import 3D scenes · Export GLTF/OBJ/STL · MIT License</span>
+          <div style="flex:1"></div>
+          <button onclick="blenderAskLUOKAI()" style="padding:3px 10px;background:transparent;border:1px solid #7c3aed;color:#c586c0;border-radius:5px;font-size:10px;cursor:pointer">🤖 Ask LUOKAI</button>
+        </div>
+      </div>`;
+
     default: return \`<div style="padding:32px;color:var(--text2);text-align:center">🚧 \${id} — Coming soon</div>\`;
   }
 }
@@ -1389,6 +1476,12 @@ function initApp(id) {
   if (id === "calendar")   { setTimeout(calRender, 50); }
   if (id === "files")      { setTimeout(()=>filesNav("~"), 50); }
   if (id === "worldmonitor"){ wmLoad("top"); }
+  if (id === "blender") {
+    setTimeout(() => {
+      const f = document.getElementById("blender-frame");
+      if (f) f.src = "/luo-3d-editor/";
+    }, 100);
+  }
   if (id === "vscode")     { luovsInit(); }
   if (id === "settings") {
     checkAgent().then(() => {
@@ -1767,6 +1860,31 @@ function filesUp() {
 
 // ── BROWSER ───────────────────────────────────────────────────────
 // ── LUO BROWSER — server-side proxy ──────────────────────────────
+const _bHistory = [], _bHistoryPos = [-1];
+const _bBookmarks = JSON.parse(localStorage.getItem('luo-bookmarks') || '[]');
+
+function bAddBookmark() {
+  const url = document.getElementById('browser-url')?.value?.trim();
+  const title = document.title.replace(' — Luo Browser','') || url;
+  if (!url || _bBookmarks.find(b=>b.url===url)) return;
+  _bBookmarks.push({url, title, ts: Date.now()});
+  localStorage.setItem('luo-bookmarks', JSON.stringify(_bBookmarks));
+  notify("Bookmarked", title.slice(0,40), "info");
+  bRenderBookmarks();
+}
+
+function bRenderBookmarks() {
+  const bar = document.getElementById('browser-bookmark-bar');
+  if (!bar) return;
+  bar.innerHTML = _bBookmarks.slice(-10).map(b =>
+    `<span onclick="browserLoad('${b.url}')" title="${b.url}"
+      style="padding:2px 8px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;font-size:10px;color:var(--text2);cursor:pointer;white-space:nowrap;overflow:hidden;max-width:120px;text-overflow:ellipsis;display:inline-block;transition:border-color .15s"
+      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'"
+      oncontextmenu="event.preventDefault();if(confirm('Remove bookmark?')){_bBookmarks.splice(_bBookmarks.indexOf(${JSON.stringify(b)}),1);localStorage.setItem('luo-bookmarks',JSON.stringify(_bBookmarks));bRenderBookmarks()}"
+    >${b.title.slice(0,14)||b.url.slice(8,22)}</span>`
+  ).join('');
+}
+
 const _bHistory = [], _bHistoryPos = [-1];  // [-1] = boxed int
 
 // Check browser engine status and update badge
@@ -1936,6 +2054,13 @@ function browserReload() {
   if (pos >= 0) browserLoad(_bHistory[pos].url);
 }
 
+const _bFullHistory = [];
+
+function bAddToHistory(url, title) {
+  _bFullHistory.unshift({url, title, ts: new Date().toLocaleTimeString()});
+  if (_bFullHistory.length > 50) _bFullHistory.pop();
+}
+
 function browserHome() {
   const homepage = document.getElementById("browser-homepage");
   const wrap     = document.getElementById("browser-frame-wrap");
@@ -2043,7 +2168,28 @@ async function visionRun(task) {
 }
 
 // ── MUSIC ─────────────────────────────────────────────────────────
-async function musicPlay() {
+async const _musicQueue = [];
+let _musicQueueIdx = 0;
+
+function musicAddToQueue(videoId, label) {
+  _musicQueue.push({id:videoId, label:label||videoId});
+  notify("Queued", (label||videoId) + " added to queue", "info");
+}
+
+function musicNextInQueue() {
+  if (_musicQueue.length === 0) return;
+  _musicQueueIdx = (_musicQueueIdx + 1) % _musicQueue.length;
+  musicLoadYT(_musicQueue[_musicQueueIdx].id);
+}
+
+function musicSetVol(val) {
+  const frame = document.getElementById('music-yt-frame');
+  const lbl = document.getElementById('music-vol-label');
+  if (lbl) lbl.textContent = val + '%';
+  // YouTube iframe API doesn't allow direct volume via src — note only
+}
+
+function musicPlay() {
   const q = document.getElementById("music-query")?.value?.trim();
   if (!q) return;
   const st = document.getElementById("music-status");
@@ -2079,6 +2225,38 @@ function noteLoad() {
   const body  = document.getElementById("note-body");
   if (input) input.value = title;
   if (body)  body.value  = notes[title].body;
+}
+
+let _notePreview = false;
+function noteTogglePreview() {
+  _notePreview = !_notePreview;
+  const body = document.getElementById("note-body");
+  let prev = document.getElementById("note-preview");
+  if (!prev) {
+    prev = document.createElement("div");
+    prev.id = "note-preview";
+    prev.style.cssText = "flex:1;padding:20px 24px;overflow-y:auto;color:var(--text);font-size:14px;line-height:1.8;display:none";
+    body.parentNode.insertBefore(prev, body.nextSibling);
+  }
+  if (_notePreview) {
+    const md = body.value
+      .replace(/^# (.+)$/gm,'<h1 style="font-size:20px;font-weight:700;margin:12px 0">$1</h1>')
+      .replace(/^## (.+)$/gm,'<h2 style="font-size:16px;font-weight:600;margin:10px 0">$1</h2>')
+      .replace(/^### (.+)$/gm,'<h3 style="font-size:14px;font-weight:600;margin:8px 0">$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .replace(/`(.+?)`/g,'<code style="background:rgba(0,212,255,.1);padding:1px 5px;border-radius:3px">$1</code>')
+      .replace(/\n/g,'<br>');
+    prev.innerHTML = md; prev.style.display="block"; body.style.display="none";
+  } else { prev.style.display="none"; body.style.display="flex"; }
+}
+
+function noteExport() {
+  const body = document.getElementById("note-body")?.value || '';
+  const name = _currentNote.replace(/[^a-zA-Z0-9]/g,'-') + '.md';
+  const blob = new Blob([body], {type:'text/plain'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = name; a.click(); URL.revokeObjectURL(a.href);
 }
 
 async function noteAI() {
@@ -2178,7 +2356,13 @@ function applyTheme(name) {
 function setFontSize(size) {
   document.documentElement.style.setProperty("--font-size-base", size+"px");
   document.body.style.fontSize = size+"px";
+  localStorage.setItem("luo-font-size", size);
 }
+// Restore font size on load
+(function() {
+  const saved = localStorage.getItem("luo-font-size");
+  if (saved) setFontSize(saved);
+})();
 
 function setNeuralEngine(val) {
   fetch(\`\${API}/api/chat\`, {method:"POST",headers:{"Content-Type":"application/json"},
@@ -2260,7 +2444,7 @@ function makeResizable(win) {
 }
 
 // ── NOTIFICATIONS ─────────────────────────────────────────────────
-function notify(title, body, type="info") {
+function _showNotify(title, body, type="info") {
   const c = document.getElementById("notif-container");
   if (!c) return;
   const n = document.createElement("div");
@@ -2269,6 +2453,20 @@ function notify(title, body, type="info") {
   n.onclick = () => n.remove();
   c.appendChild(n);
   setTimeout(() => { n.style.opacity="0"; n.style.transform="translateX(60px)"; n.style.transition="all .3s"; setTimeout(()=>n.remove(),300); }, 4000);
+}
+
+const _notifyQueue = [];
+let   _notifyBusy  = false;
+function notify(title, msg, type="info") {
+  _notifyQueue.push({title, msg, type});
+  if (!_notifyBusy) _flushNotify();
+}
+function _flushNotify() {
+  if (!_notifyQueue.length) { _notifyBusy=false; return; }
+  _notifyBusy = true;
+  const {title,msg,type} = _notifyQueue.shift();
+  _showNotify(title, msg, type);
+  setTimeout(_flushNotify, 3200);
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────
@@ -3085,6 +3283,16 @@ function wmRender(items, category) {
   `).join("");
 }
 
+const _wmReadingList = JSON.parse(localStorage.getItem('luo-reading-list') || '[]');
+
+function wmSaveArticle(encodedUrl, title) {
+  const url = decodeURIComponent(encodedUrl);
+  if (_wmReadingList.find(a=>a.url===url)) { notify("Already saved", "", "info"); return; }
+  _wmReadingList.unshift({url, title, ts: new Date().toLocaleDateString()});
+  localStorage.setItem('luo-reading-list', JSON.stringify(_wmReadingList.slice(0,50)));
+  notify("Saved to Reading List", title.slice(0,50), "info");
+}
+
 function wmOpenArticle(encodedUrl) {
   const url = decodeURIComponent(encodedUrl);
   // Open in Luo Browser
@@ -3110,6 +3318,15 @@ function wmSetCat(btn, category) {
 }
 
 function wmRefresh() { wmLoad(_wmCurrentCat); }
+
+function wmFilter(query) {
+  if (!query) { wmRender(_wmCurrentItems, _wmCurrentCat); return; }
+  const q = query.toLowerCase();
+  const filtered = _wmCurrentItems.filter(i =>
+    i.title.toLowerCase().includes(q) || (i.description||'').toLowerCase().includes(q)
+  );
+  wmRender(filtered, _wmCurrentCat);
+}
 
 async function wmAskLUOKAI() {
   const input  = document.getElementById("wm-luokai-in");
@@ -3193,10 +3410,39 @@ function noteSave() {
   noteUpdateStats();
 }
 
+function noteGetTags(text) {
+  return [...new Set((text.match(/#[\w]+/g)||[]))];
+}
+
+function noteRenderTags() {
+  const body = document.getElementById('note-body')?.value || '';
+  const tags = noteGetTags(body);
+  const cont = document.getElementById('note-tags');
+  if (!cont) return;
+  cont.innerHTML = tags.map(t => `<span style="padding:2px 8px;background:var(--accent2);color:#fff;border-radius:10px;font-size:9px;cursor:pointer" onclick="noteFilterByTag('${t}')">${t}</span>`).join('');
+}
+
+function noteFilterByTag(tag) {
+  const results = Object.entries(_notes).filter(([,v]) => (v.body||'').includes(tag));
+  notify("Tag filter", `${results.length} notes with ${tag}`, "info");
+}
+
 function noteUpdateStats() {
   const body = document.getElementById('note-body')?.value || '';
   const wc = document.getElementById('note-wc');
   if (wc) wc.textContent = body.trim() ? body.trim().split(/\s+/).length + ' words' : '0 words';
+}
+
+function noteSearch() {
+  const q = prompt('Search notes:'); if (!q) return;
+  const results = Object.entries(_notes).filter(([n,v]) =>
+    n.toLowerCase().includes(q.toLowerCase()) || (v.body||'').toLowerCase().includes(q.toLowerCase())
+  );
+  if (!results.length) { notify("No results", `No notes matching "${q}"`, "info"); return; }
+  if (results.length === 1) { noteSwitch(results[0][0]); return; }
+  const name = results.map(([n])=>n).join(', ');
+  notify("Found", `${results.length} notes: ${name.slice(0,60)}`, "info");
+  noteSwitch(results[0][0]);
 }
 
 function noteNew() {
@@ -3277,6 +3523,23 @@ function calcPress(k) {
 // ── CALENDAR ─────────────────────────────────────────────────
 let _calDate = new Date(), _calEvents = JSON.parse(localStorage.getItem('luo-cal-events')||'{}');
 const _months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function calUpdateSidebarBadge() {
+  const today = new Date();
+  const key = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+  const count = (_calEvents[key]||[]).length;
+  const sbBtn = document.querySelector('[onclick*="openApp('calendar')"] .sb-badge') ||
+                (() => {
+                  const btn = document.querySelector('[onclick*="openApp('calendar')"]');
+                  if (!btn) return null;
+                  let badge = btn.querySelector('.sb-badge');
+                  if (!badge) { badge = document.createElement('span'); badge.className='sb-badge';
+                    badge.style.cssText='position:absolute;top:4px;right:4px;background:var(--accent);color:#000;border-radius:50%;width:14px;height:14px;font-size:8px;display:flex;align-items:center;justify-content:center;font-weight:700';
+                    btn.style.position='relative'; btn.appendChild(badge); }
+                  return badge;
+                })();
+  if (sbBtn) sbBtn.textContent = count > 0 ? count : '';
+}
 
 function calRender() {
   const label = document.getElementById('cal-month-label');
@@ -3361,7 +3624,7 @@ async function filesNav(path) {
         onmouseover="this.style.background='var(--bg-card)'" onmouseout="this.style.background=''"
         oncontextmenu="filesCtxMenu(event,'${path}/${item.name}',${isDir})">
         <span style="font-size:32px">${ico}</span>
-        <span style="font-size:10px;color:var(--text);word-break:break-all;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.name}">${item.name}</span>
+        <span ondblclick="filesRename('${path}/${item.name}',this)" style="font-size:10px;color:var(--text);word-break:break-all;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${item.name}">${item.name}</span>
         ${item.size ? `<span style="font-size:9px;color:var(--text3)">${_fmtSize(item.size)}</span>` : ''}
       </div>`;
     }).join('') || '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">Empty folder</div>';
@@ -3369,6 +3632,23 @@ async function filesNav(path) {
     if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text3)">Cannot access: ${e.message}</div>`;
     if (stat) stat.textContent = 'Error loading directory';
   }
+}
+
+async function filesRename(oldPath, labelEl) {
+  const oldName = oldPath.split('/').pop();
+  const newName = prompt('Rename to:', oldName);
+  if (!newName || newName === oldName) return;
+  const newPath = oldPath.replace(/[^/]+$/, newName);
+  // Read old → write new → delete old
+  try {
+    const r = await fetch(`${API}/api/fs/read`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:oldPath})});
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    await fetch(`${API}/api/fs/write`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:newPath, content:d.content||''})});
+    await fetch(`${API}/api/fs/delete`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:oldPath})});
+    if (labelEl) labelEl.textContent = newName;
+    filesNav(_filesPath);
+  } catch(e) { notify("Rename failed", e.message, "error"); }
 }
 
 function filesBack()    { if (_filesHistPos>0)  filesNav(_filesHistory[--_filesHistPos]); }
@@ -3384,6 +3664,13 @@ async function filesUploadFiles(files) {
   filesNav(_filesPath);
 }
 
+function luovsNewFileWithContent(name, text) {
+  if (!window.luovsFS) return;
+  luovsFS.files[name] = text;
+  luovsFS.save();
+  luovsOpenFile(name);
+}
+
 async function filesOpen(path) {
   const r = await fetch(`${API}/api/fs/read`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
   const d = await r.json();
@@ -3393,7 +3680,32 @@ async function filesOpen(path) {
   }
 }
 
-async function filesNewFolder() {
+async function filesSearch() {
+  const q = prompt('Search files:'); if (!q) return;
+  const grid = document.getElementById('files-grid');
+  const stat = document.getElementById('files-status');
+  if (grid) grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">Searching...</div>';
+  fetch(`${API}/api/fs/search`, {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({path:_filesPath||'~', query:q})})
+  .then(r=>r.json()).then(d => {
+    if (!d.ok || !d.results) throw new Error(d.error||'No results');
+    if (stat) stat.textContent = `${d.results.length} results for "${q}"`;
+    if (!grid) return;
+    grid.innerHTML = d.results.map(item =>
+      `<div onclick="filesNav('${item.path.replace(/\/[^\/]+$/, '')}')"
+        style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:7px;cursor:pointer;transition:border-color .15s"
+        onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <span style="font-size:20px">${_fileIcon(item.name)}</span>
+        <div><div style="font-size:12px;color:var(--text)">${item.name}</div>
+          <div style="font-size:10px;color:var(--text3)">${item.path}</div></div>
+      </div>`
+    ).join('') || '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">No results found</div>';
+  }).catch(e => {
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">Search unavailable: ${e.message}</div>`;
+  });
+}
+
+function filesNewFolder() {
   const name = prompt('Folder name:'); if (!name) return;
   await fetch(`${API}/api/fs/mkdir`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:`${_filesPath}/${name}`})});
   filesNav(_filesPath);
@@ -3406,16 +3718,72 @@ function filesCtxMenu(e, path, isDir) {
   menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;background:var(--bg-panel);border:1px solid var(--border);border-radius:8px;padding:4px;z-index:9999;min-width:140px;box-shadow:0 10px 40px rgba(0,0,0,.5)`;
   menu.innerHTML = [
     isDir ? '' : `<div onclick="filesOpen('${path}')" style="padding:7px 12px;font-size:12px;cursor:pointer;color:var(--text)">📂 Open</div>`,
+      `<div onclick="filesCopy('${path}')" style="padding:7px 12px;font-size:12px;cursor:pointer;color:var(--text)">📋 Copy</div>`,
+      `<div onclick="filesCut('${path}')"  style="padding:7px 12px;font-size:12px;cursor:pointer;color:var(--text)">✂ Cut</div>`,
     `<div onclick="filesDelete('${path}')" style="padding:7px 12px;font-size:12px;cursor:pointer;color:#ff5252">🗑 Delete</div>`,
   ].join('');
   document.body.appendChild(menu);
   setTimeout(()=>document.addEventListener('click',()=>menu.remove(),{once:true}),50);
 }
 
+let _filesClipboard = null;
+
+function filesCopy(path) { _filesClipboard = {op:'copy', path}; notify("Copied", path.split('/').pop(), "info"); }
+function filesCut(path)  { _filesClipboard = {op:'cut',  path}; notify("Cut",    path.split('/').pop(), "info"); }
+
+async function filesPaste() {
+  if (!_filesClipboard) return;
+  const src  = _filesClipboard.path;
+  const name = src.split('/').pop();
+  const dest = `${_filesPath}/${name}`;
+  const r = await fetch(`${API}/api/fs/read`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:src})});
+  const d = await r.json();
+  if (!d.ok) { notify("Paste failed", d.error||"Cannot read file", "error"); return; }
+  await fetch(`${API}/api/fs/write`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:dest, content:d.content||''})});
+  if (_filesClipboard.op === 'cut') {
+    await fetch(`${API}/api/fs/delete`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:src})});
+    _filesClipboard = null;
+  }
+  filesNav(_filesPath);
+}
+
 async function filesDelete(path) {
   if (!confirm(`Delete ${path.split('/').pop()}?`)) return;
   await fetch(`${API}/api/fs/delete`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
   filesNav(_filesPath);
+}
+
+function filesPreview(path, el) {
+  const ext = path.split('.').pop().toLowerCase();
+  const imgExts = ['png','jpg','jpeg','gif','svg','webp','bmp','ico'];
+  let tip = document.getElementById('files-preview-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'files-preview-tip';
+    tip.style.cssText = 'position:fixed;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px;z-index:9999;max-width:220px;pointer-events:none;display:none;box-shadow:0 10px 40px rgba(0,0,0,.5)';
+    document.body.appendChild(tip);
+  }
+  const rect = el.getBoundingClientRect();
+  tip.style.left = (rect.right + 8) + 'px';
+  tip.style.top  = rect.top + 'px';
+  if (imgExts.includes(ext)) {
+    // Show full image viewer on click, preview on hover
+    tip.innerHTML = `<img src="${API}/api/serve-file?path=${encodeURIComponent(path)}" style="max-width:200px;max-height:150px;border-radius:4px" onerror="this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'100\' height=\'80\'><text y=\'40\' font-size=\'30\'>🖼️</text></svg>'">`;
+    tip.style.display = 'block';
+  } else {
+    fetch(`${API}/api/fs/read`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})})
+      .then(r=>r.json()).then(d => {
+        if (d.ok && d.content) {
+          tip.innerHTML = `<code style="font-size:9px;color:var(--accent3);white-space:pre-wrap;display:block;max-height:120px;overflow:hidden">${d.content.slice(0,400).replace(/</g,'&lt;')}</code>`;
+          tip.style.display = 'block';
+        }
+      }).catch(()=>{});
+  }
+}
+
+function filesHidePreview() {
+  const tip = document.getElementById('files-preview-tip');
+  if (tip) tip.style.display = 'none';
 }
 
 function _fileIcon(name) {
@@ -3476,18 +3844,60 @@ async function termRun(cmd) {
     const r = await fetch(`${API}/api/execute`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({command:cmd, cwd:window._termCwd||'~'})});
     const d = await r.json();
     const result = d.output || d.stdout || d.result || d.error || '';
-    if (result) out.innerHTML += result.replace(/</g,'&lt;')+'\n';
+    if (result) {
+      const clean = result
+        .replace(/\x1b\[[0-9;]*m/g,'')   // strip ANSI colors
+        .replace(/\x1b\[[0-9;]*[A-Za-z]/g,'') // strip other ANSI
+        .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      out.innerHTML += clean + '\n';
+    }
     if (d.cwd) window._termCwd = d.cwd;
   } catch { out.innerHTML += `Command not found: ${base}\n`; }
   out.scrollTop = out.scrollHeight;
 }
+
+// Calculator keyboard support
+document.addEventListener('keydown', e => {
+  const calcDisp = document.getElementById('calc-display');
+  if (!calcDisp) return;
+  const k = e.key;
+  if (/[0-9.]/.test(k)) calcPress(k);
+  else if (k === '+') calcPress('+');
+  else if (k === '-') calcPress('−');
+  else if (k === '*') calcPress('×');
+  else if (k === '/') { e.preventDefault(); calcPress('÷'); }
+  else if (k === '%') calcPress('%');
+  else if (k === 'Enter' || k === '=') calcPress('=');
+  else if (k === 'Escape') calcPress('AC');
+  else if (k === 'Backspace') {
+    _calcResult = _calcResult.length > 1 ? _calcResult.slice(0,-1) : '0';
+    const d=document.getElementById('calc-display'); if(d) d.textContent=_calcResult;
+  }
+});
 
 function termKeydown(e) {
   const inp = e.target;
   if (e.key === 'Enter') { const v=inp.value; inp.value=''; termRun(v); }
   else if (e.key === 'ArrowUp') { e.preventDefault(); if(_termHistIdx<_termHistory.length-1){_termHistIdx++;inp.value=_termHistory[_termHistIdx]||'';} }
   else if (e.key === 'ArrowDown') { e.preventDefault(); _termHistIdx=Math.max(-1,_termHistIdx-1); inp.value=_termHistIdx>=0?_termHistory[_termHistIdx]:''; }
-  else if (e.key==='Tab') { e.preventDefault(); /* autocomplete stub */ }
+  else if (e.key==='Tab') {
+    e.preventDefault();
+    const v = inp.value; const parts = v.split(' '); const last = parts[parts.length-1];
+    if (!last) return;
+    fetch(`${API}/api/fs/ls`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path: last.includes('/') ? last.replace(/\/[^\/]*$/, '') : window._termCwd||'~'})
+    }).then(r=>r.json()).then(d=>{
+      const prefix = last.replace(/^.*\//, '');
+      const matches = (d.items||[]).filter(i => i.name.toLowerCase().startsWith(prefix.toLowerCase()));
+      if (matches.length === 1) {
+        parts[parts.length-1] = (last.replace(/[^\/]*$/, '') + matches[0].name + (matches[0].is_dir?'/':''));
+        inp.value = parts.join(' ');
+      } else if (matches.length > 1) {
+        const out = document.getElementById('term-output');
+        if (out) out.innerHTML += matches.map(m=>m.name).join('  ') + '\n';
+      }
+    }).catch(()=>{});
+  }
   else if (e.ctrlKey && e.key==='c') { termRun(''); inp.value=''; }
 }
 
@@ -3517,6 +3927,395 @@ async function loadChatHistory() {
 
 
 
+
+// ═══ LUO-BLENDER — 3D Studio (Three.js Editor) ══════════════
+function blenderNewScene() {
+  if (confirm("New scene? Unsaved work will be lost.")) {
+    const f = document.getElementById("blender-frame");
+    if (f) { f.src = ""; setTimeout(()=>f.src="/luo-3d-editor/",50); }
+  }
+}
+function blenderOpenTab() { window.open("/luo-3d-editor/","_blank"); }
+async function blenderAskLUOKAI() {
+  const q = prompt("Ask LUOKAI about 3D / Three.js:");
+  if (!q) return;
+  const r = await fetch(`${API}/api/chat`,{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({message:"3D modelling / Three.js: "+q})});
+  const d = await r.json();
+  if (d.response) {
+    notify("LUOKAI 3D", d.response.slice(0,200), "info");
+    const out = document.getElementById("term-output");
+    if (out) out.innerHTML += `<span style="color:#c586c0">LUOKAI (3D):</span> ${d.response.replace(/</g,"&lt;")}
+`;
+  }
+}
+
+// ═══ APP LAUNCHER (Ctrl+Space) ══════════════════════════════
+const _AL_APPS = [
+  {id:"luokai",  icon:"🤖", name:"LUOKAI AI",      desc:"Chat with your AI"},
+  {id:"vscode",  icon:"💻", name:"VS Code",         desc:"Code editor"},
+  {id:"browser", icon:"🌐", name:"Browser",          desc:"Browse the web"},
+  {id:"files",   icon:"📁", name:"Files",            desc:"File manager"},
+  {id:"terminal",icon:"⌨️",  name:"Terminal",        desc:"Shell commands"},
+  {id:"blender", icon:"🎨", name:"3D Studio",        desc:"Three.js 3D editor"},
+  {id:"worldmonitor",icon:"🌍",name:"WorldMonitor",  desc:"Global news"},
+  {id:"notes",   icon:"📝", name:"Notes",            desc:"Write notes"},
+  {id:"music",   icon:"🎵", name:"Music",            desc:"Music player"},
+  {id:"calculator",icon:"🧮",name:"Calculator",     desc:"Calculate"},
+  {id:"calendar",icon:"📅", name:"Calendar",         desc:"Events & dates"},
+  {id:"settings",icon:"⚙️", name:"Settings",        desc:"Configure LuoOS"},
+];
+let _alIdx = 0;
+
+function openAppLauncher() {
+  document.getElementById("app-launcher").classList.add("open");
+  const inp = document.getElementById("app-launcher-input");
+  if (inp) { inp.value = ""; inp.focus(); }
+  alFilter("");
+}
+function closeAppLauncher() {
+  document.getElementById("app-launcher")?.classList.remove("open");
+}
+function alFilter(q) {
+  const res = document.getElementById("app-launcher-results");
+  if (!res) return;
+  const matches = !q ? _AL_APPS : _AL_APPS.filter(a =>
+    a.name.toLowerCase().includes(q.toLowerCase()) ||
+    a.desc.toLowerCase().includes(q.toLowerCase())
+  );
+  _alIdx = 0;
+  res.innerHTML = matches.map((a, i) => `
+    <div class="al-result${i===0?' selected':''}" data-id="${a.id}"
+         onclick="openApp('${a.id}');closeAppLauncher()"
+         onmouseover="_alIdx=${i};alHighlight()">
+      <span class="al-icon">${a.icon}</span>
+      <div><div class="al-name">${a.name}</div><div class="al-desc">${a.desc}</div></div>
+    </div>`).join("");
+  if (!matches.length && q) {
+    res.innerHTML = `<div class="al-result" onclick="luokaiSearch('${q}');closeAppLauncher()">
+      <span class="al-icon">🤖</span>
+      <div><div class="al-name">Ask LUOKAI: "${q}"</div><div class="al-desc">Get an answer from your AI</div></div>
+    </div>`;
+  }
+}
+function alHighlight() {
+  document.querySelectorAll(".al-result").forEach((el,i)=>
+    el.classList.toggle("selected", i===_alIdx));
+}
+function alKeydown(e) {
+  const items = document.querySelectorAll(".al-result");
+  if (e.key==="ArrowDown") { _alIdx=Math.min(_alIdx+1,items.length-1); alHighlight(); e.preventDefault(); }
+  else if (e.key==="ArrowUp") { _alIdx=Math.max(_alIdx-1,0); alHighlight(); e.preventDefault(); }
+  else if (e.key==="Enter") { items[_alIdx]?.click(); }
+  else if (e.key==="Escape") closeAppLauncher();
+}
+async function luokaiSearch(q) {
+  openApp("luokai");
+  setTimeout(async ()=>{
+    const inp=document.getElementById("luokai-input")||document.getElementById("chat-in");
+    if(inp){inp.value=q; inp.dispatchEvent(new Event("input"));}
+  },300);
+}
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape" && document.getElementById("app-launcher")?.classList.contains("open"))
+    closeAppLauncher();
+});
+
+// ═══ DESKTOP RIGHT-CLICK CONTEXT MENU ══════════════════════
+document.addEventListener("contextmenu", e => {
+  // Only on desktop background, not on windows
+  if (e.target.closest(".window") || e.target.closest("#sidebar") ||
+      e.target.closest("#taskbar") || e.target.closest("#app-launcher")) return;
+  e.preventDefault();
+  let ctx = document.getElementById("desktop-ctx");
+  if (!ctx) {
+    ctx = document.createElement("div");
+    ctx.id = "desktop-ctx";
+    ctx.style.cssText = "position:fixed;background:var(--bg-panel);border:1px solid var(--border-hi,var(--border));border-radius:10px;padding:6px;z-index:9995;min-width:180px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:ctxIn .15s ease-out";
+    document.body.appendChild(ctx);
+  }
+  ctx.innerHTML = [
+    `<div class="ctx-i" onclick="openApp('files')">📁  Open Files</div>`,
+    `<div class="ctx-i" onclick="openApp('terminal')">⌨️  Open Terminal</div>`,
+    `<div class="ctx-i" onclick="openAppLauncher()">🔍  Search Apps</div>`,
+    `<div style="height:1px;background:var(--border);margin:4px 0"></div>`,
+    `<div class="ctx-i" onclick="openApp('settings')">⚙️  Settings</div>`,
+    `<div class="ctx-i" onclick="toggleTheme()">🎨  Toggle Theme</div>`,
+    `<div style="height:1px;background:var(--border);margin:4px 0"></div>`,
+    `<div class="ctx-i" onclick="openApp('luokai')">🤖  Ask LUOKAI</div>`,
+  ].join("");
+  // Add ctx-i style if not present
+  if (!document.querySelector("style#ctx-style")) {
+    const s = document.createElement("style");
+    s.id = "ctx-style";
+    s.textContent = ".ctx-i{padding:8px 12px;font-size:12px;color:var(--text);cursor:pointer;border-radius:6px;transition:background .1s}.ctx-i:hover{background:var(--border);color:var(--accent)}";
+    document.head.appendChild(s);
+  }
+  const vw = window.innerWidth, vh = window.innerHeight;
+  ctx.style.left = Math.min(e.clientX, vw-200) + "px";
+  ctx.style.top  = Math.min(e.clientY, vh-280) + "px";
+  ctx.style.display = "block";
+  setTimeout(() => document.addEventListener("click", () => ctx.style.display="none", {once:true}), 50);
+});
+
+// ═══ SCREENSAVER (5 min idle) ════════════════════════════════
+let _ssTimer = null, _ssActive = false;
+const _SS_DELAY = 5 * 60 * 1000; // 5 minutes
+
+function _ssReset() {
+  clearTimeout(_ssTimer);
+  if (_ssActive) _ssDismiss();
+  _ssTimer = setTimeout(_ssShow, _SS_DELAY);
+}
+
+function _ssShow() {
+  if (_ssActive) return;
+  _ssActive = true;
+  const ss = document.createElement("div");
+  ss.id = "screensaver";
+  ss.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000;display:flex;align-items:center;justify-content:center;cursor:pointer";
+  ss.onclick = _ssDismiss;
+  ss.innerHTML = `
+    <div style="text-align:center">
+      <div style="font-size:min(20vw,200px);font-weight:900;color:transparent;
+                  background:linear-gradient(135deg,#4fc3f7,#7c3aed,#10b981);
+                  -webkit-background-clip:text;background-clip:text;
+                  animation:ss-pulse 3s ease-in-out infinite">LUO</div>
+      <div id="ss-time" style="font-size:14px;color:#444;margin-top:20px;font-family:monospace"></div>
+    </div>`;
+  document.body.appendChild(ss);
+  const tick = () => {
+    const el = document.getElementById("ss-time");
+    if (el) el.textContent = new Date().toLocaleTimeString();
+    if (_ssActive) requestAnimationFrame(tick);
+  };
+  tick();
+  const style = document.createElement("style");
+  style.textContent = "@keyframes ss-pulse{0%,100%{opacity:.3}50%{opacity:1}}";
+  document.head.appendChild(style);
+}
+
+function _ssDismiss() {
+  _ssActive = false;
+  document.getElementById("screensaver")?.remove();
+  _ssReset();
+}
+
+["mousemove","keydown","mousedown","touchstart"].forEach(ev =>
+  document.addEventListener(ev, _ssReset, {passive:true}));
+_ssReset();
+
+// ═══ SSE STREAMING LUOKAI RESPONSES ════════════════════════
+async function sendChatStream(msg) {
+  const msgs = document.getElementById("chat-messages") || document.getElementById("luokai-messages");
+  if (!msgs) return sendChat(); // fallback
+  // User message
+  const uDiv = document.createElement("div");
+  uDiv.className = "chat-msg user"; uDiv.textContent = msg;
+  msgs.appendChild(uDiv);
+  // AI message container
+  const aDiv = document.createElement("div");
+  aDiv.className = "chat-msg ai";
+  aDiv.innerHTML = '<span style="color:var(--text3)">●●●</span>';
+  msgs.appendChild(aDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+  try {
+    const r = await fetch(`${API}/api/chat/stream`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({message:msg})
+    });
+    if (!r.ok || !r.body) throw new Error("stream failed");
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let full = "";
+    aDiv.innerHTML = "";
+    while (true) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const token = line.slice(6);
+          if (token === "[DONE]") break;
+          full += token;
+          aDiv.innerHTML = _renderChatMsg ? _renderChatMsg(full) : full.replace(/</g,"&lt;").replace(/\n/g,"<br>");
+          msgs.scrollTop = msgs.scrollHeight;
+        }
+      }
+    }
+    // Save to memory
+    _chatHistoryLocal = _chatHistoryLocal || [];
+    _chatHistoryLocal.push({role:"user",content:msg},{role:"assistant",content:full});
+  } catch(e) {
+    aDiv.innerHTML = "Error: " + e.message;
+  }
+}
+let _chatHistoryLocal = [];
+
+// ═══ RATE LIMITING / REQUEST DEBOUNCE ════════════════════════
+let _chatPending = false;
+const _origSendChat = typeof sendChat === "function" ? sendChat : null;
+// Override chat input Enter to debounce
+document.addEventListener("keydown", e => {
+  if ((e.target.id === "luokai-input" || e.target.id === "chat-in") && e.key === "Enter" && !e.shiftKey) {
+    if (_chatPending) { e.preventDefault(); notify("Please wait", "LUOKAI is thinking...", "info"); return; }
+  }
+});
+
+// ═══ GRACEFUL SHUTDOWN / BEFOREUNLOAD ════════════════════════
+window.addEventListener("beforeunload", () => {
+  // Best-effort save memory on tab close
+  if (window._chatHistoryLocal && window._chatHistoryLocal.length) {
+    navigator.sendBeacon(`${API}/api/memory/save`, JSON.stringify({}));
+  }
+});
+
+// ═══ SESSION ID ═══════════════════════════════════════════════
+(function() {
+  let sid = localStorage.getItem("luo-session-id");
+  if (!sid) {
+    sid = "user-" + Math.random().toString(36).slice(2,8);
+    localStorage.setItem("luo-session-id", sid);
+  }
+  window._luoSessionId = sid;
+  // Show in system settings
+  const el = document.getElementById("sys-session");
+  if (el) el.textContent = sid;
+})();
+
+// ═══ WEATHER WIDGET ════════════════════════════════════════════
+async function fetchWeather() {
+  const badge = document.getElementById("tb-weather");
+  if (!badge) return;
+  try {
+    // Get API key from config
+    const cfg = await fetch(`${API}/api/status`).then(r=>r.json()).catch(()=>({}));
+    const key = cfg.api_keys?.openweather || cfg.api_keys?.openweather_key;
+    if (!key) { badge.textContent = ""; return; }
+    // Get user location
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const {latitude:lat, longitude:lon} = pos.coords;
+      const r = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}&units=metric`);
+      const d = await r.json();
+      if (d.main) {
+        const temp = Math.round(d.main.temp);
+        const icon = d.weather[0].main === "Clear" ? "☀️" :
+                     d.weather[0].main === "Clouds" ? "☁️" :
+                     d.weather[0].main === "Rain"   ? "🌧️" : "🌡️";
+        badge.textContent = `${icon} ${temp}°C`;
+        badge.title = `${d.name}: ${d.weather[0].description}`;
+      }
+    }, ()=>{});
+  } catch(e) {}
+}
+setTimeout(fetchWeather, 3000);
+setInterval(fetchWeather, 600000); // refresh every 10 min
+
+// ═══ CLIPBOARD MANAGER ══════════════════════════════════════
+const _clipboard = [];
+document.addEventListener("copy", () => {
+  setTimeout(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text !== _clipboard[0]) {
+        _clipboard.unshift(text);
+        if (_clipboard.length > 20) _clipboard.pop();
+      }
+    } catch(e) {}
+  }, 100);
+});
+
+function showClipboard() {
+  let panel = document.getElementById("clipboard-panel");
+  if (panel) { panel.remove(); return; }
+  panel = document.createElement("div");
+  panel.id = "clipboard-panel";
+  panel.style.cssText = "position:fixed;bottom:48px;right:16px;width:280px;max-height:320px;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;overflow-y:auto;z-index:9000;padding:8px;box-shadow:0 20px 60px rgba(0,0,0,.6)";
+  panel.innerHTML = `<div style="font-size:10px;color:var(--text3);padding:4px 8px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.1em">Clipboard History</div>` +
+    (_clipboard.length ? _clipboard.map((t,i)=>`
+      <div onclick="navigator.clipboard.writeText(${JSON.stringify(t)});notify('Copied','','info')"
+        style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:11px;color:var(--text);transition:background .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+        onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background=''"
+        title="${t.replace(/"/g,"&quot;")}">${t.slice(0,80)}</div>`).join("")
+    : '<div style="padding:12px;text-align:center;color:var(--text3);font-size:11px">Nothing copied yet</div>');
+  document.body.appendChild(panel);
+  setTimeout(()=>document.addEventListener("click",()=>panel?.remove(),{once:true}),50);
+}
+
+// ═══ SCREENSHOT TOOL ═════════════════════════════════════════
+async function takeScreenshot() {
+  notify("Screenshot", "Capturing screen...", "info");
+  try {
+    // Use html2canvas if available, else prompt user
+    if (typeof html2canvas !== "undefined") {
+      const canvas = await html2canvas(document.body, {scale:1, useCORS:true});
+      const link = document.createElement("a");
+      link.download = "luoos-screenshot-" + Date.now() + ".png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+      notify("Screenshot saved", link.download, "info");
+    } else {
+      // Fallback: copy current URL for browser screenshot
+      notify("Screenshot", "Press Ctrl+Shift+S in your browser to screenshot", "info");
+    }
+  } catch(e) { notify("Screenshot failed", e.message, "error"); }
+}
+
+// ═══ POMODORO TIMER ══════════════════════════════════════════
+let _pomodoroTimer = null, _pomodoroLeft = 25*60, _pomodoroRunning = false;
+const _POMO_MODES = {work:25*60, short:5*60, long:15*60};
+
+function pomodoroToggle() {
+  const btn = document.getElementById("pomo-btn");
+  if (_pomodoroRunning) {
+    clearInterval(_pomodoroTimer); _pomodoroRunning = false;
+    if (btn) btn.style.color = "var(--text2)";
+  } else {
+    _pomodoroRunning = true;
+    if (btn) btn.style.color = "var(--accent)";
+    _pomodoroTimer = setInterval(() => {
+      _pomodoroLeft--;
+      const m = Math.floor(_pomodoroLeft/60), s = _pomodoroLeft%60;
+      const el = document.getElementById("pomo-time");
+      if (el) el.textContent = `${m}:${String(s).padStart(2,"0")}`;
+      if (_pomodoroLeft <= 0) {
+        clearInterval(_pomodoroTimer); _pomodoroRunning = false;
+        notify("🍅 Pomodoro done!", "Time for a break", "info");
+        _pomodoroLeft = _POMO_MODES.short;
+        if (btn) btn.style.color = "var(--accent3)";
+      }
+    }, 1000);
+  }
+}
+function pomodoroReset() {
+  clearInterval(_pomodoroTimer); _pomodoroRunning = false;
+  _pomodoroLeft = _POMO_MODES.work;
+  const el = document.getElementById("pomo-time");
+  if (el) el.textContent = "25:00";
+  const btn = document.getElementById("pomo-btn");
+  if (btn) btn.style.color = "var(--text2)";
+}
+
+// ═══ SYSTEM RESOURCE MONITOR ═════════════════════════════════
+async function updateResourceMonitor() {
+  try {
+    const r = await fetch(`${API}/api/health`);
+    const d = await r.json();
+    const el = document.getElementById("sys-resources");
+    if (!el) return;
+    el.innerHTML = `
+      <div style="display:flex;gap:16px;font-family:monospace;font-size:11px;flex-wrap:wrap">
+        <span>⏱ Uptime: <span style="color:var(--accent)">${d.uptime||"?"}</span></span>
+        <span>📦 Version: <span style="color:var(--accent2)">${d.version||"1.0"}</span></span>
+        <span>🧠 Model: <span style="color:var(--accent3)">${d.model_ready?"ready":"loading"}</span></span>
+        <span>💬 Memory: <span style="color:var(--accent4)">${d.memory_count||0} msgs</span></span>
+      </div>`;
+  } catch(e) {}
+}
+setInterval(updateResourceMonitor, 5000);
+setTimeout(updateResourceMonitor, 2000);
 </script>
 </body>
 </html>

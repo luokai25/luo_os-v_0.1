@@ -1228,6 +1228,152 @@ def execute_command():
         return jsonify({"ok": False, "output": str(e)})
 
 
+
+# ════════════════════════════════════════════════════════════════
+# LUO-BLENDER — Three.js 3D Editor (self-hosted, no install)
+# ════════════════════════════════════════════════════════════════
+@app.route("/luo-blender/")
+@app.route("/luo-blender")
+def luo_blender_index():
+    """Serve the Three.js 3D editor."""
+    editor_path = Path(__file__).parent / "apps" / "luo-3d-editor"
+    return send_from_directory(str(editor_path), "index.html")
+
+@app.route("/luo-blender/<path:filename>")
+def luo_blender_static(filename):
+    """Serve Three.js editor assets."""
+    # Check editor folder first
+    base_path = Path(__file__).parent / "apps" / "luo-3d-editor"
+    return send_from_directory(str(base_path), filename)
+
+@app.route("/luo-3d-editor-assets/<path:filename>")
+def luo_blender_assets(filename):
+    """Serve Three.js build and examples from parent directory."""
+    base_path = Path(__file__).parent / "apps" / "luo-3d-editor"
+    return send_from_directory(str(base_path), filename)
+
+
+# ════════════════════════════════════════════════════════════════
+# HEALTH, FILE SERVE, SEARCH, STREAMING, TEMP
+# ════════════════════════════════════════════════════════════════
+import datetime as _dt
+
+_server_start = time.time()
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    uptime_s = int(time.time() - _server_start)
+    h, m, s  = uptime_s//3600, (uptime_s%3600)//60, uptime_s%60
+    try:
+        from luokai.core.model_engine import get_engine
+        model_ready = get_engine().is_ready
+    except Exception:
+        model_ready = False
+    try:
+        from setup_luoos import load_config
+        cfg = load_config()
+        memory_count = len(_chat_history)
+    except Exception:
+        cfg = {}; memory_count = 0
+    return jsonify({
+        "ok":           True,
+        "status":       "running",
+        "version":      "1.0.0",
+        "uptime":       f"{h:02d}:{m:02d}:{s:02d}",
+        "uptime_s":     uptime_s,
+        "model_ready":  model_ready,
+        "memory_count": memory_count,
+        "chromium":     _pw_ready,
+        "port":         int(os.environ.get("LUO_PORT", 3000)),
+    })
+
+@app.route("/api/serve-file", methods=["GET"])
+def serve_file():
+    """Serve a local file for the image viewer."""
+    path = request.args.get("path", "")
+    if not path:
+        return "No path", 400
+    try:
+        p = Path(_resolve_path(path))
+        if not p.exists() or not p.is_file():
+            return "Not found", 404
+        import mimetypes
+        mime, _ = mimetypes.guess_type(str(p))
+        return send_from_directory(str(p.parent), p.name, mimetype=mime or "application/octet-stream")
+    except Exception as e:
+        return str(e), 500
+
+@app.route("/api/fs/search", methods=["POST"])
+def fs_search():
+    """Search for files by name recursively."""
+    body  = request.json or {}
+    query = body.get("query", "").strip().lower()
+    path  = body.get("path", "~")
+    if not query:
+        return jsonify({"ok": False, "error": "No query"})
+    try:
+        base    = Path(_resolve_path(path))
+        results = []
+        for p in base.rglob("*"):
+            if query in p.name.lower():
+                results.append({
+                    "name":   p.name,
+                    "path":   str(p),
+                    "is_dir": p.is_dir(),
+                    "size":   p.stat().st_size if p.is_file() else 0,
+                })
+            if len(results) >= 50:
+                break
+        return jsonify({"ok": True, "results": results, "count": len(results)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+@app.route("/api/chat/stream", methods=["POST"])
+def chat_stream():
+    """SSE streaming response from LUOKAI."""
+    body = request.json or {}
+    msg  = body.get("message", "").strip()
+    if not msg:
+        return jsonify({"ok": False, "error": "Empty"})
+
+    def generate():
+        try:
+            context  = _get_context_messages(msg, n=10)
+            eng      = _get_inference()
+            response = eng.generate(context)
+            if not response:
+                response = "I could not generate a response."
+            # Stream word by word
+            words = response.split(" ")
+            for i, word in enumerate(words):
+                chunk = word + (" " if i < len(words)-1 else "")
+                yield "data: " + chunk + "\n\n"
+                time.sleep(0.02)  # ~50 words/sec
+            yield "data: [DONE]\n\n"
+            # Save to memory
+            _chat_history.append({"role":"user","content":msg,"ts":time.strftime("%H:%M")})
+            _chat_history.append({"role":"assistant","content":response,"ts":time.strftime("%H:%M")})
+            _save_memory()
+        except Exception as e:
+            yield "data: Error: " + str(e) + "\n\n"
+
+            yield "data: [DONE]\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control":"no-cache","X-Accel-Buffering":"no"}
+    )
+
+@app.route("/api/config/temperature", methods=["POST"])
+def set_temperature():
+    """Set LUOKAI inference temperature."""
+    body = request.json or {}
+    temp = float(body.get("temperature", 0.7))
+    os.environ["LUOKAI_TEMPERATURE"] = str(temp)
+    return jsonify({"ok": True, "temperature": temp})
+
+
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"
