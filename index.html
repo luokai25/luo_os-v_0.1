@@ -524,6 +524,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <div id="tb-right">
     <button id="pomo-btn" onclick="pomodoroToggle()" oncontextmenu="event.preventDefault();pomodoroReset()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:monospace" title="Pomodoro (right-click to reset)">🍅 <span id="pomo-time">25:00</span></button>
     <button onclick="showClipboard()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)" title="Clipboard History">📋</button>
+    <span id="tb-stock" style="font-size:10px;color:var(--text3);padding:0 4px;font-family:monospace" title="Stock ticker (add Alpha Vantage key in Settings)"></span>
     <span id="tb-weather" style="font-size:11px;color:var(--text2);padding:0 6px" title="Weather (add OpenWeatherMap key in Settings)"></span>
     <div id="tb-voice-indicator" style="font-size:11px;color:#555">🎤 OFF</div>
     <div id="tb-coevo-indicator" style="font-size:11px;color:#555">🔄 —</div>
@@ -764,8 +765,15 @@ function closeApp(id) {
 
 function minimizeApp(id) {
   if (!windows[id]) return;
-  windows[id].classList.add("minimized");
-  updateTaskbar();
+  const win = windows[id];
+  win.style.transition = "transform .22s ease-in, opacity .22s ease-in";
+  win.style.transform  = "scale(0.12) translateY(200px)";
+  win.style.opacity    = "0";
+  setTimeout(() => {
+    win.classList.add("minimized");
+    win.style.transform = ""; win.style.opacity = ""; win.style.transition = "";
+    updateTaskbar();
+  }, 230);
 }
 
 function maximizeApp(id) {
@@ -778,8 +786,10 @@ function updateTaskbar() {
   tb.innerHTML = Object.entries(windows).map(([id, w]) => {
     const app = APPS.find(a => a.id === id);
     const min = w.classList.contains("minimized");
-    return `<button class="tb-app ${min ? "" : "active"}" onclick="${min ? `restoreApp` : `minimizeApp`}('${id}')">
-      ${app ? app.name : id}
+    return `<button class="tb-app ${min ? "" : "active"}" data-app="${id}"
+      onclick="${min ? `restoreApp` : `minimizeApp`}('${id}')"
+      title="${app ? app.name : id}" style="position:relative">
+      ${app ? (app.icon||app.name) : id}
     </button>`;
   }).join("");
 }
@@ -1030,6 +1040,9 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
               <div class="settings-row"><label>Wallpaper Text Shadow</label><button class="toggle on" id="tog-shadow" onclick="toggleSetting('shadow',this)"></button></div>
               <div class="settings-row"><label>Animations</label><button class="toggle on" id="tog-anim" onclick="toggleSetting('anim',this)"></button></div>
               <div class="settings-row"><label>Blur Effects</label><button class="toggle on" id="tog-blur" onclick="toggleSetting('blur',this)"></button></div>
+              <div class="settings-row"><label>Custom Wallpaper</label>
+                <button onclick="uploadWallpaper()" style="padding:4px 10px;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">📂 Choose Image</button>
+              </div>
               <div class="settings-row"><label>Font Size</label>
                 <select onchange="setFontSize(this.value)" style="background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px">
                   <option value="12">Small (12px)</option><option value="13" selected>Medium (13px)</option><option value="15">Large (15px)</option>
@@ -1167,7 +1180,13 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
               <div class="settings-row"><label>Search Mode</label><span style="color:var(--text2);font-size:12px">FTS5 full-text + phrase scoring</span></div>
               <div class="settings-row"><label>Model</label><span id="sys-model" style="color:var(--text2);font-size:12px">checking...</span></div>
               <div class="settings-row"><label>Memory (session)</label><span style="color:var(--text2);font-size:13px" id="st-mem">—</span></div>
-              <div class="settings-row"><label>Repo</label><a href="https://github.com/luokai25/luo_os-v_0.1" target="_blank" style="color:var(--accent);font-size:12px">github.com/luokai25/luo_os-v_0.1</a></div>
+              <div class="settings-row"><label>Backup</label>
+              <div style="display:flex;gap:6px">
+                <button onclick="exportOSState()" style="padding:4px 10px;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">⬇ Export</button>
+                <button onclick="importOSState()" style="padding:4px 10px;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">⬆ Import</button>
+              </div>
+            </div>
+            <div class="settings-row"><label>Repo</label><div style="display:flex;align-items:center;gap:8px"><a href="https://github.com/luokai25/luo_os-v_0.1" target="_blank" style="color:var(--accent);font-size:12px">github.com/luokai25/luo_os-v_0.1</a><button onclick="viewLuoOSRepo()" style="padding:2px 8px;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:4px;font-size:10px;cursor:pointer">Open</button></div></div>
             </div>
           </div>
 
@@ -1315,6 +1334,7 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
           <button onclick="noteNew()" style="padding:3px 10px;background:var(--accent);color:#000;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">+ New</button>
           <button onclick="noteDelete()" style="padding:3px 8px;background:transparent;color:var(--text3);border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer">🗑</button>
           <button onclick="noteAI()" style="padding:3px 8px;background:var(--accent2);color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer">🤖 AI</button>
+          <button onclick="notionSync()" style="padding:3px 8px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer" title="Sync to Notion">📎 Notion</button>
           <button onclick="noteExport()" style="padding:3px 8px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:5px;font-size:11px;cursor:pointer">⬇ Export</button>
         </div>
         <textarea id="note-body" placeholder="Start writing..." style="flex:1;background:transparent;border:none;outline:none;padding:20px 24px;color:var(--text);font-size:14px;line-height:1.8;resize:none;font-family:var(--font-main)" oninput="noteSave()"></textarea>
@@ -2364,6 +2384,14 @@ function setFontSize(size) {
   if (saved) setFontSize(saved);
 })();
 
+function setLuokaiTemp(val) {
+  fetch(`${API}/api/config/temperature`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({temperature:parseFloat(val)})
+  }).then(()=>notify("Temperature set", val+" ("+{0.3:"Precise",0.7:"Balanced",1.0:"Creative"}[val]||val+")", "info"))
+  .catch(()=>{});
+}
+
 function setNeuralEngine(val) {
   fetch(\`\${API}/api/chat\`, {method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({message:"set neural engine to "+val})}).catch(()=>{});
@@ -2423,24 +2451,44 @@ function makeDraggable(win) {
       win.style.top  = newTop+"px";
       win.style.left = newLeft+"px";
     };
-    document.onmouseup = () => { document.onmousemove=null; document.onmouseup=null; };
+    document.onmouseup = mv => {
+      document.onmousemove=null; document.onmouseup=null;
+      // Edge snap
+      const vw=window.innerWidth, vh=window.innerHeight;
+      const wx=win.offsetLeft, wy=win.offsetTop;
+      if (wx<=8)           { win.style.left="0";win.style.top="0";win.style.width=(vw/2)+"px";win.style.height=vh+"px"; }
+      else if (wx>=vw-win.offsetWidth-8) { win.style.left=(vw/2)+"px";win.style.top="0";win.style.width=(vw/2)+"px";win.style.height=vh+"px"; }
+      else if (wy<=4)      { win.style.left="0";win.style.top="0";win.style.width=vw+"px";win.style.height=vh+"px"; }
+    };
   };
 }
 
 function makeResizable(win) {
-  const handle = document.createElement("div");
-  handle.style.cssText="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:se-resize;z-index:10";
-  win.appendChild(handle);
-  let startX,startY,startW,startH;
-  handle.onmousedown = e => {
-    startX=e.clientX; startY=e.clientY;
-    startW=win.offsetWidth; startH=win.offsetHeight;
-    document.onmousemove = mv => {
-      win.style.width  = Math.max(320,startW+(mv.clientX-startX))+"px";
-      win.style.height = Math.max(240,startH+(mv.clientY-startY))+"px";
+  // SE corner (bottom-right)
+  const addHandle = (cursor, right, bottom, left, top) => {
+    const h = document.createElement("div");
+    h.style.cssText = `position:absolute;${right!=null?`right:${right}px;`:""}${left!=null?`left:${left}px;`:""}${bottom!=null?`bottom:${bottom}px;`:""}${top!=null?`top:${top}px;`:""}width:12px;height:12px;cursor:${cursor};z-index:10`;
+    win.appendChild(h);
+    let sx,sy,sw,sh,sl,st;
+    h.onmousedown = e => {
+      e.stopPropagation();
+      sx=e.clientX; sy=e.clientY; sw=win.offsetWidth; sh=win.offsetHeight; sl=win.offsetLeft; st=win.offsetTop;
+      document.onmousemove = mv => {
+        const dx=mv.clientX-sx, dy=mv.clientY-sy;
+        if (cursor.includes("e")) win.style.width=Math.max(320,sw+dx)+"px";
+        if (cursor.includes("s")) win.style.height=Math.max(240,sh+dy)+"px";
+        if (cursor.includes("w")) { win.style.width=Math.max(320,sw-dx)+"px"; win.style.left=Math.max(0,sl+dx)+"px"; }
+        if (cursor.includes("n")) { win.style.height=Math.max(240,sh-dy)+"px"; win.style.top=Math.max(0,st+dy)+"px"; }
+      };
+      document.onmouseup = () => { document.onmousemove=null; document.onmouseup=null; };
     };
-    document.onmouseup = () => { document.onmousemove=null; document.onmouseup=null; };
   };
+  addHandle("se-resize",0,0,null,null);
+  addHandle("sw-resize",null,0,0,null);
+  addHandle("ne-resize",0,null,null,0);
+  addHandle("nw-resize",null,null,0,0);
+  addHandle("e-resize",0,null,null,null); // right edge
+  addHandle("s-resize",null,0,null,null); // bottom edge
 }
 
 // ── NOTIFICATIONS ─────────────────────────────────────────────────
@@ -3672,6 +3720,15 @@ function luovsNewFileWithContent(name, text) {
 }
 
 async function filesOpen(path) {
+  const ext = path.split('.').pop().toLowerCase();
+  if (ext === 'pdf') {
+    openApp("browser");
+    setTimeout(() => {
+      const bar = document.getElementById("browser-url");
+      if (bar) { bar.value = `${API}/api/serve-file?path=${encodeURIComponent(path)}`; browserLoad(bar.value); }
+    }, 400);
+    return;
+  }
   const r = await fetch(`${API}/api/fs/read`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path})});
   const d = await r.json();
   if (d.ok) {
@@ -3756,6 +3813,7 @@ async function filesDelete(path) {
 function filesPreview(path, el) {
   const ext = path.split('.').pop().toLowerCase();
   const imgExts = ['png','jpg','jpeg','gif','svg','webp','bmp','ico'];
+  const pdfExts = ['pdf'];
   let tip = document.getElementById('files-preview-tip');
   if (!tip) {
     tip = document.createElement('div');
@@ -3810,6 +3868,9 @@ async function termRun(cmd) {
   // Built-in commands
   const lc = cmd.trim().toLowerCase();
   const cmds = {
+    "3d-studio": ()=>"Opening 3D Studio..." + (setTimeout(()=>openApp("blender"),100)&&""),
+    "worldmonitor": ()=>"Opening WorldMonitor..." + (setTimeout(()=>openApp("worldmonitor"),100)&&""),
+    "apps": ()=>_AL_APPS.map(a=>a.icon+" "+a.name).join("  "),
     help: ()=>`Available commands:\n  help      — this list\n  clear     — clear terminal\n  ls [path] — list files\n  cat [f]   — read file\n  pwd       — current directory\n  echo [x]  — print text\n  luokai [q]— ask LUOKAI\n  date      — current date/time\n  whoami    — current user\n  uname     — system info`,
     clear: ()=>{ out.innerHTML=''; return ''; },
     date:  ()=>new Date().toString(),
@@ -4316,6 +4377,175 @@ async function updateResourceMonitor() {
 }
 setInterval(updateResourceMonitor, 5000);
 setTimeout(updateResourceMonitor, 2000);
+
+// ═══ CUSTOM WALLPAPER UPLOAD ════════════════════════════════
+function uploadWallpaper() {
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "image/*";
+  inp.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const url = ev.target.result;
+      const wp = document.getElementById("wallpaper") || document.querySelector(".wallpaper");
+      if (wp) { wp.style.backgroundImage=`url(${url})`; wp.style.backgroundSize="cover"; wp.style.backgroundPosition="center"; }
+      localStorage.setItem("luo-wallpaper", url);
+      notify("Wallpaper set", file.name, "info");
+    };
+    reader.readAsDataURL(file);
+  };
+  inp.click();
+}
+
+// Restore saved wallpaper on load
+(function() {
+  const saved = localStorage.getItem("luo-wallpaper");
+  if (saved) {
+    setTimeout(() => {
+      const wp = document.getElementById("wallpaper") || document.querySelector(".wallpaper");
+      if (wp) { wp.style.backgroundImage=`url(${saved})`; wp.style.backgroundSize="cover"; wp.style.backgroundPosition="center"; }
+    }, 500);
+  }
+})();
+
+// ═══ SERVICE WORKER REGISTRATION (offline cache) ══════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+// ═══ GITHUB INTEGRATION ══════════════════════════════════════
+function openGitHub(repo) {
+  const url = repo ? `https://github.com/${repo}` : "https://github.com";
+  openApp("browser");
+  setTimeout(() => {
+    const bar = document.getElementById("browser-url");
+    if (bar) { bar.value = url; browserLoad(url); }
+  }, 400);
+}
+
+function viewLuoOSRepo() {
+  openGitHub("luokai25/luo_os-v_0.1");
+}
+
+// ═══ NOTION INTEGRATION ══════════════════════════════════════
+async function notionSync() {
+  const cfg = await fetch(`${API}/api/status`).then(r=>r.json()).catch(()=>({}));
+  const key = cfg.api_keys?.notion;
+  if (!key) { notify("Notion", "Add Notion API key in Settings → API Keys", "info"); return; }
+  notify("Notion", "Syncing notes to Notion...", "info");
+  // Sync current note to Notion
+  const body = document.getElementById("note-body")?.value || "";
+  const title = _currentNote || "LuoOS Note";
+  try {
+    // POST to Notion API
+    const r = await fetch("https://api.notion.com/v1/pages", {
+      method:"POST",
+      headers:{"Authorization":"Bearer "+key,"Content-Type":"application/json","Notion-Version":"2022-06-28"},
+      body:JSON.stringify({parent:{type:"workspace",workspace:true},properties:{title:{title:[{text:{content:title}}]}},children:[{object:"block",type:"paragraph",paragraph:{rich_text:[{text:{content:body.slice(0,2000)}}]}}]})
+    });
+    if (r.ok) notify("Notion sync", "Note synced to Notion", "info");
+    else notify("Notion error", "Check your API key", "error");
+  } catch(e) { notify("Notion", e.message, "error"); }
+}
+
+// ═══ STOCK/CRYPTO TICKER ════════════════════════════════════
+async function fetchStockTicker() {
+  const el = document.getElementById("tb-stock");
+  if (!el) return;
+  try {
+    const cfg = await fetch(`${API}/api/status`).then(r=>r.json()).catch(()=>({}));
+    const key = cfg.api_keys?.alpha_vantage;
+    if (!key) return;
+    const r = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=SPY&apikey=${key}`);
+    const d = await r.json();
+    const q = d["Global Quote"];
+    if (q) {
+      const price = parseFloat(q["05. price"]).toFixed(2);
+      const change = parseFloat(q["10. change percent"]).replace("%","");
+      const up = parseFloat(change) >= 0;
+      el.textContent = `SPY $${price} ${up?"▲":"▼"}${Math.abs(parseFloat(change)).toFixed(2)}%`;
+      el.style.color = up ? "var(--accent3)" : "#f44";
+    }
+  } catch(e) {}
+}
+setTimeout(fetchStockTicker, 5000);
+setInterval(fetchStockTicker, 300000); // 5 min refresh
+
+// ═══ DIFF VIEWER ════════════════════════════════════════════
+function showDiff(textA, textB, titleA, titleB) {
+  const linesA = (textA||"").split("\n");
+  const linesB = (textB||"").split("\n");
+  const maxLen = Math.max(linesA.length, linesB.length);
+  let html = `<div style="display:grid;grid-template-columns:1fr 1fr;height:100%;gap:1px;background:var(--border)">
+    <div style="background:var(--bg-panel);overflow:auto;padding:8px;font-family:monospace;font-size:11px">
+      <div style="font-weight:700;color:var(--text2);margin-bottom:8px">${titleA||"File A"}</div>`;
+  for (let i=0; i<maxLen; i++) {
+    const a=linesA[i]??"", b=linesB[i]??"";
+    const diff = a!==b;
+    html += `<div style="padding:1px 4px;${diff?"background:rgba(255,80,80,.15);color:#ff8080":""}">${a.replace(/</g,"&lt;")}</div>`;
+  }
+  html += `</div><div style="background:var(--bg-panel);overflow:auto;padding:8px;font-family:monospace;font-size:11px">
+    <div style="font-weight:700;color:var(--text2);margin-bottom:8px">${titleB||"File B"}</div>`;
+  for (let i=0; i<maxLen; i++) {
+    const a=linesA[i]??"", b=linesB[i]??"";
+    const diff = a!==b;
+    html += `<div style="padding:1px 4px;${diff?"background:rgba(80,255,80,.1);color:#80ff80":""}">${b.replace(/</g,"&lt;")}</div>`;
+  }
+  html += "</div></div>";
+  // Open in VS Code or popup
+  const w = window.open("","_blank","width=900,height=600");
+  w.document.write(`<html><head><title>Diff</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0d1117;color:#c9d1d9}</style></head><body>${html}</body></html>`);
+}
+
+// ═══ EXPORT LuoOS STATE ═════════════════════════════════════
+async function exportOSState() {
+  const state = {
+    version:   "1.0.0",
+    exported:  new Date().toISOString(),
+    notes:     JSON.parse(localStorage.getItem("luo-notes")||"{}"),
+    calendar:  JSON.parse(localStorage.getItem("luo-cal-events")||"{}"),
+    bookmarks: JSON.parse(localStorage.getItem("luo-bookmarks")||"[]"),
+    readingList: JSON.parse(localStorage.getItem("luo-reading-list")||"[]"),
+    settings:  {
+      theme:    localStorage.getItem("luo-theme-name")||"dark",
+      fontSize: localStorage.getItem("luo-font-size")||"13",
+    }
+  };
+  // Get chat memory from server
+  try {
+    const r = await fetch(`${API}/api/memory/history?n=200`);
+    const d = await r.json();
+    if (d.ok) state.chatHistory = d.history;
+  } catch(e) {}
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `luoos-backup-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  notify("Export complete", "LuoOS state saved as JSON", "info");
+}
+
+function importOSState() {
+  const inp = document.createElement("input"); inp.type="file"; inp.accept=".json";
+  inp.onchange = e => {
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload = ev => {
+      try {
+        const state = JSON.parse(ev.target.result);
+        if (state.notes)    localStorage.setItem("luo-notes", JSON.stringify(state.notes));
+        if (state.calendar) localStorage.setItem("luo-cal-events", JSON.stringify(state.calendar));
+        if (state.bookmarks)localStorage.setItem("luo-bookmarks", JSON.stringify(state.bookmarks));
+        if (state.settings?.theme) applyTheme(state.settings.theme);
+        notify("Import complete", "LuoOS state restored", "info");
+      } catch(err) { notify("Import failed", err.message, "error"); }
+    };
+    reader.readAsText(file);
+  };
+  inp.click();
+}
 </script>
 </body>
 </html>
