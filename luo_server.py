@@ -91,16 +91,34 @@ def chat():
     if not active_agent:
         return jsonify({"response": "LUOKAI offline — check requirements"}), 200
 
+    # ── Publish to living substrate ────────────────────────────
+    if LUO_LIVING_OK:
+        luo_publish("chat.user_msg", {"text": msg}, source="ui")
+
+    # ── Inject working memory context ──────────────────────────
+    if LUO_LIVING_OK:
+        wm_ctx = luo_memory.to_context_string()
+        if wm_ctx:
+            # Prepend workspace state so LUOKAI knows what user is doing
+            msg_with_ctx = wm_ctx + "\nUser: " + msg
+        else:
+            msg_with_ctx = msg
+    else:
+        msg_with_ctx = msg
+
     # Handle streaming request
     if stream and STREAMING_ENABLED and react_agent:
         return Response(
-            stream_with_context(generate_stream(msg)),
+            stream_with_context(generate_stream(msg_with_ctx)),
             mimetype='text/event-stream'
         )
 
     # Standard non-streaming response
     try:
-        resp = active_agent.think(msg)
+        resp = active_agent.think(msg_with_ctx)
+        # ── Publish assistant response ────────────────────────
+        if LUO_LIVING_OK:
+            luo_publish("chat.assistant_msg", {"text": resp}, source="luokai")
         return jsonify({"response": resp, "ok": True})
     except Exception as e:
         return jsonify({"response": f"Error: {e}", "ok": False})
@@ -1590,6 +1608,66 @@ threading.Thread(target=lambda: (time.sleep(30), dreams_start()),
                  daemon=True, name="LuoDreamBoot").start()
 
 
+
+# ════════════════════════════════════════════════════════════════
+# LIVING SUBSTRATE ENDPOINTS
+# UI uses these to publish events, query state, observe daemon
+# ════════════════════════════════════════════════════════════════
+
+@app.route("/api/living/publish", methods=["POST"])
+def living_publish():
+    """UI publishes an event into the living substrate."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False, "error": "Living substrate not loaded"})
+    body = request.json or {}
+    event_type = body.get("type", "user.input.unknown")
+    data       = body.get("data", {})
+    source     = body.get("source", "ui")
+    luo_publish(event_type, data, source)
+    return jsonify({"ok": True})
+
+@app.route("/api/living/memory", methods=["GET"])
+def living_memory():
+    """Return current working memory snapshot."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False, "memory": {}})
+    return jsonify({
+        "ok":      True,
+        "memory":  luo_memory.snapshot(),
+        "context": luo_memory.to_context_string(),
+    })
+
+@app.route("/api/living/events", methods=["GET"])
+def living_events():
+    """Return recent events from the bus."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False, "events": []})
+    since = float(request.args.get("since", 60))
+    pat   = request.args.get("pattern")
+    limit = int(request.args.get("limit", 50))
+    events = luo_bus.history(since_seconds=since, event_pattern=pat, limit=limit)
+    return jsonify({"ok": True, "events": [e.to_dict() for e in events]})
+
+@app.route("/api/living/status", methods=["GET"])
+def living_status():
+    """Daemon + bus status."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False, "running": False})
+    return jsonify({
+        "ok":     True,
+        "daemon": luo_daemon.status(),
+        "bus":    luo_bus.stats(),
+    })
+
+@app.route("/api/living/reset", methods=["POST"])
+def living_reset():
+    """Reset working memory (start fresh session)."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False})
+    luo_memory.reset_session()
+    return jsonify({"ok": True})
+
+
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"
@@ -1616,6 +1694,14 @@ def _run_server():
         boot_engine()
     except Exception:
         pass
+
+    # Start LUOKAI living substrate daemon (event bus, observer, working memory)
+    if LUO_LIVING_OK:
+        try:
+            luo_daemon.start()
+            luo_publish("system.startup", {"ts": time.time()}, source="server")
+        except Exception as _e:
+            print(f"[Server] Could not start daemon: {_e}")
 
     # Pre-warm headless Chromium so first browser request is fast
     threading.Thread(

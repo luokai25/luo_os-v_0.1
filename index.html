@@ -5599,6 +5599,166 @@ function luoSearchAllSemantic() {
     console.log("[Sovereign Search]", results);
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// LUOKAI LIVING SUBSTRATE — UI side
+// Every UI action publishes to the bus. LUOKAI sees everything.
+// ═══════════════════════════════════════════════════════════════════
+async function luoPublish(eventType, data = {}, source = "ui") {
+  // Fire-and-forget — never blocks UI
+  try {
+    fetch(`${API}/api/living/publish`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({type: eventType, data, source}),
+      keepalive: true,
+    }).catch(()=>{});
+  } catch(e) {}
+}
+
+// Hook openApp to publish app.opened / app.focused
+const _origOpenApp = typeof openApp === "function" ? openApp : null;
+window.openApp = function(id) {
+  luoPublish("app.opened", {app: id});
+  luoPublish("app.focused", {app: id});
+  if (_origOpenApp) return _origOpenApp(id);
+};
+
+// Hook minimizeApp to publish app.closed
+const _origMinimizeApp = typeof minimizeApp === "function" ? minimizeApp : null;
+window.minimizeApp = function(id) {
+  luoPublish("app.closed", {app: id});
+  if (_origMinimizeApp) return _origMinimizeApp(id);
+};
+
+// Hook browser navigation
+const _origBrowserLoad = typeof browserLoad === "function" ? browserLoad : null;
+window.browserLoad = function(url) {
+  luoPublish("browser.navigate", {url});
+  if (_origBrowserLoad) return _origBrowserLoad(url);
+};
+
+// Hook file operations
+const _origFilesOpen = typeof filesOpen === "function" ? filesOpen : null;
+window.filesOpen = function(path) {
+  luoPublish("file.opened", {path, app: "files"});
+  if (_origFilesOpen) return _origFilesOpen(path);
+};
+
+const _origFilesNav = typeof filesNav === "function" ? filesNav : null;
+window.filesNav = function(path) {
+  luoPublish("file.navigated", {path});
+  if (_origFilesNav) return _origFilesNav(path);
+};
+
+// Hook note save
+const _origNoteSave = typeof noteSave === "function" ? noteSave : null;
+window.noteSave = function() {
+  if (_origNoteSave) _origNoteSave();
+  const body = document.getElementById("note-body")?.value || "";
+  luoPublish("note.updated", {title: _currentNote, content: body.slice(0, 500)});
+};
+
+// Hook calendar event
+const _origCalAddEvent = typeof calAddEvent === "function" ? calAddEvent : null;
+window.calAddEvent = function(key) {
+  if (_origCalAddEvent) _origCalAddEvent(key);
+  luoPublish("calendar.event_added", {date: key});
+};
+
+// Hook perception events (from face tracker iframe)
+const _origMsgListener = window.addEventListener;
+window.addEventListener("message", function(e) {
+  if (!e.data) return;
+  // Forward perception events to the bus
+  if (e.data._luoFaceEvent) {
+    if (e.data.type === "GAZE_UPDATE") {
+      if (e.data.mood)        luoPublish("perception.mood_change", {mood: e.data.mood});
+      if (e.data.attention)   luoPublish("perception.attention", {attention: e.data.attention});
+      if (e.data.bpm)         luoPublish("perception.bpm", {bpm: e.data.bpm});
+    }
+  }
+  // Forward hand events
+  if (e.data._luoHandEvent && e.data.gesture) {
+    luoPublish("gesture", {gesture: e.data.gesture, type: e.data.type});
+  }
+});
+
+// ── LIVE WORKING MEMORY HUD ─────────────────────────────────────
+// A tiny status display showing what LUOKAI knows about the user RIGHT NOW
+let _luoMemHud = null;
+let _luoMemHudInterval = null;
+
+function luoMemHudShow() {
+  if (_luoMemHud) { luoMemHudHide(); return; }
+  _luoMemHud = document.createElement("div");
+  _luoMemHud.id = "luo-mem-hud";
+  _luoMemHud.style.cssText = `
+    position:fixed; bottom:50px; right:16px; width:280px;
+    background:rgba(8,12,18,.92); backdrop-filter:blur(14px);
+    border:1px solid rgba(0,212,255,.3); border-radius:10px;
+    padding:14px 16px; font-family:monospace; font-size:11px;
+    color:var(--text2); z-index:9985; line-height:1.7;
+    box-shadow:0 12px 40px rgba(0,0,0,.6);
+    max-height:340px; overflow-y:auto;
+  `;
+  _luoMemHud.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;border-bottom:1px solid rgba(0,212,255,.2);padding-bottom:8px">
+      <span style="font-size:16px">✨</span>
+      <span style="color:#4fc3f7;font-weight:700">LUOKAI knows</span>
+      <span style="margin-left:auto;cursor:pointer;color:var(--text3)" onclick="luoMemHudHide()">✕</span>
+    </div>
+    <div id="luo-mem-content">Loading...</div>
+  `;
+  document.body.appendChild(_luoMemHud);
+  luoMemHudRefresh();
+  _luoMemHudInterval = setInterval(luoMemHudRefresh, 5000);
+}
+
+function luoMemHudHide() {
+  if (_luoMemHud) { _luoMemHud.remove(); _luoMemHud = null; }
+  if (_luoMemHudInterval) { clearInterval(_luoMemHudInterval); _luoMemHudInterval = null; }
+}
+
+async function luoMemHudRefresh() {
+  if (!_luoMemHud) return;
+  try {
+    const r = await fetch(`${API}/api/living/memory`);
+    const d = await r.json();
+    if (!d.ok) return;
+    const m = d.memory;
+    const cur = m.current_focus  || "—";
+    const task = m.current_task  || "—";
+    const apps = (m.open_apps   || []).slice(0,4).join(", ") || "—";
+    const topics = (m.recent_topics || []).slice(0,5).join(", ") || "—";
+    const mood = m.user_state?.mood || "—";
+    const events = m.events_processed || 0;
+    document.getElementById("luo-mem-content").innerHTML = `
+      <div><span style="color:var(--text3)">focus:</span> <span style="color:var(--accent3)">${cur}</span></div>
+      <div><span style="color:var(--text3)">task:</span>  <span style="color:var(--accent2)">${task}</span></div>
+      <div><span style="color:var(--text3)">apps:</span>  <span style="color:var(--text)">${apps}</span></div>
+      <div><span style="color:var(--text3)">topics:</span> <span style="color:#fbbf24">${topics}</span></div>
+      <div><span style="color:var(--text3)">mood:</span>  <span style="color:#ff6b6b">${mood}</span></div>
+      <div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05);color:var(--text3);font-size:10px">
+        ${events} events processed · daemon alive
+      </div>
+    `;
+  } catch(e) {}
+}
+
+// Add HUD toggle button to taskbar (✨ icon)
+function _addLivingButton() {
+  const tb = document.querySelector("#tb-right") || document.querySelector("#taskbar");
+  if (!tb || document.getElementById("tb-living-btn")) return;
+  const btn = document.createElement("button");
+  btn.id = "tb-living-btn";
+  btn.onclick = luoMemHudShow;
+  btn.title = "LUOKAI's awareness — what he knows right now";
+  btn.style.cssText = "background:none;border:1px solid var(--border);color:var(--accent);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)";
+  btn.innerHTML = "✨ alive";
+  tb.insertBefore(btn, tb.firstChild);
+}
+setTimeout(_addLivingButton, 1500);
 </script>
 </body>
 </html>
