@@ -1,10 +1,4 @@
-
-      <button class="sb-btn" onclick="openApp('blender')" title="3D Studio">🎨<div class="sb-tooltip">3D Studio</div></button>
-      <button class="sb-btn" onclick="openApp('handtracking')" title="Hand Tracking">🖐️<div class="sb-tooltip">Hand Tracking</div></button>
-      <button class="sb-btn" onclick="openApp('perception')" title="Perception">👁️<div class="sb-tooltip">Perception</div></button>
-      <button class="sb-btn" onclick="openApp('agent')" title="LUOKAI Agent">⚡<div class="sb-tooltip">Agent</div></button>
-      <button class="sb-btn" onclick="openApp('canvas')" title="Mind Canvas">🧠<div class="sb-tooltip">Mind Canvas</div></button>
-      <button class="sb-btn" onclick="openApp('dreams')" title="LUOKAI Dreams">💭<div class="sb-tooltip">Dreams</div></button><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -494,6 +488,16 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <button class="sb-btn" onclick="openApp('music')">🎵<div class="sb-tooltip">Luo Music</div></button>
   <button class="sb-btn" onclick="openApp('studio')">🎨<div class="sb-tooltip">Luo Studio</div></button>
   <div class="sb-sep"></div>
+  
+  <button class="sb-btn" onclick="openApp('worldmonitor')" title="WorldMonitor">🌍<div class="sb-tooltip">WorldMonitor</div></button>
+  <button class="sb-btn" onclick="openApp('blender')" title="3D Studio">🎨<div class="sb-tooltip">3D Studio</div></button>
+  <button class="sb-btn" onclick="openApp('handtracking')" title="Hand Tracking">🖐️<div class="sb-tooltip">Hand Tracking</div></button>
+  <button class="sb-btn" onclick="openApp('perception')" title="Perception">👁️<div class="sb-tooltip">Perception</div></button>
+  <button class="sb-btn" onclick="openApp('agent')" title="LUOKAI Agent">⚡<div class="sb-tooltip">LUOKAI Agent</div></button>
+  <button class="sb-btn" onclick="openApp('canvas')" title="Mind Canvas">🧠<div class="sb-tooltip">Mind Canvas</div></button>
+  <button class="sb-btn" onclick="openApp('dreams')" title="Dreams">💭<div class="sb-tooltip">Dreams</div></button>
+  <button class="sb-btn" onclick="openApp('multiplayer')" title="Multiplayer">🤝<div class="sb-tooltip">Multiplayer</div></button>
+  <button class="sb-btn" onclick="openApp('sovereign')" title="Sovereign">🛡️<div class="sb-tooltip">Sovereign</div></button>
   <button class="sb-btn" onclick="openApp('settings')">⚙️<div class="sb-tooltip">Settings</div></button>
   <button class="sb-btn" onclick="openApp('about')">ℹ️<div class="sb-tooltip">About LuoOS</div></button>
   <div style="flex:1"></div>
@@ -527,9 +531,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg-deep);color:var(--text
   <button id="tb-start" onclick="openApp('luokai')">LUO</button>
   <div id="tb-apps"></div>
   <div id="tb-right">
+    <button onclick="luoToggleVoiceMode()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)" title="Voice mode (STT + TTS)">🎙</button>
+    <button onclick="spatialToggle()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)" title="Toggle 3D Spatial Mode">🌌</button>
     <button onclick="handTrackingEnable()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)" title="Hand Tracking">🖐️</button>
     <button id="pomo-btn" onclick="pomodoroToggle()" oncontextmenu="event.preventDefault();pomodoroReset()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:monospace" title="Pomodoro (right-click to reset)">🍅 <span id="pomo-time">25:00</span></button>
     <button onclick="showClipboard()" style="background:none;border:1px solid var(--border);color:var(--text2);padding:2px 8px;border-radius:5px;font-size:10px;cursor:pointer;font-family:var(--font-main)" title="Clipboard History">📋</button>
+    <span id="bio-hud" style="font-size:10px;color:var(--text3);padding:0 6px;font-family:monospace" title="Heart rate (from face) · stress level"></span>
     <span id="tb-stock" style="font-size:10px;color:var(--text3);padding:0 4px;font-family:monospace" title="Stock ticker (add Alpha Vantage key in Settings)"></span>
     <span id="tb-weather" style="font-size:11px;color:var(--text2);padding:0 6px" title="Weather (add OpenWeatherMap key in Settings)"></span>
     <div id="tb-voice-indicator" style="font-size:11px;color:#555">🎤 OFF</div>
@@ -829,31 +836,7 @@ function renderAppContent(id) {
         <button class="luokai-send" onclick="luokaiSend()">➤</button>
       </div>`;
 
-    case "terminal": return `
-      <div class="term-body" id="term-body">
-        <div class="term-output term-info">LuoOS Terminal v1.0 — by Luo Kai
-Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</div>
-        <div class="term-output" id="term-output"></div>
-      </div>
-      <div class="term-input-row">
-        <span class="term-prompt">luo@luoos:~$ </span>
-        <input class="term-input" id="term-input" autocomplete="off" onkeydown="termKey(event)" placeholder=""/>
-      </div>`;
-
-    case "files": return `
-      <div class="files-toolbar">
-        <button class="browser-nav-btn" onclick="filesNav(-1)">←</button>
-        <button class="browser-nav-btn" onclick="filesNav(1)">→</button>
-        <button class="browser-nav-btn" onclick="filesUp()">↑</button>
-        <input class="files-path" id="files-path" value="${navigator.userAgent.includes('Win') ? 'C:\\Users' : '~'}" onchange="filesLoad(this.value)"/>
-        <button class="browser-nav-btn" onclick="filesLoad()">↺</button>
-      </div>
-      <div class="files-grid" id="files-grid">
-        <div style="color:var(--text3);font-size:12px;padding:20px">Loading files...</div>
-      </div>`;
-
-    case "browser": return `
+            case "browser": return `
       <div class="browser-bar" style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap">
         <button class="browser-nav-btn" id="btn-bback" onclick="browserBack()" title="Back">←</button>
         <button class="browser-nav-btn" id="btn-bfwd"  onclick="browserFwd()"  title="Forward">→</button>
@@ -976,18 +959,7 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
         </div>
       </div>`;
 
-    case "notes": return `
-      <div style="padding:16px;flex:1;display:flex;flex-direction:column;gap:10px">
-        <input placeholder="Note title..." id="note-title" style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:14px;outline:none"/>
-        <textarea placeholder="Write your note..." id="note-body" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:13px;resize:none;outline:none;line-height:1.7;font-family:var(--font-ui)"></textarea>
-        <div style="display:flex;gap:8px">
-          <button onclick="noteSave()" style="padding:7px 20px;border-radius:8px;border:none;background:var(--accent);color:#000;cursor:pointer;font-size:12px;font-weight:700">Save</button>
-          <button onclick="noteLoad()" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:12px">Load</button>
-          <button onclick="noteAI()" style="padding:7px 16px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--accent);cursor:pointer;font-size:12px">🤖 Improve</button>
-        </div>
-      </div>`;
-
-    case "studio": return `
+        case "studio": return `
       <div style="padding:16px;display:flex;flex-direction:column;gap:12px;flex:1">
         <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Luo Studio — AI Media Creator</div>
         <textarea id="studio-prompt" placeholder="Describe what you want to create..." style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:13px;resize:none;outline:none"></textarea>
@@ -1020,19 +992,7 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
         <div id="vision-output" style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:var(--text2)">Upload an image to analyze...</div>
       </div>`;
 
-    case "music": return `
-      <div style="padding:24px;text-align:center;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
-        <div style="font-size:60px">🎵</div>
-        <div style="font-size:16px;font-weight:700">Luo Music</div>
-        <input id="music-query" placeholder="Song, artist, or URL..." style="width:100%;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none;text-align:center"/>
-        <div style="display:flex;gap:12px">
-          <button onclick="musicPlay()" style="padding:10px 28px;border-radius:10px;border:none;background:var(--accent3);color:#000;cursor:pointer;font-size:14px;font-weight:700">▶ Play</button>
-          <button onclick="musicYT()" style="padding:10px 20px;border-radius:10px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-size:13px">YouTube</button>
-        </div>
-        <div id="music-status" style="font-size:12px;color:var(--text3)">Ask LUOKAI to play anything</div>
-      </div>`;
-
-    case "settings": return `
+        case "settings": return `
       <div class="settings-layout">
         <div class="settings-sidebar">
           ${[["🖥️","Appearance"],["🤖","LUOKAI AI"],["🎤","Voice"],["🔄","Evolution"],["🔑","API Keys"],["🎨","Themes"],["ℹ️","System"],["🔒","Privacy"],["🌐","Network"]].map(([i,n],idx)=>`<div class="settings-item${idx===0?' active':''}" onclick="settingsTab('${n}')" data-tab="${n}">${i} ${n}</div>`).join("")}
@@ -1295,41 +1255,7 @@ Type 'help' for commands | 'luo &lt;query&gt;' for LUOKAI AI
           <span style="font-size:10px;color:var(--text3)">Source: github.com/koala73/worldmonitor</span>
         </div>
       </div>`;
-        case "worldmonitor": return `
-      <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-desktop);overflow:hidden">
-        <!-- Header -->
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--bg-glass);border-bottom:1px solid var(--border);flex-shrink:0">
-          <span style="font-size:18px">🌍</span>
-          <span style="font-weight:700;font-size:14px;color:var(--text)">Luo WorldMonitor</span>
-          <span style="font-size:10px;color:var(--text3);font-family:var(--font-main)">global intelligence dashboard</span>
-          <div style="flex:1"></div>
-          <div style="display:flex;gap:6px">
-            \${["top","tech","finance","defense","science","climate","health","space","us","middle_east"].map(cat=>\`
-              <button onclick="wmSetCat(this,'\${cat}')"
-                class="wm-cat-btn"
-                style="padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:10px;cursor:pointer;text-transform:capitalize;transition:all .15s"
-                onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'"
-                onmouseout="if(!this.classList.contains('wm-active')){this.style.borderColor='var(--border)';this.style.color='var(--text2)'}"
-              >\${cat.replace('_',' ')}</button>
-            \`).join("")}
-            <input id="wm-filter" placeholder="Filter..." oninput="wmFilter(this.value)" style="background:var(--bg-input);border:1px solid var(--border);color:var(--text);padding:3px 8px;border-radius:12px;font-size:10px;outline:none;width:100px">
-          <button onclick="wmRefresh()" style="padding:3px 8px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--accent);font-size:10px;cursor:pointer">↺</button>
-          </div>
-        </div>
-        <!-- Feed grid -->
-        <div id="wm-grid" style="flex:1;overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;align-content:start">
-          <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text3);font-size:13px">Loading world news...</div>
-        </div>
-        <!-- LUOKAI analysis bar -->
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--bg-glass);border-top:1px solid var(--border);flex-shrink:0">
-          <span style="font-size:11px;color:var(--text2)">🤖 Ask LUOKAI about these headlines:</span>
-          <input id="wm-luokai-in" placeholder="What geopolitical trends do you see?" style="flex:1;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text);font-size:11px;outline:none" onkeydown="if(event.key==='Enter')wmAskLUOKAI()">
-          <button onclick="wmAskLUOKAI()" style="background:var(--accent2);border:none;color:#fff;border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer">Ask</button>
-          <span id="wm-luokai-resp" style="font-size:11px;color:var(--accent);max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-        </div>
-      </div>`;
-
-    case "notes": return `
+        case "notes": return `
       <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-desktop)">
         <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-glass);border-bottom:1px solid var(--border);flex-shrink:0">
           <span style="font-size:15px">📝</span>
@@ -1578,6 +1504,57 @@ Type 'help' for commands, 'luokai &lt;question&gt;' to ask LUOKAI.
         <div id="dreams-list" style="flex:1;overflow-y:auto;padding:18px 20px"></div>
       </div>`;
 
+
+    case "multiplayer": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:var(--bg-desktop);padding:24px;align-items:center;justify-content:center;gap:16px">
+        <div style="font-size:48px">🤝</div>
+        <h2 style="color:var(--accent);font-size:18px;font-weight:700">LuoOS Multiplayer</h2>
+        <p style="color:var(--text2);font-size:13px;max-width:380px;text-align:center;line-height:1.7">Connect two LuoOS instances peer-to-peer. Share cursors, chat, collaborate.</p>
+        <div style="display:flex;gap:12px">
+          <button onclick="mpHost()" style="padding:10px 24px;background:var(--accent);border:none;color:#000;border-radius:8px;font-weight:700;cursor:pointer">📡 Host</button>
+          <button onclick="mpJoin()" style="padding:10px 24px;background:var(--accent2);border:none;color:#fff;border-radius:8px;font-weight:700;cursor:pointer">🔗 Join</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="mpChat()" style="padding:6px 14px;background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;font-size:11px;cursor:pointer">💬 Chat</button>
+          <button onclick="mpDisconnect()" style="padding:6px 14px;background:transparent;border:1px solid var(--border);color:#f44;border-radius:6px;font-size:11px;cursor:pointer">🔌 Disconnect</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);font-family:monospace">Status: <span id="mp-status">disconnected</span></div>
+      </div>`;
+
+    case "sovereign": return `
+      <div style="display:flex;flex-direction:column;height:100%;background:linear-gradient(180deg,#0a0d12 0%,#0f1419 100%);overflow-y:auto;padding:24px">
+        <div style="text-align:center;margin-bottom:30px">
+          <div style="font-size:48px">🛡️</div>
+          <h2 style="color:#10b981;font-size:20px;font-weight:700;margin:8px 0">Luo Sovereign</h2>
+          <p style="color:var(--text2);font-size:12px">100% local AI · zero cloud · zero leaks</p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:600px;margin:0 auto">
+          <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:32px">🎙️</div>
+            <div style="font-weight:700;color:#10b981">Speech-to-Text</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Web Speech API</div>
+            <button onclick="luoToggleVoiceMode()" style="padding:6px 14px;background:#10b981;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">Voice Mode</button>
+          </div>
+          <div style="background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:32px">🔊</div>
+            <div style="font-weight:700;color:#4fc3f7">Text-to-Speech</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Speech Synthesis</div>
+            <button onclick="luoTTS('Hello, I am LUOKAI. I run entirely on your device.')" style="padding:6px 14px;background:#4fc3f7;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">Test</button>
+          </div>
+          <div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:32px">🧠</div>
+            <div style="font-weight:700;color:#c4b5fd">Semantic Search</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">MiniLM-L6-v2 ONNX</div>
+            <button onclick="luoSearchAllSemantic()" style="padding:6px 14px;background:#7c3aed;border:none;color:#fff;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">Search</button>
+          </div>
+          <div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:16px;text-align:center">
+            <div style="font-size:32px">⚙️</div>
+            <div style="font-weight:700;color:#fbbf24">Local LLM</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Qwen2.5 / Phi-3.5</div>
+            <button onclick="openApp('luokai')" style="padding:6px 14px;background:#fbbf24;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">LUOKAI</button>
+          </div>
+        </div>
+      </div>`;
 
     default: return \`<div style="padding:32px;color:var(--text2);text-align:center">🚧 \${id} — Coming soon</div>\`;
   }
@@ -4132,6 +4109,8 @@ const _AL_APPS = [
   {id:"agent",       icon:"⚡", name:"LUOKAI Agent",    desc:"AI that acts on your behalf"},
   {id:"canvas",      icon:"🧠", name:"Mind Canvas",     desc:"Infinite spatial thinking"},
   {id:"dreams",      icon:"💭", name:"Dreams",          desc:"Background cognition"},
+  {id:"multiplayer", icon:"🤝", name:"Multiplayer",     desc:"P2P collaboration"},
+  {id:"sovereign",   icon:"🛡️", name:"Sovereign",       desc:"100% local AI stack"},
 ];
 let _alIdx = 0;
 
@@ -5145,6 +5124,481 @@ window.initApp = function(id) {
   if (id === "dreams")     setTimeout(dreamsInit, 50);
   if (id === "agent")      setTimeout(()=>document.getElementById("agent-input")?.focus(), 100);
 };
+
+// ═══════════════════════════════════════════════════════════════
+// PILLAR 2 — SPATIAL COMPUTING
+// Windows live in 3D space, tilt with head pose, push/pull with gestures
+// ═══════════════════════════════════════════════════════════════
+let _spatialEnabled = false;
+let _winDepth = {}; // window id → z depth (0..1, 0=close, 1=far)
+
+function spatialToggle() {
+  _spatialEnabled = !_spatialEnabled;
+  const root = document.body;
+  if (_spatialEnabled) {
+    root.style.perspective = "1500px";
+    root.style.perspectiveOrigin = "50% 40%";
+    Object.values(windows||{}).forEach(w => {
+      w.style.transformStyle = "preserve-3d";
+      w.style.transition = "transform .25s ease-out, filter .25s";
+      _winDepth[w.id] = 0.5;
+      _spatialApplyDepth(w);
+    });
+    notify("🌌 Spatial Mode ON", "Windows now exist in 3D space", "info");
+  } else {
+    Object.values(windows||{}).forEach(w => {
+      w.style.transform = w.style.transform.replace(/translateZ\([^)]+\)|rotateY\([^)]+\)|rotateX\([^)]+\)|scale\([^)]+\)/g, "");
+      w.style.filter = "";
+    });
+    root.style.perspective = "";
+    notify("Spatial Mode OFF", "Windows back to 2D", "info");
+  }
+}
+
+function _spatialApplyDepth(win) {
+  if (!_spatialEnabled) return;
+  const d = _winDepth[win.id] ?? 0.5;
+  const z = -d * 400;            // farther = more negative Z
+  const blur = d * 3;            // distant windows blur slightly
+  const opacity = 1 - d * 0.4;   // distant windows fade
+  const scale = 1 - d * 0.15;
+  // Apply head pose tilt if perception is on
+  const yaw   = (window._luoHeadYaw || 0) * 0.3;
+  const pitch = (window._luoHeadPitch|| 0) * 0.3;
+  win.style.transform = `translateZ(${z}px) rotateY(${yaw}deg) rotateX(${-pitch}deg) scale(${scale})`;
+  win.style.filter = `blur(${blur}px) brightness(${opacity})`;
+  win.style.zIndex = Math.round(1000 - d * 500);
+}
+
+// Bring window forward when clicked (pop to front)
+const _origFocusWindow = typeof focusWindow === "function" ? focusWindow : null;
+window.focusWindow = function(id) {
+  if (_origFocusWindow) _origFocusWindow(id);
+  if (_spatialEnabled) {
+    Object.keys(_winDepth).forEach(k => { _winDepth[k] = Math.min(1, (_winDepth[k]||0.5) + 0.1); });
+    _winDepth[id] = 0;
+    Object.values(windows||{}).forEach(w => _spatialApplyDepth(w));
+  }
+};
+
+// Listen to head pose from perception
+window.addEventListener("message", e => {
+  if (!e.data || !e.data._luoFaceEvent) return;
+  if (e.data.yaw !== undefined)   window._luoHeadYaw = e.data.yaw;
+  if (e.data.pitch !== undefined) window._luoHeadPitch = e.data.pitch;
+  if (_spatialEnabled) {
+    Object.values(windows||{}).forEach(w => _spatialApplyDepth(w));
+  }
+});
+
+// Pinch zoom adjusts depth of focused window
+const _origPinchHandler = window._origPinchHandler;
+window.addEventListener("message", e => {
+  if (!e.data || !e.data._luoHandEvent) return;
+  if (e.data.type === "PINCH_ZOOM" && _spatialEnabled) {
+    const focused = document.querySelector(".window:not(.minimized):last-child");
+    if (focused) {
+      _winDepth[focused.id] = Math.max(0, Math.min(1, (_winDepth[focused.id]||0.5) - e.data.delta * 0.001));
+      _spatialApplyDepth(focused);
+    }
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PILLAR 7 — BIOFEEDBACK
+// Heart rate from face skin colour (rPPG/photoplethysmography)
+// Stress detection → calmer UI · Eye strain → warmer screen tint
+// ═══════════════════════════════════════════════════════════════
+const _bioState = {
+  hrSignal: [],         // green channel samples
+  hrTimestamps: [],
+  bpm: null,
+  stressLevel: 0,       // 0-1
+  eyeStrainTime: 0,     // seconds of close-screen
+  lastPostureCheck: Date.now(),
+  postureWarnings: 0,
+};
+
+// Receive rPPG samples from perception module (added below in perception integration)
+window.addEventListener("message", e => {
+  if (!e.data || !e.data._luoFaceEvent) return;
+
+  // rPPG: track green channel pulse
+  if (e.data.type === "GAZE_UPDATE" && e.data.greenChannel !== undefined) {
+    const now = performance.now();
+    _bioState.hrSignal.push(e.data.greenChannel);
+    _bioState.hrTimestamps.push(now);
+    // Keep last 300 samples (~10 sec at 30fps)
+    if (_bioState.hrSignal.length > 300) {
+      _bioState.hrSignal.shift();
+      _bioState.hrTimestamps.shift();
+    }
+    if (_bioState.hrSignal.length >= 150 && _bioState.hrSignal.length % 30 === 0) {
+      bioComputeHR();
+    }
+  }
+
+  // Mood-based stress level
+  if (e.data.mood) {
+    if (e.data.mood.includes("happy"))    _bioState.stressLevel = Math.max(0, _bioState.stressLevel - 0.05);
+    if (e.data.mood.includes("frowning")) _bioState.stressLevel = Math.min(1, _bioState.stressLevel + 0.03);
+  }
+
+  // Attention-based focus mode
+  if (e.data.attention !== undefined && e.data.attention > 0.85 && !window._luoDND) {
+    window._luoDND = true;
+    notify("🎯 Focus mode", "Notifications muted while you concentrate", "info");
+    setTimeout(()=> { window._luoDND = false; }, 600000); // auto-off after 10 min
+  }
+});
+
+function bioComputeHR() {
+  // FFT-free peak detection on the band-pass filtered signal
+  const signal = _bioState.hrSignal.slice();
+  const ts     = _bioState.hrTimestamps.slice();
+
+  // Normalize
+  const mean = signal.reduce((a,b)=>a+b,0) / signal.length;
+  const norm = signal.map(v => v - mean);
+
+  // Simple peak detection
+  const peaks = [];
+  for (let i = 2; i < norm.length - 2; i++) {
+    if (norm[i] > norm[i-1] && norm[i] > norm[i+1] &&
+        norm[i] > norm[i-2] && norm[i] > norm[i+2] &&
+        norm[i] > 0.5) {
+      peaks.push(ts[i]);
+    }
+  }
+  if (peaks.length < 4) return;
+
+  // Average inter-peak interval → bpm
+  const intervals = [];
+  for (let i = 1; i < peaks.length; i++) intervals.push(peaks[i] - peaks[i-1]);
+  const avgMs = intervals.reduce((a,b)=>a+b,0) / intervals.length;
+  const bpm   = Math.round(60000 / avgMs);
+  if (bpm > 40 && bpm < 180) {
+    _bioState.bpm = bpm;
+    bioApplyAdaptation();
+  }
+}
+
+function bioApplyAdaptation() {
+  const bpm = _bioState.bpm;
+  if (!bpm) return;
+  // High BPM (>90) suggests stress → calmer animation speed
+  if (bpm > 95) {
+    document.documentElement.style.setProperty("--anim-speed", "1.4");
+    _bioState.stressLevel = Math.min(1, _bioState.stressLevel + 0.02);
+  } else if (bpm < 70) {
+    document.documentElement.style.setProperty("--anim-speed", "0.85");
+    _bioState.stressLevel = Math.max(0, _bioState.stressLevel - 0.01);
+  }
+
+  // Update bio HUD
+  const hud = document.getElementById("bio-hud");
+  if (hud) hud.innerHTML = `<span style="color:#ff6b6b">♥ ${bpm} bpm</span> · <span style="color:#fbbf24">stress ${Math.round(_bioState.stressLevel*100)}%</span>`;
+
+  // Stress warning
+  if (_bioState.stressLevel > 0.8 && !window._stressWarned) {
+    window._stressWarned = true;
+    notify("💚 Stress detected", "Take a deep breath. Want a 5-min Pomodoro?", "info");
+    setTimeout(()=> { window._stressWarned = false; }, 900000); // 15 min between warnings
+  }
+}
+
+// ── EYE STRAIN: shift screen tint warmer over time ────────────────
+setInterval(() => {
+  _bioState.eyeStrainTime += 60;  // +1 min
+  // After 30 min, gradually shift to warm tint (f.lux-style)
+  if (_bioState.eyeStrainTime > 1800) {
+    const warmth = Math.min(0.3, (_bioState.eyeStrainTime - 1800) / 7200);
+    document.body.style.filter = `sepia(${warmth}) brightness(${1 - warmth*0.1})`;
+  }
+}, 60000);
+
+// Reset eye strain on activity
+document.addEventListener("mousemove", () => {
+  if (_bioState.eyeStrainTime > 0) _bioState.eyeStrainTime = Math.max(0, _bioState.eyeStrainTime - 1);
+});
+
+// ── POSTURE: warn every 25 min ────────────────────────────────────
+setInterval(() => {
+  const now = Date.now();
+  if (now - _bioState.lastPostureCheck > 1500000) {  // 25 min
+    _bioState.lastPostureCheck = now;
+    _bioState.postureWarnings++;
+    notify("🧍 Posture check", "Sit up straight. Stretch your shoulders. " + _bioState.postureWarnings + " checks today.", "info");
+  }
+}, 60000);
+
+// ═══════════════════════════════════════════════════════════════
+// PILLAR 5 — MULTIPLAYER COLLABORATION (WebRTC P2P)
+// Connect two LuoOS instances, share cursors, chat, whiteboard
+// ═══════════════════════════════════════════════════════════════
+const _luoMP = {
+  pc:        null,
+  dc:        null,
+  isHost:    false,
+  peerName:  null,
+  myName:    null,
+  cursors:   {},   // peer name → {x, y, el}
+  connected: false,
+};
+
+async function mpInit() {
+  if (_luoMP.pc) return;
+  _luoMP.pc = new RTCPeerConnection({
+    iceServers: [{urls: "stun:stun.l.google.com:19302"}]
+  });
+  _luoMP.pc.onconnectionstatechange = () => {
+    const s = _luoMP.pc.connectionState;
+    document.getElementById("mp-status") && (document.getElementById("mp-status").textContent = s);
+    if (s === "connected") {
+      _luoMP.connected = true;
+      notify("🤝 Connected", "Peer joined: " + (_luoMP.peerName||"unknown"), "info");
+      mpStartCursorBroadcast();
+    }
+  };
+  _luoMP.pc.ondatachannel = e => {
+    _luoMP.dc = e.channel;
+    mpSetupDC();
+  };
+}
+
+function mpSetupDC() {
+  _luoMP.dc.onopen    = () => { console.log("[MP] data channel open"); };
+  _luoMP.dc.onmessage = e => {
+    try {
+      const m = JSON.parse(e.data);
+      mpHandleMessage(m);
+    } catch {}
+  };
+}
+
+function mpHandleMessage(m) {
+  if (m.type === "cursor") {
+    let c = _luoMP.cursors[m.from];
+    if (!c) {
+      const el = document.createElement("div");
+      el.style.cssText = `position:fixed;width:14px;height:14px;border-radius:50%;background:${m.color||'#10b981'};border:2px solid #fff;transform:translate(-50%,-50%);pointer-events:none;z-index:99990;box-shadow:0 0 12px ${m.color||'#10b981'}`;
+      const lbl = document.createElement("div");
+      lbl.textContent = m.from;
+      lbl.style.cssText = `position:absolute;left:14px;top:14px;background:${m.color||'#10b981'};color:#fff;padding:2px 6px;border-radius:4px;font-size:9px;white-space:nowrap;font-family:monospace`;
+      el.appendChild(lbl);
+      document.body.appendChild(el);
+      _luoMP.cursors[m.from] = { x:0, y:0, el };
+      c = _luoMP.cursors[m.from];
+    }
+    c.el.style.left = m.x + "px";
+    c.el.style.top  = m.y + "px";
+  } else if (m.type === "chat") {
+    notify("💬 " + m.from, m.text, "info");
+  } else if (m.type === "draw") {
+    mpRemoteDraw(m);
+  }
+}
+
+async function mpHost() {
+  await mpInit();
+  _luoMP.isHost = true;
+  _luoMP.myName = prompt("Your name:", "Host") || "Host";
+  _luoMP.dc = _luoMP.pc.createDataChannel("luo");
+  mpSetupDC();
+  const offer = await _luoMP.pc.createOffer();
+  await _luoMP.pc.setLocalDescription(offer);
+  await new Promise(r => _luoMP.pc.onicecandidate = e => !e.candidate && r());
+  const code = btoa(JSON.stringify(_luoMP.pc.localDescription));
+  prompt("Share this invite code with your peer (they paste it in 'Join'):", code);
+  const answer = prompt("After they share their answer code, paste it here:");
+  if (answer) {
+    await _luoMP.pc.setRemoteDescription(JSON.parse(atob(answer)));
+  }
+}
+
+async function mpJoin() {
+  await mpInit();
+  _luoMP.myName = prompt("Your name:", "Peer") || "Peer";
+  const offerCode = prompt("Paste the host's invite code:");
+  if (!offerCode) return;
+  await _luoMP.pc.setRemoteDescription(JSON.parse(atob(offerCode)));
+  const answer = await _luoMP.pc.createAnswer();
+  await _luoMP.pc.setLocalDescription(answer);
+  await new Promise(r => _luoMP.pc.onicecandidate = e => !e.candidate && r());
+  const code = btoa(JSON.stringify(_luoMP.pc.localDescription));
+  prompt("Share this answer code with the host:", code);
+}
+
+function mpSend(obj) {
+  if (_luoMP.dc?.readyState === "open") {
+    _luoMP.dc.send(JSON.stringify(obj));
+  }
+}
+
+let _lastCursorBroadcast = 0;
+function mpStartCursorBroadcast() {
+  document.addEventListener("mousemove", e => {
+    const now = performance.now();
+    if (now - _lastCursorBroadcast < 50) return;
+    _lastCursorBroadcast = now;
+    mpSend({
+      type: "cursor",
+      from: _luoMP.myName,
+      x:    e.clientX,
+      y:    e.clientY,
+      color: "#10b981"
+    });
+  });
+}
+
+function mpChat() {
+  const text = prompt("Message to peer:");
+  if (!text) return;
+  mpSend({type:"chat", from:_luoMP.myName, text});
+  notify("💬 You → " + (_luoMP.peerName||"peer"), text, "info");
+}
+
+function mpDisconnect() {
+  if (_luoMP.dc) _luoMP.dc.close();
+  if (_luoMP.pc) _luoMP.pc.close();
+  Object.values(_luoMP.cursors).forEach(c => c.el?.remove());
+  _luoMP.pc = null; _luoMP.dc = null; _luoMP.connected = false; _luoMP.cursors = {};
+  notify("🔌 Disconnected", "Multiplayer session ended", "info");
+}
+
+function mpRemoteDraw(m) {
+  // Render a remote drawing event (for shared whiteboard later)
+  const dot = document.createElement("div");
+  dot.style.cssText = `position:fixed;left:${m.x}px;top:${m.y}px;width:8px;height:8px;border-radius:50%;background:${m.color};pointer-events:none;z-index:99989;box-shadow:0 0 12px ${m.color}`;
+  document.body.appendChild(dot);
+  setTimeout(()=>dot.remove(), 2000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PILLAR 8 — LUO SOVEREIGN (fully local AI in the browser)
+// Speech, embeddings, all run client-side via Transformers.js
+// ═══════════════════════════════════════════════════════════════
+
+// ── LOCAL STT: Web Speech API (built-in, no install) ─────────────
+let _luoSTT = null;
+function luoSTTStart(callback) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { notify("STT", "Speech recognition not supported", "error"); return; }
+  if (_luoSTT) { _luoSTT.stop(); _luoSTT = null; return; }
+  _luoSTT = new SR();
+  _luoSTT.continuous = true;
+  _luoSTT.interimResults = true;
+  _luoSTT.lang = "en-US";
+  _luoSTT.onresult = e => {
+    const r = e.results[e.results.length - 1];
+    if (r.isFinal && callback) callback(r[0].transcript.trim());
+  };
+  _luoSTT.start();
+  notify("🎙 Listening", "Speak now...", "info");
+}
+
+function luoSTTStop() {
+  if (_luoSTT) { _luoSTT.stop(); _luoSTT = null; }
+}
+
+// ── LOCAL TTS: Web Speech API (offline on most platforms) ─────────
+function luoTTS(text, opts={}) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate   = opts.rate || 1.0;
+  u.pitch  = opts.pitch || 1.0;
+  u.volume = opts.volume || 1.0;
+  // Pick a voice
+  const voices = speechSynthesis.getVoices();
+  const eng = voices.find(v => v.lang.startsWith("en") && v.name.includes("Google")) ||
+              voices.find(v => v.lang.startsWith("en"));
+  if (eng) u.voice = eng;
+  speechSynthesis.speak(u);
+}
+
+// Speak LUOKAI responses automatically when voice mode is on
+let _luoVoiceMode = false;
+function luoToggleVoiceMode() {
+  _luoVoiceMode = !_luoVoiceMode;
+  notify(_luoVoiceMode ? "🔊 Voice ON" : "🔇 Voice OFF",
+         _luoVoiceMode ? "LUOKAI will speak responses" : "Silent mode",
+         "info");
+  if (_luoVoiceMode) {
+    luoSTTStart(text => {
+      // Send to LUOKAI
+      fetch(`${API}/api/chat`, {method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({message:text})}).then(r=>r.json()).then(d=>{
+        if (d.response) luoTTS(d.response.slice(0,400));
+      });
+    });
+  } else {
+    luoSTTStop();
+  }
+}
+
+// ── LOCAL SEMANTIC SEARCH (Transformers.js + GTE-small ONNX) ─────
+let _embedPipeline = null;
+async function luoEmbed(text) {
+  if (!_embedPipeline) {
+    try {
+      const transformers = await import("https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2");
+      transformers.env.allowLocalModels = false;
+      _embedPipeline = await transformers.pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    } catch(e) {
+      console.error("Failed to load embedding model:", e);
+      return null;
+    }
+  }
+  try {
+    const result = await _embedPipeline(text, { pooling: "mean", normalize: true });
+    return Array.from(result.data);
+  } catch(e) { return null; }
+}
+
+// Cosine similarity
+function luoCosine(a, b) {
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  return dot;  // both normalized so this IS cosine
+}
+
+// Semantic search across LuoOS notes + chat history
+async function luoSemanticSearch(query, items) {
+  notify("🧠 Embedding...", "Building vectors locally", "info");
+  const queryVec = await luoEmbed(query);
+  if (!queryVec) return [];
+  const scored = [];
+  for (const item of items) {
+    const itemVec = await luoEmbed(item.text || item.body || item.content || "");
+    if (itemVec) {
+      scored.push({ item, score: luoCosine(queryVec, itemVec) });
+    }
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 10);
+}
+
+// ── LOCAL SOVEREIGN APP ──────────────────────────────────────────
+function luoSearchAllSemantic() {
+  const q = prompt("Semantic search across all your data (notes, chat history):");
+  if (!q) return;
+  notify("🧠 Loading embedding model...", "First search takes ~10s, then instant", "info");
+  // Gather data
+  const notes  = Object.entries(_notes||{}).map(([k,v]) => ({source:"note", text:k+": "+(v.body||""), title:k}));
+  const events = Object.entries(_calEvents||{}).flatMap(([k,vs]) => vs.map(v => ({source:"calendar", text:v, date:k})));
+  const items = [...notes, ...events];
+  if (!items.length) { notify("Nothing to search", "Add some notes first", "info"); return; }
+  luoSemanticSearch(q, items).then(results => {
+    if (!results.length) { notify("No matches", "", "info"); return; }
+    const log = "🧠 Top matches for: " + q + "\n\n" +
+      results.slice(0, 5).map((r, i) =>
+        `${i+1}. [${r.item.source}] ${(r.item.title||r.item.text).slice(0,80)} (${(r.score*100).toFixed(0)}%)`
+      ).join("\n");
+    notify("🧠 Results", log, "info");
+    console.log("[Sovereign Search]", results);
+  });
+}
 </script>
 </body>
 </html>

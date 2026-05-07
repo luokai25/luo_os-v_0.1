@@ -204,12 +204,31 @@ function processFace(lm, blends) {
   const attentionPct = Math.round(attentionScore * 100);
   document.getElementById("attention").textContent = attentionPct + "%";
 
+  // ── rPPG: sample green channel from forehead ───────────────
+  let greenChannel = 0;
+  try {
+    // Forehead landmark cluster (10, 67, 297, 332, 338)
+    const fx = (lm[10].x + lm[67].x + lm[297].x) / 3;
+    const fy = (lm[10].y + lm[67].y + lm[297].y) / 3;
+    const px = Math.round(fx * cv.width);
+    const py = Math.round(fy * cv.height);
+    const data = ctx.getImageData(Math.max(0, px-15), Math.max(0, py-15), 30, 30).data;
+    let g = 0, n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      // Use green minus red (chrominance) for better PPG signal
+      g += data[i+1] - data[i] * 0.5;
+      n++;
+    }
+    greenChannel = g / n;
+  } catch(e) {}
+
   // ── DISPATCH TO LUOOS ───────────────────────────────────────
   dispatch({
     type: "GAZE_UPDATE",
     x: screenX, y: screenY,
     mood, attention: attentionScore,
     yaw, pitch,
+    greenChannel,
     blendshapes: blends.slice(0,10).reduce((a,b)=>(a[b.categoryName]=b.score,a),{})
   });
 }
