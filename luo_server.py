@@ -1767,6 +1767,88 @@ def living_critic_run():
         return jsonify({"ok": False, "error": str(e)})
 
 
+# ── Cell Memory Organism endpoints ────────────────────────────
+
+@app.route("/api/cells/stats", methods=["GET"])
+def cells_stats():
+    """Full stats from all 6 memory cells."""
+    try:
+        from luokai.living.cells import get_system
+        cells = get_system()
+        return jsonify({"ok": True, "stats": cells.stats()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/cells/recall", methods=["POST"])
+def cells_recall():
+    """Search episodic memory."""
+    body  = request.json or {}
+    query = body.get("query", "")
+    limit = int(body.get("limit", 10))
+    kind  = body.get("kind")
+    try:
+        from luokai.living.cells import get_system
+        cells = get_system()
+        return jsonify({"ok": True, "results": cells.recall(query, limit=limit, kind=kind)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/cells/facts", methods=["GET"])
+def cells_facts():
+    """Get learned semantic facts."""
+    limit = int(request.args.get("limit", 50))
+    min_c = float(request.args.get("min", 0.3))
+    try:
+        from luokai.living.cells import get_system
+        cells = get_system()
+        return jsonify({"ok": True, "facts": cells.facts(limit=limit, min_confidence=min_c)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/cells/working", methods=["GET"])
+def cells_working():
+    """Snapshot of working memory."""
+    try:
+        from luokai.living.cells import get_system
+        cells = get_system()
+        return jsonify({"ok": True, "items": cells.working_snapshot()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/cells/note", methods=["POST"])
+def cells_note():
+    """Add to working memory."""
+    body = request.json or {}
+    content = body.get("content", "")
+    tag     = body.get("tag", "note")
+    if not content:
+        return jsonify({"ok": False, "error": "content required"})
+    try:
+        from luokai.living.cells import get_system
+        cells = get_system()
+        cells.note(content, tag=tag)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/cells/dream", methods=["POST"])
+def cells_dream():
+    """Force a dream cycle right now."""
+    try:
+        from luokai.living.cells import get_system
+        cells = get_system()
+        cells.force_dream()
+        return jsonify({"ok": True, "status": "dream_triggered"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+
 
 @app.after_request
 def cors(r):

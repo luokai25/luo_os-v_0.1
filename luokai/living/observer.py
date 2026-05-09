@@ -200,6 +200,82 @@ def _count_all_events(e: Event):
 
 
 # ────────────────────────────────────────────────────────────────
+# CELL ORGANISM INTEGRATION
+# Every significant event also flows into the 6-cell memory organism
+# ────────────────────────────────────────────────────────────────
+_cells_system = None
+
+def _get_cells():
+    """Lazy-init the cell organism on first use."""
+    global _cells_system
+    if _cells_system is None:
+        try:
+            from .cells import get_system
+            _cells_system = get_system()
+        except Exception as e:
+            print(f"[Observer] Cells unavailable: {e}")
+    return _cells_system
+
+
+@bus.subscribe("chat.user_msg")
+def _on_user_msg_to_cells(e: Event):
+    cells = _get_cells()
+    if not cells:
+        return
+    text = e.data.get("text", "") or e.data.get("message", "")
+    if text:
+        cells.store(text, kind="chat.user", context=e.data)
+
+
+@bus.subscribe("chat.assistant_msg")
+def _on_assistant_msg_to_cells(e: Event):
+    cells = _get_cells()
+    if not cells:
+        return
+    text = e.data.get("text", "")
+    if text:
+        cells.store(text, kind="chat.assistant", context=e.data)
+
+
+@bus.subscribe("file.opened")
+def _on_file_to_cells(e: Event):
+    cells = _get_cells()
+    if not cells:
+        return
+    path = e.data.get("path", "")
+    if path:
+        cells.store(f"opened file: {path}", kind="file.opened", context=e.data)
+
+
+@bus.subscribe("note.updated")
+def _on_note_to_cells(e: Event):
+    cells = _get_cells()
+    if not cells:
+        return
+    title   = e.data.get("title", "")
+    content = e.data.get("content", "")
+    if content:
+        cells.note(f"{title}: {content[:200]}", tag="note", meta=e.data)
+
+
+@bus.subscribe("system.idle_start")
+def _on_idle_to_cells(e: Event):
+    cells = _get_cells()
+    if not cells:
+        return
+    # Tell the dream cell we've gone idle
+    cells.dream.emit("idle_start", {"ts": e.ts}, target="dream")
+
+
+@bus.subscribe("system.idle_end")
+def _on_idle_end_to_cells(e: Event):
+    cells = _get_cells()
+    if not cells:
+        return
+    cells.dream.emit("idle_end", {"ts": e.ts}, target="dream")
+
+
+# ────────────────────────────────────────────────────────────────
 # Public initialization
 # ────────────────────────────────────────────────────────────────
 def install():
