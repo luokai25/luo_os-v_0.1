@@ -20,6 +20,11 @@ from pathlib import Path
 
 from .event_bus      import bus, publish
 from .working_memory import memory
+# Phase 2 loops — they self-register via @bus.subscribe decorators
+from . import predictor as _predictor
+from . import verifier  as _verifier
+from . import tinkerer  as _tinkerer
+from . import critic    as _critic
 
 
 # ────────────────────────────────────────────────────────────────
@@ -144,10 +149,9 @@ class Daemon:
     # ── sleep tick: 10 minutes ─────────────────────────────────
     def _sleep_tick(self, now: float):
         """
-        Slow reflection. This is where pattern memory will live (Phase 2).
-        For now: prune very old recent_topics, log a snapshot.
+        Slow reflection (every 10 min).
+        Save deep snapshot. Run the critic once a day.
         """
-        # Save a deep snapshot of memory for the dream engine to use
         snap = memory.snapshot()
         publish("luokai.snapshot", {
             "events_processed":   snap.get("events_processed", 0),
@@ -155,6 +159,16 @@ class Daemon:
             "current_task":       snap.get("current_task"),
             "current_focus":      snap.get("current_focus"),
         }, source="daemon")
+        # Clean up stale predictions
+        _predictor.predictor.clear_old(older_than_seconds=600)
+        # Run critic if 24h have passed since last self-evaluation
+        last_eval = _critic.latest()
+        if not last_eval or (now - last_eval["ts"]) >= 86400:
+            try:
+                report = _critic.evaluate()
+                print(f"[Critic] Daily eval — accuracy 24h: {report['accuracy_24h']['accuracy']:.0%}, trend: {report['trend']}")
+            except Exception as e:
+                print(f"[Critic] Eval failed: {e}")
 
     # ── status ─────────────────────────────────────────────────
     def status(self) -> dict:

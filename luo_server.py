@@ -1668,6 +1668,106 @@ def living_reset():
     return jsonify({"ok": True})
 
 
+# ── Phase 2: The Loop endpoints ─────────────────────────────────
+
+@app.route("/api/living/predictions", methods=["GET"])
+def living_predictions():
+    """Recent and pending predictions from the predictor."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False})
+    try:
+        from luokai.living import get_pending_predictions, get_pattern_stats
+        return jsonify({
+            "ok":       True,
+            "pending":  get_pending_predictions(),
+            "patterns": get_pattern_stats(),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/living/accuracy", methods=["GET"])
+def living_accuracy():
+    """Predictor accuracy over time windows."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False})
+    try:
+        from luokai.living import get_accuracy
+        return jsonify({
+            "ok":       True,
+            "all_time": get_accuracy(),
+            "last_24h": get_accuracy(since_seconds=86400),
+            "last_7d":  get_accuracy(since_seconds=86400 * 7),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/living/tinker", methods=["POST"])
+def living_tinker():
+    """Run a tinkerer task — try strategies, return the winner."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False})
+    body = request.json or {}
+    task = body.get("task")
+    args = body.get("args", {})
+    mode = body.get("mode", "smart")  # 'smart' or 'race'
+    if not task:
+        return jsonify({"ok": False, "error": "task required"})
+    try:
+        from luokai.living import tinker, race
+        result = race(task, **args) if mode == "race" else tinker(task, **args)
+        return jsonify({"ok": True, "result": result})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/living/tinkerer/stats", methods=["GET"])
+def living_tinkerer_stats():
+    """Tinkerer experiment summary."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False})
+    try:
+        from luokai.living import tinkerer_stats
+        from luokai.living.tinkerer import tinkerer
+        return jsonify({
+            "ok":         True,
+            "summary":    tinkerer_stats(),
+            "scoreboard": tinkerer.log.scores,
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/living/critic", methods=["GET"])
+def living_critic():
+    """Latest self-evaluation from the critic + historical trend."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False})
+    try:
+        from luokai.living import critic_latest, critic_history
+        return jsonify({
+            "ok":      True,
+            "latest":  critic_latest(),
+            "history": critic_history(n=14),
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/living/critic/run", methods=["POST"])
+def living_critic_run():
+    """Force a critic evaluation right now."""
+    if not LUO_LIVING_OK:
+        return jsonify({"ok": False})
+    try:
+        from luokai.living import critic_evaluate
+        return jsonify({"ok": True, "report": critic_evaluate()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+
 @app.after_request
 def cors(r):
     r.headers["Access-Control-Allow-Origin"]  = "*"
