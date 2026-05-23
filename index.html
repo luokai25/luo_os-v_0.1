@@ -1550,10 +1550,10 @@ Type 'help' for commands, 'luokai &lt;question&gt;' to ask LUOKAI.
             <button onclick="luoSearchAllSemantic()" style="padding:6px 14px;background:#7c3aed;border:none;color:#fff;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">Search</button>
           </div>
           <div style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:16px;text-align:center">
-            <div style="font-size:32px">⚙️</div>
-            <div style="font-weight:700;color:#fbbf24">Local LLM</div>
-            <div style="font-size:10px;color:var(--text3);margin-bottom:10px">Qwen2.5 / Phi-3.5</div>
-            <button onclick="openApp('luokai')" style="padding:6px 14px;background:#fbbf24;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">LUOKAI</button>
+            <div style="font-size:32px">🧠</div>
+            <div style="font-weight:700;color:#fbbf24">Neural Brain</div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:8px" id="neural-status">checking...</div>
+            <button onclick="neuralTest()" style="padding:6px 14px;background:#fbbf24;border:none;color:#000;border-radius:5px;font-size:11px;cursor:pointer;font-weight:700">Test Brain</button>
           </div>
         </div>
       </div>`;
@@ -6027,6 +6027,54 @@ const _origInitApp_cells = window.initApp;
 window.initApp = function(id) {
   if (_origInitApp_cells) _origInitApp_cells(id);
   if (id === "cells") setTimeout(cellsInit, 50);
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// NEURAL BRAIN — LUOKAI's trained NumPy transformer
+// ═══════════════════════════════════════════════════════════════════
+async function neuralRefreshStatus() {
+  const el = document.getElementById("neural-status");
+  if (!el) return;
+  try {
+    const r = await fetch(`${API}/api/neural/stats`);
+    const d = await r.json();
+    if (d.ok && d.stats) {
+      const s = d.stats;
+      if (s.ready) {
+        el.innerHTML = `<span style="color:#10b981">✓ trained</span> · ${(s.n_params/1e6).toFixed(1)}M params<br>${s.steps.toLocaleString()} steps · loss ${s.loss}`;
+      } else {
+        el.innerHTML = `<span style="color:#f59e0b">untrained</span><br>${s.reason || "needs training"}`;
+      }
+    } else {
+      el.textContent = "not available";
+    }
+  } catch(e) { el.textContent = "offline"; }
+}
+
+async function neuralTest() {
+  const msg = prompt("Ask LUOKAI's neural brain something:", "who are you");
+  if (!msg) return;
+  notify("🧠 Neural Brain", "Generating...", "info");
+  try {
+    const r = await fetch(`${API}/api/neural/generate`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({message: msg, temperature: 0.4})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      notify("🧠 " + msg, d.response || "(empty)", "info");
+    } else {
+      notify("Neural Brain", d.error || "not trained yet — see luokai/neural/train_colab.ipynb", "info");
+    }
+  } catch(e) { notify("Error", e.message, "error"); }
+}
+
+// Refresh neural status when Sovereign app opens
+const _origInitApp_neural = window.initApp;
+window.initApp = function(id) {
+  if (_origInitApp_neural) _origInitApp_neural(id);
+  if (id === "sovereign") setTimeout(neuralRefreshStatus, 200);
 };
 </script>
 </body>

@@ -1848,6 +1848,39 @@ def cells_dream():
         return jsonify({"ok": False, "error": str(e)})
 
 
+# ── Neural Brain endpoints ────────────────────────────────────
+
+@app.route("/api/neural/stats", methods=["GET"])
+def neural_stats():
+    """Stats about the trained neural brain."""
+    try:
+        from luokai.neural import get_neural
+        return jsonify({"ok": True, "stats": get_neural().stats()})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/neural/generate", methods=["POST"])
+def neural_generate():
+    """Generate a response directly from the neural brain."""
+    body = request.json or {}
+    msg  = body.get("message", "").strip()
+    temp = float(body.get("temperature", 0.5))
+    if not msg:
+        return jsonify({"ok": False, "error": "empty"})
+    try:
+        from luokai.neural import get_neural
+        nb = get_neural()
+        if not nb.is_ready:
+            return jsonify({"ok": False, "error": "brain not trained yet",
+                            "stats": nb.stats()})
+        reply = nb.respond(msg, temperature=temp)
+        return jsonify({"ok": True, "response": reply})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+
 
 
 @app.after_request

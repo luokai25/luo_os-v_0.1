@@ -40,3 +40,4 @@ luowm/target/
 node_modules/
 apps/luo-worldmonitor/node_modules/
 apps/luo-worldmonitor/dist/
+__pycache__/
