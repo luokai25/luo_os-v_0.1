@@ -856,7 +856,7 @@ function renderAppContent(id) {
           <div style="font-size:48px;font-weight:900;color:var(--accent);font-family:var(--font-ui);letter-spacing:-.03em">Luo Browser</div>
           <div style="color:var(--text2);font-size:13px">Powered by server-side proxy — most sites work</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;max-width:500px">
-            \${["DuckDuckGo|https://duckduckgo.com","Wikipedia|https://en.wikipedia.org","GitHub|https://github.com","HackerNews|https://news.ycombinator.com","MDN|https://developer.mozilla.org","Reddit|https://old.reddit.com"].map(s=>{const[n,u]=s.split("|");return \`<button onclick="browserLoad('\${u}')" style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">\${n}</button>\`;}).join("")}
+            ${["DuckDuckGo|https://duckduckgo.com","Wikipedia|https://en.wikipedia.org","GitHub|https://github.com","HackerNews|https://news.ycombinator.com","MDN|https://developer.mozilla.org","Reddit|https://old.reddit.com"].map(s=>{const[n,u]=s.split("|");return `<button onclick="browserLoad('${u}')" style="padding:8px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">${n}</button>`;}).join("")}
           </div>
           <div style="color:var(--text3);font-size:11px;margin-top:8px">Type a URL or search term above and press Enter · Ctrl+L to focus address bar</div>
           <div id="browser-engine-badge" style="margin-top:12px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:11px;color:var(--text2);display:inline-flex;align-items:center;gap:6px">
@@ -891,8 +891,8 @@ function renderAppContent(id) {
 
         <!-- Menu bar -->
         <div style="height:30px;background:#3c3c3c;display:flex;align-items:center;padding:0 4px;flex-shrink:0;user-select:none">
-          \${['File','Edit','Selection','View','Go','Run','Terminal','Help'].map(m=>
-            \`<div class="luovs-menu-item" onclick="luovsMenu('\${m}')">\${m}</div>\`
+          ${['File','Edit','Selection','View','Go','Run','Terminal','Help'].map(m=>
+            `<div class="luovs-menu-item" onclick="luovsMenu('${m}')">${m}</div>`
           ).join('')}
           <div style="flex:1"></div>
           <div style="font-size:11px;color:#858585;padding:0 12px" id="luovs-luokai-status">🤖 LUOKAI ready</div>
@@ -904,8 +904,8 @@ function renderAppContent(id) {
 
           <!-- Activity bar -->
           <div style="width:48px;background:#333;display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:2px;flex-shrink:0">
-            \${[['explorer','📁','Explorer'],['search','🔍','Search'],['git','⑂','Source Control'],['run','▷','Run & Debug'],['extensions','⊞','Extensions']].map(([id,icon,tip],i)=>
-              \`<div id="luovs-act-\${id}" class="luovs-actbtn\${i===0?' luovs-act-active':''}" onclick="luovsActivity('\${id}')" title="\${tip}" style="border-left:2px solid \${i===0?'#4fc3f7':'transparent'}">\${icon}</div>\`
+            ${[['explorer','📁','Explorer'],['search','🔍','Search'],['git','⑂','Source Control'],['run','▷','Run & Debug'],['extensions','⊞','Extensions']].map(([id,icon,tip],i)=>
+              `<div id="luovs-act-${id}" class="luovs-actbtn${i===0?' luovs-act-active':''}" onclick="luovsActivity('${id}')" title="${tip}" style="border-left:2px solid ${i===0?'#4fc3f7':'transparent'}">${icon}</div>`
             ).join('')}
             <div style="flex:1"></div>
             <div class="luovs-actbtn" onclick="luovsActivity('settings')" title="Settings">⚙</div>
@@ -1219,14 +1219,14 @@ function renderAppContent(id) {
           <span style="font-size:10px;color:var(--text3);margin-left:4px">powered by worldmonitor</span>
           <div style="flex:1"></div>
           <div id="wm-feed-tabs" style="display:flex;gap:4px">
-            \${["top","tech","finance","defense","science","climate","health"].map((c,i)=>
-              \`<button onclick="wmLoadFeed('\${c}')" id="wm-tab-\${c}"
+            ${["top","tech","finance","defense","science","climate","health"].map((c,i)=>
+              `<button onclick="wmLoadFeed('${c}')" id="wm-tab-${c}"
                 style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);
-                       background:\${i===0?'var(--accent)':'var(--bg-card)'};
-                       color:\${i===0?'#000':'var(--text2)'};font-size:10px;cursor:pointer;
+                       background:${i===0?'var(--accent)':'var(--bg-card)'};
+                       color:${i===0?'#000':'var(--text2)'};font-size:10px;cursor:pointer;
                        transition:all .15s;text-transform:capitalize"
                 onmouseover="this.style.borderColor='var(--accent)'"
-                onmouseout="if(!this.style.background.includes('accent'))this.style.borderColor='var(--border)'">\${c}</button>\`
+                onmouseout="if(!this.style.background.includes('accent'))this.style.borderColor='var(--border)'">${c}</button>`
             ).join("")}
           </div>
           <button onclick="wmRefresh()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:10px;cursor:pointer">↺ Refresh</button>
@@ -1299,8 +1299,8 @@ function renderAppContent(id) {
           <div style="margin-top:16px">
             <div style="font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.1em">Quick Play</div>
             <div style="display:flex;flex-wrap:wrap;gap:8px">
-              \${[["Lo-fi Hip Hop","jfKfPfyJRdk"],["Deep Focus","WPni755-Krg"],["Jazz","Dn8BhJHggxU"],["Classical","DWcJFNfaw9c"],["Synthwave","4xDzrJKXOOY"],["Nature Sounds","eKFTSSKCzWA"]].map(([n,id])=>
-                \`<button onclick="musicLoadYT('\${id}')" style="padding:5px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:15px;font-size:11px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">\${n}</button>\`
+              ${[["Lo-fi Hip Hop","jfKfPfyJRdk"],["Deep Focus","WPni755-Krg"],["Jazz","Dn8BhJHggxU"],["Classical","DWcJFNfaw9c"],["Synthwave","4xDzrJKXOOY"],["Nature Sounds","eKFTSSKCzWA"]].map(([n,id])=>
+                `<button onclick="musicLoadYT('${id}')" style="padding:5px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text2);border-radius:15px;font-size:11px;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">${n}</button>`
               ).join("")}
             </div>
           </div>
@@ -1314,19 +1314,19 @@ function renderAppContent(id) {
           <div id="calc-display" style="font-size:48px;font-weight:300;color:#fff;word-break:break-all;min-height:60px">0</div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#3a3a3c;flex:1">
-          \${[["AC","±","%","÷"],["7","8","9","×"],["4","5","6","−"],["1","2","3","+"],["0",".","=","="]].map((row,ri)=>
+          ${[["AC","±","%","÷"],["7","8","9","×"],["4","5","6","−"],["1","2","3","+"],["0",".","=","="]].map((row,ri)=>
             row.map((k,ki)=>{
               const isOp = ["÷","×","−","+","="].includes(k);
               const isGray = ["AC","±","%"].includes(k);
               const wide = k==="0" && ki===0;
-              return \`<button onclick="calcPress('\${k}')"
-                style="background:\${isOp?"#ff9f0a":isGray?"#636366":"#2c2c2e"};
-                       color:\${isOp?"#000":"#fff"};font-size:22px;font-weight:300;
+              return `<button onclick="calcPress('${k}')"
+                style="background:${isOp?"#ff9f0a":isGray?"#636366":"#2c2c2e"};
+                       color:${isOp?"#000":"#fff"};font-size:22px;font-weight:300;
                        border:none;padding:0;cursor:pointer;
-                       \${wide?"grid-column:span 2":""}
+                       ${wide?"grid-column:span 2":""}
                        transition:filter .1s;min-height:72px"
                 onmouseover="this.style.filter='brightness(1.2)'"
-                onmouseout="this.style.filter='brightness(1)'">\${k}</button>\`;
+                onmouseout="this.style.filter='brightness(1)'">${k}</button>`;
             }).join("")
           ).join("")}
         </div>
@@ -1341,7 +1341,7 @@ function renderAppContent(id) {
           <button onclick="calToday()" style="background:var(--accent);color:#000;border:none;padding:3px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:700">Today</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--bg-glass);border-bottom:1px solid var(--border)">
-          \${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>\`<div style="text-align:center;padding:8px;font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase">\${d}</div>\`).join("")}
+          ${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>`<div style="text-align:center;padding:8px;font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase">${d}</div>`).join("")}
         </div>
         <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);flex:1;gap:1px;background:var(--border)"></div>
         <div id="cal-events-panel" style="padding:12px 16px;background:var(--bg-glass);border-top:1px solid var(--border);min-height:60px">
@@ -1355,8 +1355,8 @@ function renderAppContent(id) {
         <!-- Sidebar -->
         <div style="width:170px;background:var(--bg-glass);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;padding:8px 0">
           <div style="padding:6px 14px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">Favourites</div>
-          \${[["🏠","Home","~"],["💻","Desktop","~/Desktop"],["📄","Documents","~/Documents"],["⬇","Downloads","~/Downloads"],["📁","LuoOS","."]].map(([ico,name,path])=>
-            \`<div onclick="filesNav('\${path}')" style="padding:7px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2);transition:background .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background=''">\${ico} \${name}</div>\`
+          ${[["🏠","Home","~"],["💻","Desktop","~/Desktop"],["📄","Documents","~/Documents"],["⬇","Downloads","~/Downloads"],["📁","LuoOS","."]].map(([ico,name,path])=>
+            `<div onclick="filesNav('${path}')" style="padding:7px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text2);transition:background .15s" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background=''">${ico} ${name}</div>`
           ).join("")}
           <div style="padding:6px 14px;margin-top:8px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">Devices</div>
           <div style="padding:7px 14px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">💾 Local Disk</div>
@@ -1572,7 +1572,7 @@ Type 'help' for commands, 'luokai &lt;question&gt;' to ask LUOKAI.
       </div>`;
 
 
-    default: return \`<div style="padding:32px;color:var(--text2);text-align:center">🚧 \${id} — Coming soon</div>\`;
+    default: return `<div style="padding:32px;color:var(--text2);text-align:center">🚧 ${id} — Coming soon</div>`;
   }
 }
 
@@ -2000,7 +2000,6 @@ function bRenderBookmarks() {
   ).join('');
 }
 
-const _bHistory = [], _bHistoryPos = [-1];  // [-1] = boxed int
 
 // Check browser engine status and update badge
 async function checkBrowserEngine() {
@@ -2283,7 +2282,7 @@ async function visionRun(task) {
 }
 
 // ── MUSIC ─────────────────────────────────────────────────────────
-async const _musicQueue = [];
+const _musicQueue = [];
 let _musicQueueIdx = 0;
 
 function musicAddToQueue(videoId, label) {
@@ -2304,7 +2303,7 @@ function musicSetVol(val) {
   // YouTube iframe API doesn't allow direct volume via src — note only
 }
 
-function musicPlay() {
+async function musicPlay() {
   const q = document.getElementById("music-query")?.value?.trim();
   if (!q) return;
   const st = document.getElementById("music-status");
@@ -2402,14 +2401,14 @@ function settingsTab(name) {
 }
 
 function loadSettingsStatus() {
-  fetch(\`\${API}/api/model/status\`).then(r=>r.json()).then(d=>{
+  fetch(`${API}/api/model/status`).then(r=>r.json()).then(d=>{
     const el = document.getElementById("settings-model-status");
     const el2 = document.getElementById("sys-model");
     const txt = d.ready ? "🟢 " + (d.model||"ready") : d.loading ? "⏳ loading..." : "⚡ cell system";
     if (el) el.textContent = txt;
     if (el2) el2.textContent = txt;
   }).catch(()=>{});
-  fetch(\`\${API}/api/skills/stats\`).then(r=>r.json()).then(d=>{
+  fetch(`${API}/api/skills/stats`).then(r=>r.json()).then(d=>{
     const el = document.getElementById("st-skills");
     const el2 = document.getElementById("st-skills2");
     const count = d.total_skills || d.count || "4,146";
@@ -2424,8 +2423,8 @@ function loadNetworkStatus() {
   const urlEl = document.getElementById("net-url");
   const port = window.location.port || "3000";
   if (portEl) portEl.textContent = port;
-  if (urlEl) urlEl.textContent = \`http://localhost:\${port}\`;
-  fetch(\`\${API}/api/status\`).then(r=>r.json()).then(d=>{
+  if (urlEl) urlEl.textContent = `http://localhost:${port}`;
+  fetch(`${API}/api/status`).then(r=>r.json()).then(d=>{
     if (statusEl) { statusEl.textContent = "🟢 online"; statusEl.style.color = "var(--accent3)"; }
   }).catch(()=>{
     if (statusEl) { statusEl.textContent = "🔴 offline"; statusEl.style.color = "#f44"; }
@@ -2434,7 +2433,7 @@ function loadNetworkStatus() {
 
 function loadApiKeys() {
   // Try to load existing saved keys from server config (best-effort)
-  fetch(\`\${API}/api/status\`).then(r=>r.json()).then(d=>{
+  fetch(`${API}/api/status`).then(r=>r.json()).then(d=>{
     const keys = d.api_keys || {};
     Object.entries(keys).forEach(([k,v])=>{
       const el = document.getElementById("apikey-" + k);
@@ -2445,7 +2444,7 @@ function loadApiKeys() {
 
 function saveApiKey(key, value) {
   if (!value) return;
-  fetch(\`\${API}/api/config/key\`, {
+  fetch(`${API}/api/config/key`, {
     method: "POST",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({key, value})
@@ -2488,7 +2487,7 @@ function setLuokaiTemp(val) {
 }
 
 function setNeuralEngine(val) {
-  fetch(\`\${API}/api/chat\`, {method:"POST",headers:{"Content-Type":"application/json"},
+  fetch(`${API}/api/chat`, {method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({message:"set neural engine to "+val})}).catch(()=>{});
   notify("Neural Engine", "Switched to " + val, "info");
 }
@@ -3375,7 +3374,6 @@ function initWorldMonitor() {
 // LUO-WORLDMONITOR — Global Intelligence Dashboard
 // ════════════════════════════════════════════════════════════════
 let _wmCurrentCat = "top";
-let _wmCurrentItems = [];
 
 async function wmLoad(category) {
   _wmCurrentCat = category;
@@ -3671,9 +3669,9 @@ function calUpdateSidebarBadge() {
   const today = new Date();
   const key = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
   const count = (_calEvents[key]||[]).length;
-  const sbBtn = document.querySelector('[onclick*="openApp('calendar')"] .sb-badge') ||
+  const sbBtn = document.querySelector('[onclick*="calendar"] .sb-badge') ||
                 (() => {
-                  const btn = document.querySelector('[onclick*="openApp('calendar')"]');
+                  const btn = document.querySelector('[onclick*="calendar"]');
                   if (!btn) return null;
                   let badge = btn.querySelector('.sb-badge');
                   if (!badge) { badge = document.createElement('span'); badge.className='sb-badge';
@@ -3857,7 +3855,7 @@ async function filesSearch() {
   });
 }
 
-function filesNewFolder() {
+async function filesNewFolder() {
   const name = prompt('Folder name:'); if (!name) return;
   await fetch(`${API}/api/fs/mkdir`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({path:`${_filesPath}/${name}`})});
   filesNav(_filesPath);
