@@ -1,4 +1,3 @@
-import json
 #!/usr/bin/env python3
 """
 LuoOS Server — Main backend
@@ -17,6 +16,20 @@ from flask import Flask, request, jsonify, send_from_directory, Response, stream
 from flask_cors import CORS
 
 sys.path.insert(0, str(Path(__file__).parent))
+
+# ──────────────────────────────────────────────────────────────────
+# LUOKAI LIVING SUBSTRATE — event bus, working memory, daemon, cells
+# ──────────────────────────────────────────────────────────────────
+try:
+    from luokai.living import bus as luo_bus, memory as luo_memory
+    from luokai.living import daemon as luo_daemon, publish as luo_publish
+    LUO_LIVING_OK = True
+except Exception as _e:
+    print(f"[Server] Living substrate unavailable: {_e}")
+    LUO_LIVING_OK = False
+    luo_bus = luo_memory = luo_daemon = None
+    def luo_publish(*a, **k):
+        pass
 
 # Load LuoOS config (set by start.py or setup_luoos.py)
 _LUO_USER   = os.environ.get("LUO_USER_NAME", "User")
@@ -124,40 +137,7 @@ def chat():
         return jsonify({"response": f"Error: {e}", "ok": False})
 
 
-@app.route("/api/chat/stream", methods=["POST"])
-def chat_stream():
-    """Streaming chat endpoint using Server-Sent Events."""
-    data = request.json or {}
-    msg = data.get("message", "").strip()
-
-    if not msg:
-        return jsonify({"error": "empty"}), 400
-    if not active_agent:
-        return jsonify({"response": "LUOKAI offline"}), 200
-
-    def generate():
-        try:
-            # Check if ReAct agent with streaming is available
-            if react_agent and hasattr(react_agent, 'think_stream'):
-                for token in react_agent.think_stream(msg):
-                    yield f"data: {json.dumps({'token': token})}\n\n"
-            else:
-                # Fall back to regular think
-                resp = active_agent.think(msg)
-                yield f"data: {json.dumps({'token': resp})}\n\n"
-            yield "data: [DONE]\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
-
-    return Response(
-        stream_with_context(generate()),
-        mimetype='text/event-stream',
-        headers={
-            'Cache-Control': 'no-cache',
-            'X-Accel-Buffering': 'no',
-            'Connection': 'keep-alive'
-        }
-    )
+# (old chat_stream removed — newer SSE version kept)
 
 
 def generate_stream(msg):
@@ -199,18 +179,7 @@ def switch_model():
         return jsonify({"ok": True, "model": model})
     return jsonify({"error": "cannot switch model"}), 400
 
-@app.route("/api/execute", methods=["POST"])
-def execute():
-    data = request.json or {}
-    code = data.get("code","")
-    lang = data.get("language","python")
-    if not active_agent:
-        return jsonify({"output": "LUOKAI offline"}), 200
-    if lang == "python":
-        out = active_agent.run_python(code)
-    else:
-        out = active_agent.execute_command(code)
-    return jsonify({"output": out, "ok": True})
+# (old execute() merged into execute_command below)
 
 @app.route("/api/search", methods=["POST"])
 def search():
@@ -375,38 +344,7 @@ def invoke_skill(skill_name):
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
-@app.route("/api/fs/read", methods=["POST"])
-def fs_read():
-    path = (request.json or {}).get("path","")
-    try:
-        content = Path(path).expanduser().read_text(errors="replace")[:50000]
-        return jsonify({"ok": True, "content": content})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
-
-@app.route("/api/fs/write", methods=["POST"])
-def fs_write():
-    data    = request.json or {}
-    path    = data.get("path","")
-    content = data.get("content","")
-    try:
-        p = Path(path).expanduser()
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(content)
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
-
-@app.route("/api/fs/ls", methods=["POST"])
-def fs_ls():
-    path = (request.json or {}).get("path","~")
-    try:
-        p     = Path(path).expanduser()
-        items = sorted(p.iterdir(), key=lambda x: (not x.is_dir(), x.name.lower()))
-        result = [{"name":i.name,"type":"dir" if i.is_dir() else "file","size":i.stat().st_size if i.is_file() else 0} for i in items[:200]]
-        return jsonify({"ok": True, "items": result, "path": str(p)})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+# (old fs_read/fs_write/fs_ls removed — newer versions kept)
 
 # ── VS Code / code-server API ────────────────────────────────────────
 
@@ -1203,6 +1141,30 @@ def execute_command():
     body    = request.json or {}
     command = body.get("command", "").strip()
     cwd     = body.get("cwd", _term_cwd)
+
+    # Backward-compat: code editor sends {code, language} instead of {command}
+    code = body.get("code", "")
+    if code and not command:
+        lang = body.get("language", "python")
+        if lang == "python":
+            try:
+                import tempfile, sys
+                with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as tf:
+                    tf.write(code)
+                    tf_path = tf.name
+                result = _subp.run([sys.executable, tf_path],
+                                   capture_output=True, text=True, timeout=15)
+                Path(tf_path).unlink(missing_ok=True)
+                out = (result.stdout + result.stderr).strip()
+                return jsonify({"ok": True, "output": out, "stdout": result.stdout,
+                                "stderr": result.stderr, "returncode": result.returncode})
+            except _subp.TimeoutExpired:
+                return jsonify({"ok": False, "output": "Code timed out (15s limit)"})
+            except Exception as e:
+                return jsonify({"ok": False, "output": str(e), "error": str(e)})
+        else:
+            command = code
+
     if not command:
         return jsonify({"ok": False, "error": "No command"})
 
@@ -1577,17 +1539,23 @@ def dreams_list():
     })
 
 
-@app.route("/api/dreams/start", methods=["POST"])
-def dreams_start():
+def _dreams_start_core():
+    """Start the dream engine. Safe to call from any thread (no Flask context)."""
     if _dream_state["running"]:
-        return jsonify({"ok": True, "status": "already running"})
+        return "already running"
     _dream_state["running"] = True
     _dream_state["last_run"] = time.time()
     _dream_state["last_activity"] = time.time()
     t = threading.Thread(target=_dream_loop, daemon=True, name="LuoDreamEngine")
     t.start()
     _dream_state["thread"] = t
-    return jsonify({"ok": True, "status": "started"})
+    return "started"
+
+
+@app.route("/api/dreams/start", methods=["POST"])
+def dreams_start():
+    status = _dreams_start_core()
+    return jsonify({"ok": True, "status": status})
 
 
 @app.route("/api/dreams/stop", methods=["POST"])
@@ -1604,7 +1572,7 @@ def dreams_poke():
 
 
 # Auto-start dream engine
-threading.Thread(target=lambda: (time.sleep(30), dreams_start()),
+threading.Thread(target=lambda: (time.sleep(30), _dreams_start_core()),
                  daemon=True, name="LuoDreamBoot").start()
 
 
