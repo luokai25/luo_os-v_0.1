@@ -38,6 +38,7 @@ from datetime import datetime
 INTENT_PATTERNS = {
     "greet":      [r"\b(hi|hello|hey|howdy|greetings|what'?s up)\b"],
     "identity":   [r"\bwho are you\b", r"\bwhat are you\b", r"\byour name\b", r"\bintroduce\b"],
+    "math":       [r"\bcalculate\b", r"\bmath\b", r"\bcompute\b", r"\bsolve\b.*\b\d", r"\d+\s*[\+\-\*\/]\s*\d+"],
     "skill_find": [r"\bhow (do|to|can)\b", r"\bwhat is\b", r"\bexplain\b", r"\bteach\b", r"\bshow me\b"],
     "skill_use":  [r"\buse\b.*\bskill\b", r"\bapply\b", r"\brun\b.*\bskill\b"],
     "file_op":    [r"\bread\b.*\bfile\b", r"\bwrite\b.*\bfile\b", r"\blist\b.*\bdir", r"\bopen\b.*\bfile\b"],
@@ -50,7 +51,6 @@ INTENT_PATTERNS = {
     "reason":     [r"\bwhy\b", r"\banalyze\b", r"\bthink about\b", r"\bconsider\b", r"\bcompare\b"],
     "create":     [r"\bcreate\b", r"\bbuild\b", r"\bmake\b", r"\bgenerate\b", r"\bwrite\b"],
     "help":       [r"\bhelp\b", r"\bcommand\b", r"\bwhat can you\b", r"\bcapabilit"],
-    "math":       [r"\bcalculate\b", r"\bmath\b", r"\bcompute\b", r"\bsolve\b.*\b\d", r"\d+\s*[\+\-\*\/]\s*\d+"],
     "os_control": [r"\bopen\b.*\bapp\b", r"\blaunch\b", r"\bclose\b.*\bwindow\b", r"\bdesktop\b"],
     "evolution":  [r"\bevolv\b", r"\blearn\b", r"\bimprove\b", r"\bget better\b", r"\btrain\b"],
 }
@@ -318,10 +318,15 @@ class LuokaiInference:
 
         # ── Math ──────────────────────────────────────────────────────
         if intent == "math":
-            math_expr = re.search(r'[\d\s\+\-\*\/\.\(\)\%\^]+', query)
+            # Extract the actual arithmetic substring — must start AND end with
+            # a digit, otherwise the char-class greedily matches leading spaces
+            # ("what is 2+2" → matched a single space → math failed silently).
+            math_expr = re.search(r'\d[\d\s\+\-\*\/\.\(\)\%\^]*\d', query)
+            if not math_expr:
+                math_expr = re.search(r'\d+', query)  # single number
             if math_expr:
                 result = _safe_math(math_expr.group())
-                if result:
+                if result is not None:
                     return f"**{math_expr.group().strip()}** = **{result}**"
 
         # ── Cell system FIRST: coding, algorithm, debug, security ──────
@@ -462,7 +467,14 @@ class LuokaiInference:
             return None
 
         scored.sort(key=lambda x: -x[0])
-        top = scored[:3]
+        # Require a meaningful match — a single weak keyword hit (e.g. the
+        # word "what") must not trigger a skill dump. Need a name-level hit
+        # or several corroborating hits.
+        if scored[0][0] < 8:
+            return None
+        top = [s for s in scored[:3] if s[0] >= 5]
+        if not top:
+            return None
 
         lines = [f"Here's what I know about **{query.strip()}**:\n"]
         for i, (score, skill) in enumerate(top):

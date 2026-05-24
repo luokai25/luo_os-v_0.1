@@ -108,27 +108,22 @@ def chat():
     if LUO_LIVING_OK:
         luo_publish("chat.user_msg", {"text": msg}, source="ui")
 
-    # ── Inject working memory context ──────────────────────────
-    if LUO_LIVING_OK:
-        wm_ctx = luo_memory.to_context_string()
-        if wm_ctx:
-            # Prepend workspace state so LUOKAI knows what user is doing
-            msg_with_ctx = wm_ctx + "\nUser: " + msg
-        else:
-            msg_with_ctx = msg
-    else:
-        msg_with_ctx = msg
+    # NOTE: Working-memory context is published to the event bus (above) so the
+    # daemon, predictor, and memory cells all see it. We deliberately do NOT
+    # prepend it to the query string — the agent's think() has no separate
+    # context channel, so prepending corrupts knowledge retrieval and the
+    # context text leaks into the visible answer. Pass the clean message.
 
     # Handle streaming request
     if stream and STREAMING_ENABLED and react_agent:
         return Response(
-            stream_with_context(generate_stream(msg_with_ctx)),
+            stream_with_context(generate_stream(msg)),
             mimetype='text/event-stream'
         )
 
     # Standard non-streaming response
     try:
-        resp = active_agent.think(msg_with_ctx)
+        resp = active_agent.think(msg)
         # ── Publish assistant response ────────────────────────
         if LUO_LIVING_OK:
             luo_publish("chat.assistant_msg", {"text": resp}, source="luokai")
