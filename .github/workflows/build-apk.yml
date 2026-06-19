@@ -22,7 +22,7 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Accept Android SDK licenses
+      - name: Accept SDK licenses
         run: |
           mkdir -p $ANDROID_HOME/licenses
           printf "24333f8a63b6825ea9c5514f83c2829b004d1fee\nd56f5187479451eabf01fb78af6dfcb131a6481e\n" \
@@ -30,11 +30,10 @@ jobs:
           printf "84831b9409646a918e30573bab4c9c91346d8abd\n" \
             > $ANDROID_HOME/licenses/android-sdk-preview-license
 
-      - name: Install SDK components
+      - name: Install SDK
         run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --list_installed
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
-            "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -5
+            "platforms;android-34" "build-tools;34.0.0" 2>&1 | tail -3
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
@@ -45,25 +44,35 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties', 'android/**/libs.versions.toml') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/libs.versions.toml') }}
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: Build Debug APK
+        id: build
         working-directory: android
-        run: ./gradlew assembleDebug --stacktrace --info --no-daemon 2>&1 | tee /tmp/gradle_output.txt; exit ${PIPESTATUS[0]}
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee /tmp/gradle.log
         env:
           GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
 
-      - name: Show build error (on failure)
-        if: failure()
+      - name: Post error summary
+        if: failure() && steps.build.outcome == 'failure'
         run: |
-          echo "=== GRADLE ERRORS ==="
-          grep -E "error:|FAILURE|Exception|Caused by:|> Could not" /tmp/gradle_output.txt | head -60 || true
-          echo "=== LAST 100 LINES ==="
-          tail -100 /tmp/gradle_output.txt || true
+          echo "## ❌ Gradle Build Failed" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "error:|FAILURE:|Exception in|Caused by:|> Could not|> Task :app" /tmp/gradle.log \
+            | head -80 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Last 60 lines" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -60 /tmp/gradle.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          # Also post as run note via API
+          cat /tmp/gradle.log | grep -E "error:|FAILURE:|Caused by:" | head -30
 
-      - name: Find and rename APK
+      - name: Find APK
         run: |
           VERSION="${GITHUB_REF_NAME:-dev}"
           mkdir -p release_output
@@ -87,25 +96,19 @@ jobs:
           name: "Luo OS ${{ github.ref_name }}"
           body: |
             ## ⚡ Luo OS ${{ github.ref_name }}
-
-            AI-native Android OS — **Gemma 4 E2B-it** fully offline on your device.
-
-            ---
+            AI-native Android OS — Gemma 4 E2B-it, fully offline.
 
             ### 📲 Install
             1. Download `${{ env.APK_NAME }}` below
-            2. Phone: **Settings → Security → Install unknown apps** → allow file manager
+            2. Settings → Security → Install unknown apps → enable
             3. Tap APK → Install
-            4. Open Luo OS → **Settings** → **Download** (~1.3 GB, use WiFi)
-            5. Wait ~20 sec → **Shell** → start talking to Luo
+            4. Open Luo OS → Settings → Download model (~1.3 GB, WiFi)
+            5. Wait ~20 sec → Shell → talk to Luo
 
-            ### Requirements
-            - Android 12+ · arm64 · 6 GB+ RAM · ~2 GB free storage
-            - **Tested:** Poco X3 NFC (Snapdragon 732G, 8 GB RAM)
-
-            > After model download: **100% offline. No cloud.**
+            **Requirements:** Android 12+ · arm64 · 6 GB+ RAM · ~2 GB storage
+            **Tested:** Poco X3 NFC (Snapdragon 732G, 8 GB)
           files: ${{ env.APK_PATH }}
           draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
