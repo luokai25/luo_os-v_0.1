@@ -53,24 +53,17 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee /tmp/gradle.log
+          echo "BUILD_RESULT=${PIPESTATUS[0]}" >> $GITHUB_ENV
         env:
           GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
 
-      - name: Post error summary
-        if: failure() && steps.build.outcome == 'failure'
-        run: |
-          echo "## ❌ Gradle Build Failed" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          grep -E "error:|FAILURE:|Exception in|Caused by:|> Could not|> Task :app" /tmp/gradle.log \
-            | head -80 >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Last 60 lines" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -60 /tmp/gradle.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          # Also post as run note via API
-          cat /tmp/gradle.log | grep -E "error:|FAILURE:|Caused by:" | head -30
+      - name: Upload build log as artifact (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/gradle.log
+          retention-days: 7
 
       - name: Find APK
         run: |
@@ -106,7 +99,6 @@ jobs:
             5. Wait ~20 sec → Shell → talk to Luo
 
             **Requirements:** Android 12+ · arm64 · 6 GB+ RAM · ~2 GB storage
-            **Tested:** Poco X3 NFC (Snapdragon 732G, 8 GB)
           files: ${{ env.APK_PATH }}
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
