@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme - Compose handles all theming, this is just the window chrome -->
+    <style name="Theme.LuoOS" parent="android:Theme.Material.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">@color/luo_black</item>
+        <item name="android:statusBarColor">@color/luo_black</item>
+        <item name="android:navigationBarColor">@color/luo_black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

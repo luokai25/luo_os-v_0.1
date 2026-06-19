@@ -1,0 +1,108 @@
+name: Build & Release Luo OS APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Luo OS APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Install required SDK components
+        run: |
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Build Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        env:
+          GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+
+      - name: Rename and stage APK
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          mkdir -p release_output
+          APK=$(find android/app/build/outputs/apk/debug -name "*.apk" | head -1)
+          cp "$APK" "release_output/LuoOS-${VERSION}.apk"
+          echo "APK_PATH=release_output/LuoOS-${VERSION}.apk" >> $GITHUB_ENV
+          echo "APK_NAME=LuoOS-${VERSION}.apk" >> $GITHUB_ENV
+          echo "APK size: $(du -sh release_output/LuoOS-${VERSION}.apk | cut -f1)"
+
+      - name: Upload APK artifact (always available)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_PATH }}
+          retention-days: 90
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Luo OS ${{ github.ref_name }}"
+          body: |
+            ## ⚡ Luo OS ${{ github.ref_name }}
+
+            AI-native Android OS powered by **Gemma 4 E2B-it** — fully offline, runs on your device.
+
+            ---
+
+            ### 📲 Install
+            1. Download `${{ env.APK_NAME }}` below
+            2. On your phone: **Settings → Security → Install unknown apps** → enable for your file manager
+            3. Open the APK → tap **Install**
+            4. Open **Luo OS** → go to **Settings** → tap **Download** (~1.3 GB model, use WiFi)
+            5. Wait ~15–20 sec for model to load → go to **Shell** and start talking
+
+            ---
+
+            ### Requirements
+            - Android 12+ (API 31)
+            - arm64 device (Snapdragon, Dimensity, Exynos — **not x86**)
+            - 6 GB+ RAM
+            - ~2 GB free storage
+
+            ### Tested on
+            - Poco X3 NFC · Snapdragon 732G · 8 GB RAM
+
+            ---
+
+            > 💡 First launch downloads the AI model (~1.3 GB). Use WiFi. After that, **fully offline.**
+          files: ${{ env.APK_PATH }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
