@@ -1,20 +1,19 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
 
 android {
-    namespace = "luoos.android"
-    compileSdk = 34
+    namespace   = "luoos.android"
+    compileSdk  = 34
 
     defaultConfig {
-        applicationId = "luoos.android"
-        minSdk = 31
-        targetSdk = 34
-        versionCode = 1
-        versionName = "0.2.0-android"
+        applicationId   = "luoos.android"
+        minSdk          = 31
+        targetSdk       = 34
+        versionCode     = 1
+        versionName     = "0.2.0-android"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -22,12 +21,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false   // keep false for now to avoid proguard issues
+            isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
-        debug {
-            isDebuggable = true
-        }
+        debug { isDebuggable = true }
     }
 
     compileOptions {
@@ -38,17 +35,17 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     buildFeatures {
-        compose = true
+        compose     = true
         buildConfig = true
     }
 
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
+    }
+
     packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-        jniLibs {
-            pickFirsts += listOf("**/libOpenCL.so", "**/libOpenCL-car-swiftshader.so")
-        }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        jniLibs { pickFirsts += listOf("**/libOpenCL.so", "**/libOpenCL-car-swiftshader.so") }
     }
 }
 
