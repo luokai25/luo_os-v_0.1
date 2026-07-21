@@ -17,8 +17,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -52,69 +50,11 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/libs.versions.toml') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Build Debug APK (attempt 1 of 3)
-        id: build1
+      - name: Build Debug APK
         working-directory: android
-        continue-on-error: true
-        run: |
-          set -o pipefail
-          ./gradlew assembleDebug --stacktrace --no-daemon > /tmp/gradle.log 2>&1
-          echo "ok=$?" >> "$GITHUB_OUTPUT"
-
-      - name: Retry build (attempt 2 of 3)
-        id: build2
-        if: steps.build1.outputs.ok != '0'
-        working-directory: android
-        continue-on-error: true
-        run: |
-          echo "--- Retry 1 ---" >> /tmp/gradle.log
-          set -o pipefail
-          ./gradlew assembleDebug --stacktrace --no-daemon >> /tmp/gradle.log 2>&1
-          echo "ok=$?" >> "$GITHUB_OUTPUT"
-
-      - name: Retry build (attempt 3 of 3)
-        id: build3
-        if: steps.build1.outputs.ok != '0' && steps.build2.outputs.ok != '0'
-        working-directory: android
-        continue-on-error: true
-        run: |
-          echo "--- Retry 2 ---" >> /tmp/gradle.log
-          set -o pipefail
-          ./gradlew assembleDebug --stacktrace --no-daemon --refresh-dependencies >> /tmp/gradle.log 2>&1
-          echo "ok=$?" >> "$GITHUB_OUTPUT"
-
-      - name: Determine final build status
-        id: final
-        run: |
-          if [ "${{ steps.build1.outputs.ok }}" = "0" ]; then
-            echo "success=true" >> "$GITHUB_OUTPUT"
-          elif [ "${{ steps.build2.outputs.ok }}" = "0" ]; then
-            echo "success=true" >> "$GITHUB_OUTPUT"
-          elif [ "${{ steps.build3.outputs.ok }}" = "0" ]; then
-            echo "success=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "success=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Publish log to debug branch (only if all attempts failed)
-        if: steps.final.outputs.success == 'false'
-        run: |
-          cd /tmp
-          rm -rf logrepo
-          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" logrepo
-          cd logrepo
-          git config user.email "ci@luoos.build"
-          git config user.name "Luo OS CI"
-          git checkout --orphan ci-debug-logs 2>/dev/null || git checkout ci-debug-logs
-          git rm -rf . 2>/dev/null || true
-          cp /tmp/gradle.log ./gradle-error.log
-          git add gradle-error.log
-          git commit -m "CI build log from run ${{ github.run_id }}"
-          git push origin ci-debug-logs --force
-
-      - name: Fail if all attempts failed
-        if: steps.final.outputs.success == 'false'
-        run: exit 1
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        env:
+          GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
 
       - name: Find APK
         run: |
@@ -143,19 +83,33 @@ jobs:
           name: "Luo OS ${{ github.ref_name }}"
           body: |
             ## ⚡ Luo OS ${{ github.ref_name }}
-            AI-native Android OS — Gemma 4 E2B-it, fully offline.
+
+            AI-native Android OS powered by **Gemma 4 E2B-it** — fully offline, runs on your device.
+
+            ---
 
             ### 📲 Install
             1. Download `${{ env.APK_NAME }}` below
-            2. Settings → Security → Install unknown apps → enable
-            3. Tap APK → Install
-            4. Open Luo OS → Settings → Download model (~1.3 GB, WiFi)
-            5. Wait ~20 sec → Shell → talk to Luo
+            2. On your phone: **Settings → Security → Install unknown apps** → allow your file manager
+            3. Tap the APK → **Install**
+            4. Open **Luo OS** → go to **Settings** → tap **Download** (~1.3 GB model, use WiFi)
+            5. Wait ~15–20 sec for model to load → go to **Shell** → start talking
 
-            **Requirements:** Android 12+ · arm64 · 6 GB+ RAM · ~2 GB storage
-            **Tested on:** Poco X3 NFC (Snapdragon 732G, 8 GB RAM)
+            ---
+
+            ### Requirements
+            - Android 12+ (API 31)
+            - arm64 device (Snapdragon, Dimensity, Exynos — **not x86**)
+            - 6 GB+ RAM
+            - ~2 GB free storage
+
+            **Tested on:** Poco X3 NFC · Snapdragon 732G · 8 GB RAM
+
+            ---
+
+            > 💡 First launch downloads the AI model (~1.3 GB). Use WiFi. After that, **fully offline**.
           files: ${{ env.APK_PATH }}
           draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

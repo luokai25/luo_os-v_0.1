@@ -18,11 +18,9 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
-    versionCatalogs {
-        create("libs") {
-            from(files("gradle/libs.versions.toml"))
-        }
-    }
+    // NOTE: gradle/libs.versions.toml is auto-detected by Gradle convention —
+    // do NOT also declare it via versionCatalogs { create("libs") { ... } },
+    // that registers "libs" twice and fails with "you can only call 'from' once".
 }
 
 rootProject.name = "LuoOS"
