@@ -81,17 +81,47 @@ jobs:
         run: exit 1
 
       - name: Find APK
+        id: findapk
+        continue-on-error: true
         run: |
           VERSION="${GITHUB_REF_NAME:-dev}"
           mkdir -p release_output
+          {
+            echo "pwd: $(pwd)"
+            echo "Contents of android/app/build/outputs (if exists):"
+            find android/app/build/outputs -maxdepth 4 2>&1 || echo "(outputs dir missing)"
+          } | tee /tmp/findapk.log
           APK=$(find android/app/build/outputs/apk -name "*.apk" -type f | head -1)
           if [ -z "$APK" ]; then
-            echo "No APK found."; find android/app/build/outputs -type f; exit 1
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
           cp "$APK" "release_output/LuoOS-${VERSION}.apk"
           echo "APK_PATH=release_output/LuoOS-${VERSION}.apk" >> $GITHUB_ENV
           echo "APK_NAME=LuoOS-${VERSION}.apk" >> $GITHUB_ENV
           ls -lh "release_output/LuoOS-${VERSION}.apk"
+          echo "ok=0" >> "$GITHUB_OUTPUT"
+
+      - name: Publish findapk log (on failure)
+        if: steps.findapk.outputs.ok == '1'
+        run: |
+          cd /tmp
+          rm -rf logrepo
+          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" logrepo
+          cd logrepo
+          git config user.email "ci@luoos.build"
+          git config user.name "Luo OS CI"
+          git checkout --orphan ci-debug-logs-new 2>/dev/null
+          git rm -rf . 2>/dev/null || true
+          cp /tmp/findapk.log ./findapk.log
+          git add -A
+          git commit -m "CI findapk log from run ${{ github.run_id }}"
+          git branch -M ci-debug-logs-new ci-debug-logs
+          git push origin ci-debug-logs --force
+
+      - name: Fail if APK not found
+        if: steps.findapk.outputs.ok == '1'
+        run: exit 1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
