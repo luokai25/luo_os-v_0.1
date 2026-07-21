@@ -50,19 +50,26 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/libs.versions.toml') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      - name: Show assembleDebug task graph
+        working-directory: android
+        run: |
+          ./gradlew :app:assembleDebug --dry-run --console=plain 2>&1 | tee /tmp/dryrun.log || true
+
       - name: Build Debug APK
         id: build
         working-directory: android
         continue-on-error: true
         run: |
           set -o pipefail
-          ./gradlew assembleDebug --stacktrace --no-daemon > /tmp/gradle.log 2>&1
+          ./gradlew assembleDebug --stacktrace --no-daemon --rerun-tasks --console=plain > /tmp/gradle.log 2>&1
           echo "ok=$?" >> "$GITHUB_OUTPUT"
+          echo "=== Task list from this run ===" 
+          grep "^> Task" /tmp/gradle.log || echo "(none matched)"
         env:
           GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
 
-      - name: Publish log to debug branch (on failure)
-        if: steps.build.outputs.ok != '0'
+      - name: Publish log to debug branch (always, for now)
+        if: always()
         run: |
           cd /tmp
           rm -rf logrepo
@@ -72,7 +79,10 @@ jobs:
           git config user.name "Luo OS CI"
           git checkout --orphan ci-debug-logs 2>/dev/null || git checkout ci-debug-logs
           git rm -rf . 2>/dev/null || true
-          cp /tmp/gradle.log ./gradle-error.log
+          cat /tmp/dryrun.log > ./gradle-error.log 2>/dev/null || echo "(no dryrun log)" > ./gradle-error.log
+          echo "" >> ./gradle-error.log
+          echo "=================== ACTUAL BUILD LOG ===================" >> ./gradle-error.log
+          cat /tmp/gradle.log >> ./gradle-error.log
           git add gradle-error.log
           git commit -m "CI build log from run ${{ github.run_id }}"
           git push origin ci-debug-logs --force
