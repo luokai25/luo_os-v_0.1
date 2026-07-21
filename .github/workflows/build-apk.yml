@@ -50,55 +50,17 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/**/*.gradle*', 'android/**/libs.versions.toml') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Show assembleDebug task graph
-        working-directory: android
-        run: |
-          ./gradlew :app:assembleDebug --dry-run --console=plain 2>&1 | tee /tmp/dryrun.log || true
-
       - name: Build Debug APK
         id: build
         working-directory: android
         continue-on-error: true
         run: |
           set -o pipefail
-          ./gradlew assembleDebug --stacktrace --no-daemon --rerun-tasks --console=plain > /tmp/gradle.log 2>&1
+          ./gradlew assembleDebug --stacktrace --no-daemon > /tmp/gradle.log 2>&1
           echo "ok=$?" >> "$GITHUB_OUTPUT"
-          echo "=== Task list from this run ===" 
-          grep "^> Task" /tmp/gradle.log || echo "(none matched)"
-        env:
-          GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
 
-      - name: Fail if build failed
+      - name: Publish log on failure (diagnostic safety net)
         if: steps.build.outputs.ok != '0'
-        run: exit 1
-
-      - name: Find APK
-        id: findapk
-        continue-on-error: true
-        run: |
-          VERSION="${GITHUB_REF_NAME:-dev}"
-          mkdir -p release_output
-          {
-            echo "=== Full tree under android/app/build (if it exists) ==="
-            find android/app/build -maxdepth 6 2>&1 || echo "android/app/build does not exist"
-            echo "=== Searching entire repo for any .apk ==="
-            find . -name "*.apk" -type f 2>&1
-          } > /tmp/findapk.log
-          cat /tmp/findapk.log
-          APK=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
-          if [ -z "$APK" ]; then
-            echo "ok=1" >> "$GITHUB_OUTPUT"
-            exit 1
-          fi
-          echo "Found APK: $APK"
-          cp "$APK" "release_output/LuoOS-${VERSION}.apk"
-          echo "APK_PATH=release_output/LuoOS-${VERSION}.apk" >> $GITHUB_ENV
-          echo "APK_NAME=LuoOS-${VERSION}.apk" >> $GITHUB_ENV
-          ls -lh "release_output/LuoOS-${VERSION}.apk"
-          echo "ok=0" >> "$GITHUB_OUTPUT"
-
-      - name: Publish all diagnostic logs (always, single commit)
-        if: always()
         run: |
           cd /tmp
           rm -rf logrepo
@@ -108,17 +70,28 @@ jobs:
           git config user.name "Luo OS CI"
           git checkout --orphan ci-debug-logs-new 2>/dev/null
           git rm -rf . 2>/dev/null || true
-          cp /tmp/dryrun.log ./01-dryrun.log 2>/dev/null || echo "(missing)" > ./01-dryrun.log
-          cp /tmp/gradle.log ./02-build.log 2>/dev/null || echo "(missing)" > ./02-build.log
-          cp /tmp/findapk.log ./03-findapk.log 2>/dev/null || echo "(missing)" > ./03-findapk.log
+          cp /tmp/gradle.log ./build-error.log
           git add -A
-          git commit -m "CI logs from run ${{ github.run_id }}"
+          git commit -m "CI build failure log from run ${{ github.run_id }}"
           git branch -M ci-debug-logs-new ci-debug-logs
           git push origin ci-debug-logs --force
 
-      - name: Fail if APK not found
-        if: steps.findapk.outputs.ok == '1'
+      - name: Fail if build failed
+        if: steps.build.outputs.ok != '0'
         run: exit 1
+
+      - name: Find APK
+        run: |
+          VERSION="${GITHUB_REF_NAME:-dev}"
+          mkdir -p release_output
+          APK=$(find android/app/build/outputs/apk -name "*.apk" -type f | head -1)
+          if [ -z "$APK" ]; then
+            echo "No APK found."; find android/app/build/outputs -type f; exit 1
+          fi
+          cp "$APK" "release_output/LuoOS-${VERSION}.apk"
+          echo "APK_PATH=release_output/LuoOS-${VERSION}.apk" >> $GITHUB_ENV
+          echo "APK_NAME=LuoOS-${VERSION}.apk" >> $GITHUB_ENV
+          ls -lh "release_output/LuoOS-${VERSION}.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
