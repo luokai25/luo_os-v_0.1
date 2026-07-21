@@ -51,10 +51,35 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: Build Debug APK
+        id: build
         working-directory: android
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace --no-daemon > /tmp/gradle.log 2>&1
+          echo "ok=$?" >> "$GITHUB_OUTPUT"
         env:
           GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
+
+      - name: Publish log to debug branch (on failure)
+        if: steps.build.outputs.ok != '0'
+        run: |
+          cd /tmp
+          rm -rf logrepo
+          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" logrepo
+          cd logrepo
+          git config user.email "ci@luoos.build"
+          git config user.name "Luo OS CI"
+          git checkout --orphan ci-debug-logs 2>/dev/null || git checkout ci-debug-logs
+          git rm -rf . 2>/dev/null || true
+          cp /tmp/gradle.log ./gradle-error.log
+          git add gradle-error.log
+          git commit -m "CI build log from run ${{ github.run_id }}"
+          git push origin ci-debug-logs --force
+
+      - name: Fail if build failed
+        if: steps.build.outputs.ok != '0'
+        run: exit 1
 
       - name: Find APK
         run: |
