@@ -68,25 +68,6 @@ jobs:
         env:
           GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
 
-      - name: Publish log to debug branch (always, for now)
-        if: always()
-        run: |
-          cd /tmp
-          rm -rf logrepo
-          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" logrepo
-          cd logrepo
-          git config user.email "ci@luoos.build"
-          git config user.name "Luo OS CI"
-          git checkout --orphan ci-debug-logs 2>/dev/null || git checkout ci-debug-logs
-          git rm -rf . 2>/dev/null || true
-          cat /tmp/dryrun.log > ./gradle-error.log 2>/dev/null || echo "(no dryrun log)" > ./gradle-error.log
-          echo "" >> ./gradle-error.log
-          echo "=================== ACTUAL BUILD LOG ===================" >> ./gradle-error.log
-          cat /tmp/gradle.log >> ./gradle-error.log
-          git add gradle-error.log
-          git commit -m "CI build log from run ${{ github.run_id }}"
-          git push origin ci-debug-logs --force
-
       - name: Fail if build failed
         if: steps.build.outputs.ok != '0'
         run: exit 1
@@ -116,8 +97,8 @@ jobs:
           ls -lh "release_output/LuoOS-${VERSION}.apk"
           echo "ok=0" >> "$GITHUB_OUTPUT"
 
-      - name: Publish findapk log (on failure)
-        if: steps.findapk.outputs.ok == '1'
+      - name: Publish all diagnostic logs (always, single commit)
+        if: always()
         run: |
           cd /tmp
           rm -rf logrepo
@@ -125,11 +106,14 @@ jobs:
           cd logrepo
           git config user.email "ci@luoos.build"
           git config user.name "Luo OS CI"
-          git checkout --orphan ci-debug-logs 2>/dev/null || git checkout ci-debug-logs
+          git checkout --orphan ci-debug-logs-new 2>/dev/null
           git rm -rf . 2>/dev/null || true
-          cp /tmp/findapk.log ./findapk-error.log
-          git add findapk-error.log
-          git commit -m "CI findapk log from run ${{ github.run_id }}"
+          cp /tmp/dryrun.log ./01-dryrun.log 2>/dev/null || echo "(missing)" > ./01-dryrun.log
+          cp /tmp/gradle.log ./02-build.log 2>/dev/null || echo "(missing)" > ./02-build.log
+          cp /tmp/findapk.log ./03-findapk.log 2>/dev/null || echo "(missing)" > ./03-findapk.log
+          git add -A
+          git commit -m "CI logs from run ${{ github.run_id }}"
+          git branch -M ci-debug-logs-new ci-debug-logs
           git push origin ci-debug-logs --force
 
       - name: Fail if APK not found
