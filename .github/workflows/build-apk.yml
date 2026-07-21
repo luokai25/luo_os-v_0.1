@@ -82,17 +82,49 @@ jobs:
         run: exit 1
 
       - name: Find APK
+        id: findapk
+        continue-on-error: true
         run: |
           VERSION="${GITHUB_REF_NAME:-dev}"
           mkdir -p release_output
-          APK=$(find android/app/build/outputs/apk -name "*.apk" -type f | head -1)
+          {
+            echo "=== Full tree under android/app/build (if it exists) ==="
+            find android/app/build -maxdepth 6 2>&1 || echo "android/app/build does not exist"
+            echo "=== Searching entire repo for any .apk ==="
+            find . -name "*.apk" -type f 2>&1
+          } > /tmp/findapk.log
+          cat /tmp/findapk.log
+          APK=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
           if [ -z "$APK" ]; then
-            echo "No APK found."; find android/app/build/outputs -type f; exit 1
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
+          echo "Found APK: $APK"
           cp "$APK" "release_output/LuoOS-${VERSION}.apk"
           echo "APK_PATH=release_output/LuoOS-${VERSION}.apk" >> $GITHUB_ENV
           echo "APK_NAME=LuoOS-${VERSION}.apk" >> $GITHUB_ENV
           ls -lh "release_output/LuoOS-${VERSION}.apk"
+          echo "ok=0" >> "$GITHUB_OUTPUT"
+
+      - name: Publish findapk log (on failure)
+        if: steps.findapk.outputs.ok == '1'
+        run: |
+          cd /tmp
+          rm -rf logrepo
+          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" logrepo
+          cd logrepo
+          git config user.email "ci@luoos.build"
+          git config user.name "Luo OS CI"
+          git checkout --orphan ci-debug-logs 2>/dev/null || git checkout ci-debug-logs
+          git rm -rf . 2>/dev/null || true
+          cp /tmp/findapk.log ./findapk-error.log
+          git add findapk-error.log
+          git commit -m "CI findapk log from run ${{ github.run_id }}"
+          git push origin ci-debug-logs --force
+
+      - name: Fail if APK not found
+        if: steps.findapk.outputs.ok == '1'
+        run: exit 1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
