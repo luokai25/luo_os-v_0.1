@@ -6,6 +6,9 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Luo OS APK
@@ -14,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -50,20 +55,31 @@ jobs:
       - name: Build Debug APK
         id: build
         working-directory: android
+        continue-on-error: true
         run: |
           set -o pipefail
-          ./gradlew assembleDebug --stacktrace --no-daemon 2>&1 | tee /tmp/gradle.log
-          echo "BUILD_RESULT=${PIPESTATUS[0]}" >> $GITHUB_ENV
-        env:
-          GRADLE_OPTS: "-Xmx4g -XX:MaxMetaspaceSize=512m"
+          ./gradlew assembleDebug --stacktrace --no-daemon > /tmp/gradle.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
 
-      - name: Upload build log as artifact (always)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: /tmp/gradle.log
-          retention-days: 7
+      - name: Publish log to debug branch (on failure)
+        if: steps.build.outputs.exit_code != '0'
+        run: |
+          git config user.email "ci@luoos.build"
+          git config user.name "Luo OS CI"
+          cd /tmp
+          rm -rf logrepo
+          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" logrepo
+          cd logrepo
+          git checkout --orphan ci-debug-logs 2>/dev/null || git checkout ci-debug-logs
+          git rm -rf . 2>/dev/null || true
+          cp /tmp/gradle.log ./gradle-error.log
+          git add gradle-error.log
+          git commit -m "CI build log from run ${{ github.run_id }}"
+          git push origin ci-debug-logs --force
+
+      - name: Fail job if build failed
+        if: steps.build.outputs.exit_code != '0'
+        run: exit 1
 
       - name: Find APK
         run: |
