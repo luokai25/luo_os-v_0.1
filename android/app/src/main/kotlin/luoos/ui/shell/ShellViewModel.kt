@@ -24,7 +24,7 @@ data class ChatMessage(
 
 sealed class ShellState {
     object ServiceDisconnected : ShellState()
-    object ModelNotDownloaded : ShellState()
+    object Extracting : ShellState()
     object LoadingModel : ShellState()
     object Ready : ShellState()
     object Thinking : ShellState()
@@ -62,6 +62,7 @@ class ShellViewModel : ViewModel() {
                 service.state.collect { serviceState ->
                     _shellState.value = when (serviceState) {
                         is LuoAiService.ServiceState.Idle -> ShellState.LoadingModel
+                        is LuoAiService.ServiceState.Extracting -> ShellState.Extracting
                         is LuoAiService.ServiceState.LoadingModel -> ShellState.LoadingModel
                         is LuoAiService.ServiceState.Ready -> {
                             _inputEnabled.value = true
@@ -70,10 +71,6 @@ class ShellViewModel : ViewModel() {
                         is LuoAiService.ServiceState.Error -> {
                             _inputEnabled.value = false
                             ShellState.Error(serviceState.message)
-                        }
-                        is LuoAiService.ServiceState.ModelNotDownloaded -> {
-                            _inputEnabled.value = false
-                            ShellState.ModelNotDownloaded
                         }
                     }
                 }

@@ -149,8 +149,8 @@ private fun LuoHeader(state: ShellState, onClear: () -> Unit) {
 @Composable
 private fun LuoStatusBar(state: ShellState) {
     val (text, color) = when (state) {
-        is ShellState.LoadingModel      -> "⏳ Loading Gemma 4 E2B..." to LuoYellow
-        is ShellState.ModelNotDownloaded -> "📦 Model not downloaded — open Settings" to LuoYellow
+        is ShellState.LoadingModel      -> "⏳ Loading Gemma 3 1B..." to LuoYellow
+        is ShellState.Extracting        -> "📦 Setting up Luo AI (first launch only)..." to LuoYellow
         is ShellState.ServiceDisconnected -> "🔌 Connecting to AI service..." to LuoGray
         is ShellState.Error             -> "⚠ ${state.message}" to LuoRed
         else                            -> "" to LuoGray
@@ -173,7 +173,7 @@ private fun BootMessage() {
         Spacer(Modifier.height(4.dp))
         Text("AI is the OS.", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = LuoGray)
         Spacer(Modifier.height(12.dp))
-        Text("Gemma 4 E2B · fully offline",
+        Text("Gemma 3 1B · bundled · fully offline",
              fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color(0xFF333333))
     }
 }

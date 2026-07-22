@@ -27,7 +27,7 @@ import java.util.*
  *  2. Can be serialized to JSON for injection into the model prompt
  *  3. Has an execute() handler
  *
- * Gemma 4 E2B-it supports function calling natively.
+ * Gemma 3 1B-IT supports function calling natively.
  * The model outputs JSON like: {"tool": "list_files", "params": {"path": "/sdcard/DCIM"}}
  * LuoAgent parses this and calls the appropriate tool.
  */

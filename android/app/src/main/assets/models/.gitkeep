@@ -1,0 +1,16 @@
+This directory is intentionally empty in version control.
+
+The Gemma 3 1B-IT model file (gemma3-1b-it-int4.task, ~555 MB) is
+downloaded into this directory by the GitHub Actions release workflow
+(.github/workflows/build-apk.yml) immediately before the Gradle build,
+then bundled into the APK as an uncompressed asset.
+
+It is NOT committed to git — a 555 MB binary in git history would
+permanently bloat every future clone of this repository.
+
+To build locally, download the model yourself and place it here as:
+  android/app/src/main/assets/models/gemma3-1b-it-int4.task
+
+Source (community re-upload, not an official Google repo — see project
+history for details on why): 
+  https://huggingface.co/Usern123454321/custom_model.task

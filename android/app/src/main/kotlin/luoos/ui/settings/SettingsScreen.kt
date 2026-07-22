@@ -15,8 +15,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import luoos.android.models.ModelDownloadManager
+import luoos.android.ai.GemmaInference
 
 private val LuoBlack   = Color(0xFF0A0A0A)
 private val LuoCard    = Color(0xFF1A1A1A)
@@ -25,19 +24,14 @@ private val LuoGreenDim = Color(0xFF00CC7A)
 private val LuoGray    = Color(0xFF666666)
 private val LuoLightGray = Color(0xFFAAAAAA)
 private val LuoWhite   = Color(0xFFE8E8E8)
-private val LuoRed     = Color(0xFFFF4444)
-private val LuoYellow  = Color(0xFFFFCC00)
 
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
-    val scope   = rememberCoroutineScope()
-    val downloadManager = remember { ModelDownloadManager(context) }
-
-    var isModelPresent   by remember { mutableStateOf(downloadManager.modelFile.exists()) }
-    var downloadState    by remember { mutableStateOf<ModelDownloadManager.DownloadState>(
-        ModelDownloadManager.DownloadState.Idle) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
+    // GemmaInference is cheap to construct — just holds a Context reference
+    // and reads file state; it does NOT load the model here.
+    val gemma = remember { GemmaInference(context) }
+    val modelSizeMb = remember { gemma.modelFile.let { if (it.exists()) it.length() / 1_048_576 else 0 } }
 
     Column(
         Modifier.fillMaxSize().background(LuoBlack)
@@ -54,83 +48,31 @@ fun SettingsScreen() {
 
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Gemma 4 E2B-it", color = LuoWhite,
+                        Text("Gemma 3 1B-IT", color = LuoWhite,
                              fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         Text("INT4 quantized · CPU · offline",
                              color = LuoGray, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
                         Spacer(Modifier.height(4.dp))
-                        if (isModelPresent) {
-                            val mb = downloadManager.modelFile.length() / 1_048_576
-                            Text("✓ Downloaded (${mb} MB)", color = LuoGreen,
-                                 fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-                        } else {
-                            Text("⬇ Required — ~1.3 GB", color = LuoYellow,
-                                 fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-                        }
+                        Text(
+                            if (modelSizeMb > 0) "✓ Bundled with app (${modelSizeMb} MB)" else "✓ Bundled with app",
+                            color = LuoGreen, fontSize = 12.sp, fontFamily = FontFamily.Monospace
+                        )
                     }
                     Icon(
-                        if (isModelPresent) Icons.Default.CheckCircle else Icons.Default.CloudDownload,
+                        Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = if (isModelPresent) LuoGreen else LuoYellow,
+                        tint = LuoGreen,
                         modifier = Modifier.size(28.dp)
                     )
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
 
-                // Progress indicator
-                when (val s = downloadState) {
-                    is ModelDownloadManager.DownloadState.Downloading -> {
-                        LinearProgressIndicator(
-                            progress = { s.percent / 100f },
-                            modifier = Modifier.fillMaxWidth(),
-                            color = LuoGreen, trackColor = Color(0xFF2A2A2A)
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text("${s.percent}%  —  ${fmtBytes(s.bytesDownloaded)} / ${fmtBytes(s.totalBytes)}",
-                             fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = LuoGray)
-                    }
-                    is ModelDownloadManager.DownloadState.Processing -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(Modifier.size(16.dp), color = LuoGreen, strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Verifying...", fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = LuoGray)
-                        }
-                    }
-                    is ModelDownloadManager.DownloadState.Error ->
-                        Text("⚠ ${s.message}", color = LuoRed,
-                             fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-                    else -> {}
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                if (!isModelPresent) {
-                    val isDownloading = downloadState is ModelDownloadManager.DownloadState.Downloading
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                downloadManager.downloadModel().collect { s ->
-                                    downloadState = s
-                                    if (s is ModelDownloadManager.DownloadState.Complete) isModelPresent = true
-                                }
-                            }
-                        },
-                        enabled = !isDownloading,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = LuoGreen, contentColor = LuoBlack)
-                    ) {
-                        Text("Download Gemma 4 E2B", fontFamily = FontFamily.Monospace, fontSize = 13.sp)
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = { showDeleteDialog = true },
-                        colors  = ButtonDefaults.outlinedButtonColors(contentColor = LuoRed),
-                        border  = BorderStroke(1.dp, LuoRed)
-                    ) {
-                        Text("Delete model", fontFamily = FontFamily.Monospace, fontSize = 13.sp)
-                    }
-                }
+                Text(
+                    "No download needed — the model ships inside the app and runs " +
+                        "fully offline from first launch.",
+                    color = LuoLightGray, fontSize = 12.sp, lineHeight = 17.sp
+                )
             }
         }
 
@@ -143,7 +85,6 @@ fun SettingsScreen() {
                 InfoRow("Target device",    "Poco X3 NFC")
                 InfoRow("Processor",        "Snapdragon 732G")
                 InfoRow("Inference backend","CPU (LiteRT)")
-                InfoRow("Speed estimate",   "3–8 tokens/sec")
                 InfoRow("Min RAM",          "6 GB")
             }
         }
@@ -154,37 +95,14 @@ fun SettingsScreen() {
         SectionHeader("ABOUT")
         Surface(color = LuoCard, shape = RoundedCornerShape(8.dp)) {
             Column(Modifier.padding(16.dp)) {
-                InfoRow("Version",  "0.2.0-android")
-                InfoRow("AI model", "Gemma 4 E2B-it (Google)")
+                InfoRow("Version",  "0.3.0-android")
+                InfoRow("AI model", "Gemma 3 1B-IT (Google)")
                 InfoRow("Runtime",  "MediaPipe LiteRT")
                 InfoRow("Source",   "github.com/luokai25")
             }
         }
 
         Spacer(Modifier.height(32.dp))
-    }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            containerColor   = LuoCard,
-            title  = { Text("Delete model?", color = LuoWhite, fontFamily = FontFamily.Monospace) },
-            text   = { Text("Removes the model file. You'll need to re-download to use Luo OS.",
-                            color = LuoLightGray, fontSize = 14.sp) },
-            confirmButton = {
-                TextButton(onClick = {
-                    downloadManager.deleteModel()
-                    isModelPresent = false
-                    downloadState  = ModelDownloadManager.DownloadState.Idle
-                    showDeleteDialog = false
-                }) { Text("Delete", color = LuoRed, fontFamily = FontFamily.Monospace) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel", color = LuoGray, fontFamily = FontFamily.Monospace)
-                }
-            }
-        )
     }
 }
 
@@ -202,10 +120,4 @@ private fun InfoRow(label: String, value: String) {
         Text(label, color = LuoGray,      fontSize = 13.sp, fontFamily = FontFamily.Monospace)
         Text(value, color = LuoLightGray, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
     }
-}
-
-private fun fmtBytes(b: Long) = when {
-    b >= 1_073_741_824 -> "%.1f GB".format(b / 1_073_741_824.0)
-    b >= 1_048_576     -> "%.1f MB".format(b / 1_048_576.0)
-    else               -> "$b B"
 }

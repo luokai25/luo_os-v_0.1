@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.flow
  *  1. Simple chat mode (user ↔ Gemma)
  *  2. Agent mode: detect tool calls in model output → execute → feed result back
  *
- * Gemma 4 E2B-it signals tool calls via JSON blocks:
+ * Gemma 3 1B-IT signals tool calls via JSON blocks:
  *  {"tool": "tool_name", "params": {...}}
  *
  * The agent keeps looping (max 5 iterations) until the model stops calling tools

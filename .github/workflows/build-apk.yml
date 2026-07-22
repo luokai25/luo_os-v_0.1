@@ -41,6 +41,53 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      # Fetch the bundled AI model BEFORE the Gradle build, so it's already in
+      # assets/models/ when packageDebug runs. Cached by filename so repeat
+      # releases don't re-download 555 MB unless the model URL changes.
+      # Hard-fails the whole job if the download is missing, too small, or the
+      # source is unreachable — a silent bad download here is exactly the bug
+      # that shipped a broken APK before.
+      - name: Cache bundled model
+        id: cache-model
+        uses: actions/cache@v4
+        with:
+          path: android/app/src/main/assets/models/gemma3-1b-it-int4.task
+          key: gemma3-1b-it-int4-task-v1
+
+      - name: Fetch bundled model (Gemma 3 1B-IT, ~555 MB)
+        if: steps.cache-model.outputs.cache-hit != 'true'
+        run: |
+          set -e
+          MODEL_DIR="android/app/src/main/assets/models"
+          MODEL_FILE="$MODEL_DIR/gemma3-1b-it-int4.task"
+          MODEL_URL="https://huggingface.co/Usern123454321/custom_model.task/resolve/main/gemma3-1b-it-int4.task"
+
+          mkdir -p "$MODEL_DIR"
+          echo "Downloading model from $MODEL_URL ..."
+          curl -fSL --retry 3 --retry-delay 5 \
+               -o "$MODEL_FILE" \
+               "$MODEL_URL"
+
+      - name: Verify model file size
+        run: |
+          MODEL_FILE="android/app/src/main/assets/models/gemma3-1b-it-int4.task"
+          MIN_SIZE_BYTES=400000000   # ~400 MB floor; real file is ~555 MB
+
+          if [ ! -f "$MODEL_FILE" ]; then
+            echo "::error::Model file is missing entirely at $MODEL_FILE. Aborting build."
+            exit 1
+          fi
+
+          ACTUAL_SIZE=$(stat -c%s "$MODEL_FILE" 2>/dev/null || stat -f%z "$MODEL_FILE")
+          echo "Model file size: $ACTUAL_SIZE bytes"
+
+          if [ "$ACTUAL_SIZE" -lt "$MIN_SIZE_BYTES" ]; then
+            echo "::error::Model file is only $ACTUAL_SIZE bytes (expected >= $MIN_SIZE_BYTES). Aborting build — a broken/undersized model must never be packaged."
+            exit 1
+          fi
+
+          echo "✓ Model file size-verified ($ACTUAL_SIZE bytes)"
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -122,16 +169,18 @@ jobs:
           body: |
             ## ⚡ Luo OS ${{ github.ref_name }}
 
-            AI-native Android OS powered by **Gemma 4 E2B-it** — fully offline, runs on your device.
+            AI-native Android OS powered by **Gemma 3 1B-IT** — bundled inside the app,
+            fully offline from the moment you install it. No download step, no waiting.
 
             ---
 
             ### 📲 Install
-            1. Download `${{ env.APK_NAME }}` below
+            1. Download `${{ env.APK_NAME }}` below (~600 MB — this is a large file since
+               the AI model ships inside it)
             2. On your phone: **Settings → Security → Install unknown apps** → allow your file manager
             3. Tap the APK → **Install**
-            4. Open **Luo OS** → go to **Settings** → tap **Download** (~1.3 GB model, use WiFi)
-            5. Wait ~15–20 sec for model to load → go to **Shell** → start talking
+            4. Open **Luo OS** → the model sets itself up automatically on first launch
+               (a few seconds, one time only) → go to **Shell** → start talking
 
             ---
 
@@ -139,13 +188,14 @@ jobs:
             - Android 12+ (API 31)
             - arm64 device (Snapdragon, Dimensity, Exynos — **not x86**)
             - 6 GB+ RAM
-            - ~2 GB free storage
+            - ~1.5 GB free storage (model + app data)
 
             **Tested on:** Poco X3 NFC · Snapdragon 732G · 8 GB RAM
 
             ---
 
-            > 💡 First launch downloads the AI model (~1.3 GB). Use WiFi. After that, **fully offline**.
+            > 💡 Everything is bundled — the whole APK download IS the model download.
+            > After install, Luo OS never needs the network for AI responses.
           files: ${{ env.APK_PATH }}
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}

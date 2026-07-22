@@ -12,8 +12,8 @@ android {
         applicationId   = "luoos.android"
         minSdk          = 31
         targetSdk       = 34
-        versionCode     = 1
-        versionName     = "0.2.0-android"
+        versionCode     = 2
+        versionName     = "0.3.0-android"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ksp { arg("room.schemaLocation", "$projectDir/schemas") }
@@ -46,6 +46,16 @@ android {
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
         jniLibs { pickFirsts += listOf("**/libOpenCL.so", "**/libOpenCL-car-swiftshader.so") }
+    }
+
+    // CRITICAL: the bundled Gemma 3 1B model (assets/models/gemma3-1b-it-int4.task,
+    // ~555 MB) must NOT be compressed by AAPT2. Compressing it would:
+    //   1. Risk OOM/failure during the packageDebug/packageRelease task on a
+    //      555 MB binary, and
+    //   2. Force the app to fully decompress the asset into a memory buffer at
+    //      runtime just to copy it out, instead of a cheap streamed byte copy.
+    androidResources {
+        noCompress += "task"
     }
 }
 

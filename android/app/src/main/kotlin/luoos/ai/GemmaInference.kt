@@ -10,24 +10,39 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * GemmaInference — wraps MediaPipe LiteRT for Gemma 4 E2B-it
+ * GemmaInference — wraps MediaPipe LiteRT for Gemma 3 1B-IT
+ *
+ * Model is BUNDLED inside the APK as an asset (assets/models/gemma3-1b-it-int4.task,
+ * ~555 MB) — no runtime download, no network dependency at first launch.
+ *
+ * On first launch, the model is copied once from compressed APK assets into
+ * app-private internal storage, since MediaPipe's LlmInference.createFromOptions
+ * requires a real filesystem path (setModelPath), not an AssetFileDescriptor.
+ * Subsequent launches skip the copy if the file already exists.
  *
  * Target hardware: Snapdragon 732G (Poco X3 NFC)
- * Model: gemma-4-E2B-it-int4 (~1.3 GB)
- * Expected speed: 3–8 tokens/sec on CPU
+ * Model: Gemma 3 1B-IT INT4 (~555 MB on disk)
+ * Expected speed: faster than a 2-4B class model on the same CPU — smaller model,
+ * meaningfully quicker time-to-first-token and tokens/sec on a 2021 mid-range SoC.
  */
 class GemmaInference(private val context: Context) {
 
     companion object {
         private const val TAG = "GemmaInference"
 
-        // Model filename — downloaded to internal storage
-        const val MODEL_FILENAME = "gemma-4-E2B-it-int4.bin"
+        // Filename inside assets/models/ (bundled in the APK, uncompressed — see
+        // androidResources { noCompress += "task" } in app/build.gradle.kts)
+        const val MODEL_FILENAME = "gemma3-1b-it-int4.task"
+        private const val ASSET_PATH = "models/$MODEL_FILENAME"
 
-        // LiteRT config tuned for Snapdragon 732G
+        // Sanity floor for "did the extraction actually work" — real file is ~555 MB
+        private const val MIN_VALID_SIZE_BYTES = 400_000_000L
+
+        // LiteRT config tuned for Snapdragon 732G + a 1B-class model
         private const val MAX_TOKENS = 1024
         private const val TOP_K = 40
         private const val TEMPERATURE = 0.8f
@@ -50,32 +65,86 @@ You are the OS. Act like it."""
     // one generateResponseAsync call is active at a time per the API's contract.
     private val activeListener = AtomicReference<((String, Boolean) -> Unit)?>(null)
 
-    /** Path where the model file lives on-device */
+    /** Path where the extracted model file lives on-device, once copied out of assets */
     val modelPath: String
         get() = File(context.filesDir, "models/$MODEL_FILENAME").absolutePath
 
     val modelFile: File
         get() = File(context.filesDir, "models/$MODEL_FILENAME")
 
-    val isModelDownloaded: Boolean
-        get() = modelFile.exists() && modelFile.length() > 100_000_000L // > 100 MB sanity check
+    /** True once the model has been extracted from assets into internal storage */
+    val isModelReady: Boolean
+        get() = modelFile.exists() && modelFile.length() >= MIN_VALID_SIZE_BYTES
 
     val isModelLoaded: Boolean
         get() = isLoaded && llmInference != null
 
     /**
-     * Load the model into memory. Call this once from LuoAiService.
-     * Takes ~10–20 seconds on Snapdragon 732G.
+     * Copy the bundled model out of APK assets into internal storage, once.
+     * Assets are stored uncompressed (noCompress) so this is a straight byte
+     * copy, not a decompression — still takes a few seconds for 555 MB on
+     * typical eMMC/UFS storage, so this always runs off the main thread.
+     *
+     * Safe to call on every app start — it's a no-op if the file is already there.
      */
-    suspend fun loadModel(): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun ensureModelExtracted(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            if (!isModelDownloaded) {
+            if (isModelReady) {
+                Log.i(TAG, "Model already extracted at $modelPath")
+                return@withContext Result.success(Unit)
+            }
+
+            Log.i(TAG, "Extracting bundled model from assets/$ASSET_PATH ...")
+            val startMs = System.currentTimeMillis()
+
+            val destDir = File(context.filesDir, "models").apply { mkdirs() }
+            val destFile = File(destDir, MODEL_FILENAME)
+            val tempFile = File(destDir, "$MODEL_FILENAME.part")
+
+            context.assets.open(ASSET_PATH).use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    input.copyTo(output, bufferSize = 1 shl 20) // 1 MB buffer
+                }
+            }
+
+            if (tempFile.length() < MIN_VALID_SIZE_BYTES) {
+                tempFile.delete()
                 return@withContext Result.failure(
-                    IllegalStateException("Model not downloaded. Call downloadModel() first.")
+                    IllegalStateException(
+                        "Extracted model file is too small (${tempFile.length()} bytes) — " +
+                            "the bundled asset may be corrupt or was excluded from this build."
+                    )
                 )
             }
 
-            Log.i(TAG, "Loading Gemma 4 E2B from $modelPath ...")
+            if (!tempFile.renameTo(destFile)) {
+                tempFile.delete()
+                return@withContext Result.failure(IllegalStateException("Failed to finalize extracted model file"))
+            }
+
+            val elapsed = System.currentTimeMillis() - startMs
+            Log.i(TAG, "✓ Model extracted in ${elapsed}ms → $modelPath")
+            Result.success(Unit)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to extract bundled model", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Load the model into memory. Call this after ensureModelExtracted() succeeds.
+     * Takes roughly a few seconds on Snapdragon 732G for a 1B-class model.
+     */
+    suspend fun loadModel(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (!isModelReady) {
+                return@withContext Result.failure(
+                    IllegalStateException("Model not extracted yet. Call ensureModelExtracted() first.")
+                )
+            }
+
+            Log.i(TAG, "Loading Gemma 3 1B from $modelPath ...")
             val startMs = System.currentTimeMillis()
 
             val options = LlmInferenceOptions.builder()
@@ -93,7 +162,7 @@ You are the OS. Act like it."""
             isLoaded = true
 
             val elapsed = System.currentTimeMillis() - startMs
-            Log.i(TAG, "✓ Gemma 4 E2B loaded in ${elapsed}ms")
+            Log.i(TAG, "✓ Gemma 3 1B loaded in ${elapsed}ms")
             Result.success(Unit)
 
         } catch (e: Exception) {
@@ -102,6 +171,116 @@ You are the OS. Act like it."""
             Result.failure(e)
         }
     }
+
+    /**
+     * Generate a streaming response token-by-token.
+     * Returns a Flow<String> where each emission is a new token chunk.
+     *
+     * @param userMessage The user's message
+     * @param history     Previous turns as list of (role, content) pairs
+     * @param tools       JSON tool definitions to inject (for agent mode)
+     */
+    fun generateStreaming(
+        userMessage: String,
+        history: List<Pair<String, String>> = emptyList(),
+        tools: String? = null
+    ): Flow<String> = callbackFlow {
+
+        val inference = llmInference
+            ?: throw IllegalStateException("Model not loaded")
+
+        val prompt = buildPrompt(userMessage, history, tools)
+        Log.d(TAG, "Prompt length: ${prompt.length} chars")
+
+        // Register this Flow's callback as the active listener for the
+        // single result listener registered on the model at load time.
+        activeListener.set { partialResult, done ->
+            trySend(partialResult)
+            if (done) close()
+        }
+
+        try {
+            inference.generateResponseAsync(prompt)
+        } catch (e: Exception) {
+            Log.e(TAG, "Generation error", e)
+            close(e)
+        }
+
+        awaitClose {
+            activeListener.set(null)
+        }
+    }
+
+    /**
+     * Non-streaming generation — returns full response string.
+     * Use for tool result processing where you need the complete JSON.
+     */
+    suspend fun generate(
+        userMessage: String,
+        history: List<Pair<String, String>> = emptyList(),
+        tools: String? = null
+    ): Result<String> = withContext(Dispatchers.Default) {
+        try {
+            val inference = llmInference
+                ?: return@withContext Result.failure(IllegalStateException("Model not loaded"))
+
+            val prompt = buildPrompt(userMessage, history, tools)
+            val response = inference.generateResponse(prompt)
+            Result.success(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Generation error", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Build the Gemma chat prompt in the correct format.
+     * Gemma uses <start_of_turn>user / <start_of_turn>model format.
+     */
+    private fun buildPrompt(
+        userMessage: String,
+        history: List<Pair<String, String>>,
+        tools: String?
+    ): String {
+        val sb = StringBuilder()
+
+        // System prompt as first user turn (Gemma doesn't have a system role)
+        sb.append("<start_of_turn>user\n")
+        sb.append(SYSTEM_PROMPT)
+
+        if (tools != null) {
+            sb.append("\n\nAvailable tools (call using JSON):\n")
+            sb.append(tools)
+        }
+
+        sb.append("<end_of_turn>\n")
+        sb.append("<start_of_turn>model\nUnderstood. I am Luo, your AI OS. Ready.<end_of_turn>\n")
+
+        // Conversation history
+        for ((role, content) in history) {
+            val gemmaRole = if (role == "user") "user" else "model"
+            sb.append("<start_of_turn>$gemmaRole\n$content<end_of_turn>\n")
+        }
+
+        // Current user message
+        sb.append("<start_of_turn>user\n$userMessage<end_of_turn>\n")
+        sb.append("<start_of_turn>model\n")
+
+        return sb.toString()
+    }
+
+    /** Release model from memory. Call when app goes to background for extended period. */
+    fun unload() {
+        try {
+            llmInference?.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing LlmInference", e)
+        }
+        llmInference = null
+        isLoaded = false
+        Log.i(TAG, "Model unloaded from memory")
+    }
+}
 
     /**
      * Generate a streaming response token-by-token.

@@ -14,19 +14,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import luoos.android.LuoOSApp
 import luoos.android.MainActivity
-import luoos.android.models.ModelDownloadManager
 
 /**
  * LuoAiService — the heart of Luo OS.
  *
  * A persistent ForegroundService that:
- *  - Loads Gemma 4 E2B into memory on start
+ *  - Extracts the bundled Gemma 3 1B model from APK assets on first launch
+ *  - Loads it into memory on start
  *  - Keeps it loaded so responses are instant (no reload delay per message)
  *  - Exposes GemmaInference + LuoAgent via local Binder
  *  - Shows a minimal persistent notification (Android requirement for foreground services)
  *
  * Lifecycle:
- *  App launch → startForegroundService() → loadModel() → ready
+ *  App launch → startForegroundService() → extract (first run only) → loadModel() → ready
  *  App killed → service continues via stopWithTask=false
  *  Device reboot → BootReceiver restarts the service
  */
@@ -51,10 +51,10 @@ class LuoAiService : Service() {
 
     sealed class ServiceState {
         object Idle : ServiceState()
+        object Extracting : ServiceState()
         object LoadingModel : ServiceState()
         object Ready : ServiceState()
         data class Error(val message: String) : ServiceState()
-        object ModelNotDownloaded : ServiceState()
     }
 
     private val _state = MutableStateFlow<ServiceState>(ServiceState.Idle)
@@ -125,15 +125,22 @@ class LuoAiService : Service() {
     // ─── Model initialization ─────────────────────────────────────────────────
 
     private suspend fun initializeModel() {
-        if (!gemma.isModelDownloaded) {
-            Log.w(TAG, "Model not downloaded yet")
-            _state.value = ServiceState.ModelNotDownloaded
-            updateNotification("Model not downloaded — open Luo OS to download")
-            return
+        if (!gemma.isModelReady) {
+            _state.value = ServiceState.Extracting
+            updateNotification("Setting up Luo AI (first launch only)...")
+
+            val extractResult = gemma.ensureModelExtracted()
+            if (extractResult.isFailure) {
+                val error = extractResult.exceptionOrNull()?.message ?: "Unknown error"
+                _state.value = ServiceState.Error(error)
+                updateNotification("Setup failed")
+                Log.e(TAG, "Failed to extract bundled model: $error")
+                return
+            }
         }
 
         _state.value = ServiceState.LoadingModel
-        updateNotification("Loading Gemma 4 E2B...")
+        updateNotification("Loading Gemma 3 1B...")
 
         val result = gemma.loadModel()
 

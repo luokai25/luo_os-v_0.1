@@ -8,3 +8,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Bundled AI model — fetched at CI build time, never committed (555 MB)
+app/src/main/assets/models/*.task
+!app/src/main/assets/models/.gitkeep
