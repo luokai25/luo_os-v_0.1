@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         startForegroundService(LuoAiService.startIntent(this))
         setContent {
-            LuoOSTheme { LuoOSApp() }
+            LuoOSTheme { LuoOSRoot() }
         }
     }
 }
@@ -67,7 +67,7 @@ fun LuoOSTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun LuoOSApp() {
+fun LuoOSRoot() {
     val navController = rememberNavController()
     Scaffold(
         containerColor = LuoBlack,

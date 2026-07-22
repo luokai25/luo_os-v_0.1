@@ -18,6 +18,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
 
     <!-- Required for arm64 native libs (Snapdragon 732G) -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />

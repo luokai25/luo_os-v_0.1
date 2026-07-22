@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * GemmaInference — wraps MediaPipe LiteRT for Gemma 4 E2B-it
@@ -42,6 +43,12 @@ You are the OS. Act like it."""
 
     private var llmInference: LlmInference? = null
     private var isLoaded = false
+
+    // Holds the callback for whichever generation is currently in flight.
+    // LlmInferenceOptions registers ONE listener at build time; we forward
+    // each callback invocation to whatever is currently set here, since only
+    // one generateResponseAsync call is active at a time per the API's contract.
+    private val activeListener = AtomicReference<((String, Boolean) -> Unit)?>(null)
 
     /** Path where the model file lives on-device */
     val modelPath: String
@@ -77,8 +84,9 @@ You are the OS. Act like it."""
                 .setTopK(TOP_K)
                 .setTemperature(TEMPERATURE)
                 .setRandomSeed(RANDOM_SEED)
-                // CPU only — Snapdragon 732G has no usable ML NPU via LiteRT
-                .setPreferredBackend(LlmInferenceOptions.Backend.CPU)
+                .setResultListener { partialResult, done ->
+                    activeListener.get()?.invoke(partialResult, done)
+                }
                 .build()
 
             llmInference = LlmInference.createFromOptions(context, options)
@@ -115,22 +123,22 @@ You are the OS. Act like it."""
         val prompt = buildPrompt(userMessage, history, tools)
         Log.d(TAG, "Prompt length: ${prompt.length} chars")
 
+        // Register this Flow's callback as the active listener for the
+        // single result listener registered on the model at load time.
+        activeListener.set { partialResult, done ->
+            trySend(partialResult)
+            if (done) close()
+        }
+
         try {
-            inference.generateResponseAsync(prompt) { partialResult, done ->
-                if (partialResult != null) {
-                    trySend(partialResult)
-                }
-                if (done) {
-                    close()
-                }
-            }
+            inference.generateResponseAsync(prompt)
         } catch (e: Exception) {
             Log.e(TAG, "Generation error", e)
             close(e)
         }
 
         awaitClose {
-            // Flow cancelled — nothing to clean up per-request
+            activeListener.set(null)
         }
     }
 

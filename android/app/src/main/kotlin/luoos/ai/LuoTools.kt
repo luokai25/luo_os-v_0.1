@@ -1,6 +1,5 @@
 package luoos.android.ai
 
-import android.app.AlarmManager
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -8,6 +7,7 @@ import android.content.Intent
 import android.media.MediaPlayer
 import android.net.Uri
 import android.os.Environment
+import android.provider.AlarmClock
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -218,12 +218,12 @@ class LuoTools(
     }
 
     private fun setAlarm(hour: Int, minute: Int, label: String): String {
-        val intent = Intent(AlarmManager.ACTION_SET_ALARM).apply {
+        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(AlarmManager.EXTRA_HOUR, hour)
-            putExtra(AlarmManager.EXTRA_MINUTES, minute)
-            putExtra(AlarmManager.EXTRA_MESSAGE, label)
-            putExtra(AlarmManager.EXTRA_SKIP_UI, true)
+            putExtra(AlarmClock.EXTRA_HOUR, hour)
+            putExtra(AlarmClock.EXTRA_MINUTES, minute)
+            putExtra(AlarmClock.EXTRA_MESSAGE, label)
+            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
         }
         context.startActivity(intent)
         return "Alarm set for ${hour.toString().padStart(2,'0')}:${minute.toString().padStart(2,'0')} — \"$label\""
