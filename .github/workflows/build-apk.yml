@@ -56,25 +56,8 @@ jobs:
         continue-on-error: true
         run: |
           set -o pipefail
-          ./gradlew assembleDebug --stacktrace --no-daemon > /tmp/gradle.log 2>&1
+          ./gradlew assembleDebug --stacktrace --no-daemon --console=plain > /tmp/gradle.log 2>&1
           echo "ok=$?" >> "$GITHUB_OUTPUT"
-
-      - name: Publish log on failure (diagnostic safety net)
-        if: steps.build.outputs.ok != '0'
-        run: |
-          cd /tmp
-          rm -rf logrepo
-          git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" logrepo
-          cd logrepo
-          git config user.email "ci@luoos.build"
-          git config user.name "Luo OS CI"
-          git checkout --orphan ci-debug-logs-new 2>/dev/null
-          git rm -rf . 2>/dev/null || true
-          cp /tmp/gradle.log ./build-error.log
-          git add -A
-          git commit -m "CI build failure log from run ${{ github.run_id }}"
-          git branch -M ci-debug-logs-new ci-debug-logs
-          git push origin ci-debug-logs --force
 
       - name: Fail if build failed
         if: steps.build.outputs.ok != '0'
@@ -102,8 +85,8 @@ jobs:
           ls -lh "release_output/LuoOS-${VERSION}.apk"
           echo "ok=0" >> "$GITHUB_OUTPUT"
 
-      - name: Publish findapk log (on failure)
-        if: steps.findapk.outputs.ok == '1'
+      - name: Publish all diagnostic logs (always, single commit)
+        if: always()
         run: |
           cd /tmp
           rm -rf logrepo
@@ -113,9 +96,10 @@ jobs:
           git config user.name "Luo OS CI"
           git checkout --orphan ci-debug-logs-new 2>/dev/null
           git rm -rf . 2>/dev/null || true
-          cp /tmp/findapk.log ./findapk.log
+          cp /tmp/gradle.log ./build-full.log 2>/dev/null || echo "(missing)" > ./build-full.log
+          cp /tmp/findapk.log ./findapk.log 2>/dev/null || echo "(missing)" > ./findapk.log
           git add -A
-          git commit -m "CI findapk log from run ${{ github.run_id }}"
+          git commit -m "CI logs from run ${{ github.run_id }}"
           git branch -M ci-debug-logs-new ci-debug-logs
           git push origin ci-debug-logs --force
 
