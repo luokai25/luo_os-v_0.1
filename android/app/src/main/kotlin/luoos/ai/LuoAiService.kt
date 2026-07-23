@@ -83,7 +83,19 @@ class LuoAiService : Service() {
 
     // ─── Service lifecycle ────────────────────────────────────────────────────
 
-    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    // SupervisorJob prevents sibling coroutine failures from cancelling each
+    // other, but does NOT stop an uncaught exception from crashing the whole
+    // app process — that requires an explicit handler. Without this, any
+    // unexpected exception here (e.g. a file I/O race during model
+    // extraction) takes down the entire app instead of just failing safely
+    // into ServiceState.Error, which the UI already knows how to display.
+    private val serviceExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Log.e(TAG, "Uncaught exception in LuoAiService coroutine scope", throwable)
+        _state.value = ServiceState.Error(throwable.message ?: "Unexpected error")
+        updateNotification("Error — see app for details")
+    }
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main + serviceExceptionHandler)
 
     override fun onCreate() {
         super.onCreate()
@@ -100,7 +112,16 @@ class LuoAiService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START, null -> {
-                if (_state.value !is ServiceState.Ready && _state.value !is ServiceState.LoadingModel) {
+                // Only start initialization from Idle. This service can legitimately
+                // receive startForegroundService() twice in quick succession —
+                // MainActivity.onCreate() starts it, and ShellScreen's DisposableEffect
+                // (fired on ON_START, ~1 frame later) calls bindService(), which also
+                // calls startForegroundService(). Enumerating "not busy" states here
+                // is fragile — a new busy state (like Extracting) can be added later
+                // and silently bypass this guard, exactly as happened before this fix.
+                // Guarding on "only Idle may start" is the only version of this check
+                // that can't go stale when new states are added.
+                if (_state.value is ServiceState.Idle) {
                     serviceScope.launch { initializeModel() }
                 }
             }

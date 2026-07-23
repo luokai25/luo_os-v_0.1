@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
-import luoos.android.ai.LuoAiService
 import luoos.android.ui.shell.ShellScreen
 import luoos.android.ui.settings.SettingsScreen
 
@@ -43,7 +42,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        startForegroundService(LuoAiService.startIntent(this))
+        // NOTE: LuoAiService is started (and bound) from ShellViewModel.bindService(),
+        // triggered by ShellScreen's DisposableEffect on ON_START. Starting it again
+        // here was redundant and, combined with the service's own state guard, caused
+        // a real race: two startForegroundService() calls landing while the service
+        // was mid-extraction of the bundled model, launching a second concurrent
+        // extraction of the same file and crashing the app shortly after launch.
         setContent {
             LuoOSTheme { LuoOSRoot() }
         }
