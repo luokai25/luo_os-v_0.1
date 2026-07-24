@@ -222,10 +222,13 @@ You are the OS. Act like it."""
         Log.d(TAG, "Prompt length: ${prompt.length} chars")
 
         try {
-            // Real API: add the prompt to the session, then generate against
-            // the session (not the engine) with a per-call progress listener.
-            activeSession.addQueryChunk(prompt)
-            activeSession.generateResponseAsync { partialResult, done ->
+            // Real, current API (verified against Google's official docs,
+            // dated 2026-01-28 — the most recent source found in this
+            // investigation): generateResponseAsync takes the prompt
+            // directly as its first argument, with the progress listener as
+            // a trailing lambda. No separate addQueryChunk() call needed for
+            // this single-shot streaming case.
+            activeSession.generateResponseAsync(prompt) { partialResult, done ->
                 trySend(partialResult)
                 if (done) close()
             }
@@ -251,8 +254,7 @@ You are the OS. Act like it."""
                 ?: return@withContext Result.failure(IllegalStateException("Model not loaded"))
 
             val prompt = buildPrompt(userMessage, history, tools)
-            activeSession.addQueryChunk(prompt)
-            val response = activeSession.generateResponse()
+            val response = activeSession.generateResponse(prompt)
             Result.success(response)
         } catch (e: Exception) {
             Log.e(TAG, "Generation error", e)
