@@ -98,13 +98,26 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: Build Debug APK
-        id: build
         working-directory: android
         continue-on-error: true
         run: |
           set -o pipefail
           ./gradlew assembleDebug --stacktrace --no-daemon --console=plain > /tmp/gradle.log 2>&1
-          echo "ok=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Verify build actually succeeded
+        id: build
+        run: |
+          # A previous run showed steps.build.outputs.ok reporting '0' (success)
+          # even though the real Gradle log said "BUILD FAILED" — a
+          # continue-on-error step's custom $GITHUB_OUTPUT write apparently
+          # isn't reliable when the underlying command genuinely fails.
+          # Checking the actual log text is unambiguous ground truth instead.
+          if grep -q "BUILD SUCCESSFUL" /tmp/gradle.log; then
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+            echo "::error::Gradle build did not report BUILD SUCCESSFUL — treating as failed."
+          fi
 
       - name: Fail if build failed
         if: steps.build.outputs.ok != '0'
