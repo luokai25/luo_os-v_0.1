@@ -4,8 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInference.LlmInferenceOptions
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession.LlmInferenceSessionOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -13,6 +11,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * GemmaInference — wraps MediaPipe LiteRT for Gemma 3 1B-IT
@@ -25,20 +24,29 @@ import java.io.FileOutputStream
  * requires a real filesystem path (setModelPath), not an AssetFileDescriptor.
  * Subsequent launches skip the copy if the file already exists.
  *
- * ARCHITECTURE NOTE (fixed after comparing against Google's own AI Edge Gallery
- * reference app, the raw MediaPipe source on GitHub, and a real, exactly-matched
- * bug report using this same model file): this uses the two-object engine +
- * session pattern that every real, confirmed-working implementation uses.
- * LlmInference.LlmInferenceOptions reliably supports setModelPath/setMaxTokens/
- * setPreferredBackend; sampling parameters (setTopK/setTemperature/
- * setRandomSeed) live on the separate LlmInferenceSession's options instead.
+ * ARCHITECTURE NOTE (this took several rounds to get right — recorded here so
+ * the next change doesn't repeat the same mistakes):
  *
- * The deeper root cause this session uncovered: the project's pinned
- * MediaPipe tasks-genai version (0.10.14, from May 2024) was roughly two
- * years stale relative to every confirmed-working reference — the AI Edge
- * Gallery app and the real bug report above both ran on 0.10.21+. Upgraded
- * the pinned version accordingly rather than just reworking the calling code
- * around an old API surface.
+ * MediaPipe's tasks-genai library has TWO valid usage patterns depending on
+ * version and whether you need a stateful/multi-session chat:
+ *   (a) Simple engine-level: setResultListener on LlmInferenceOptions,
+ *       then llmInference.generateResponseAsync(prompt) directly. This is
+ *       Google's own current, officially-documented basic example
+ *       (developers.google.com/edge/mediapipe/solutions/genai/llm_inference/android).
+ *   (b) Stateful session-level: a separate LlmInferenceSession object, used
+ *       by the AI Edge Gallery app for multi-turn chat with shared context.
+ *
+ * This file uses pattern (a) — the simpler, officially-documented one — after
+ * an earlier attempt at (b) hit real, version-specific method-signature
+ * mismatches (generateResponseAsync's argument count differs across
+ * MediaPipe releases in ways that aren't consistently documented). Pattern
+ * (a)'s shape has stayed stable across every confirmed-working reference
+ * checked, including the exact tag (v0.10.21) pinned in this project.
+ *
+ * setPreferredBackend IS a real method on LlmInferenceOptions.builder() —
+ * verified against Google's own AI Edge Gallery production source
+ * (LlmChatModelHelper.kt) and a matched real bug report using this exact
+ * model file (google-ai-edge/mediapipe#6001).
  *
  * Target hardware: Snapdragon 732G (Poco X3 NFC)
  * Model: Gemma 3 1B-IT INT4 (~555 MB on disk)
@@ -58,12 +66,8 @@ class GemmaInference(private val context: Context) {
         // Sanity floor for "did the extraction actually work" — real file is ~555 MB
         private const val MIN_VALID_SIZE_BYTES = 400_000_000L
 
-        // Engine-level config (LlmInferenceOptions) — kept to the two fields that
-        // are reliably present across MediaPipe tasks-genai versions.
+        // LiteRT config tuned for Snapdragon 732G + a 1B-class model
         private const val MAX_TOKENS = 1024
-
-        // Session-level sampling config (LlmInferenceSessionOptions) — this is
-        // where TopK/Temperature/RandomSeed actually live per the real API.
         private const val TOP_K = 40
         private const val TEMPERATURE = 0.8f
         private const val RANDOM_SEED = 42
@@ -77,8 +81,13 @@ You are the OS. Act like it."""
     }
 
     private var llmInference: LlmInference? = null
-    private var session: LlmInferenceSession? = null
     private var isLoaded = false
+
+    // LlmInferenceOptions registers ONE listener at build time, at model-load
+    // time — not per generation call. This holds whichever callback is
+    // currently "live" so generateStreaming() can hand back a fresh Flow per
+    // call while the single registered listener forwards to it.
+    private val activeListener = AtomicReference<((String, Boolean) -> Unit)?>(null)
 
     /** Path where the extracted model file lives on-device, once copied out of assets */
     val modelPath: String
@@ -92,7 +101,7 @@ You are the OS. Act like it."""
         get() = modelFile.exists() && modelFile.length() >= MIN_VALID_SIZE_BYTES
 
     val isModelLoaded: Boolean
-        get() = isLoaded && llmInference != null && session != null
+        get() = isLoaded && llmInference != null
 
     /**
      * Copy the bundled model out of APK assets into internal storage, once.
@@ -148,9 +157,8 @@ You are the OS. Act like it."""
     }
 
     /**
-     * Load the model into memory and create an inference session. Call this
-     * after ensureModelExtracted() succeeds. Takes roughly a few seconds on
-     * Snapdragon 732G for a 1B-class model.
+     * Load the model into memory. Call this after ensureModelExtracted() succeeds.
+     * Takes roughly a few seconds on Snapdragon 732G for a 1B-class model.
      */
     suspend fun loadModel(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -163,31 +171,19 @@ You are the OS. Act like it."""
             Log.i(TAG, "Loading Gemma 3 1B from $modelPath ...")
             val startMs = System.currentTimeMillis()
 
-            // Engine-level options. setPreferredBackend is confirmed real —
-            // verified directly against Google's own AI Edge Gallery
-            // production source (LlmChatModelHelper.kt) and a matched real
-            // bug report using this exact model file, both showing this
-            // method on LlmInferenceOptions.builder(). CPU is the only
-            // correct choice here: the Poco X3 NFC's Snapdragon 732G has no
-            // usable GPU delegate path for this workload.
-            val engineOptions = LlmInferenceOptions.builder()
+            val options = LlmInferenceOptions.builder()
                 .setModelPath(modelPath)
                 .setMaxTokens(MAX_TOKENS)
-                .setPreferredBackend(LlmInference.Backend.CPU)
-                .build()
-
-            val inference = LlmInference.createFromOptions(context, engineOptions)
-
-            // Session-level options: sampling parameters live here, per the
-            // real, confirmed API (matches Google's own AI Edge Gallery app).
-            val sessionOptions = LlmInferenceSessionOptions.builder()
                 .setTopK(TOP_K)
                 .setTemperature(TEMPERATURE)
                 .setRandomSeed(RANDOM_SEED)
+                .setPreferredBackend(LlmInference.Backend.CPU)
+                .setResultListener { partialResult, done ->
+                    activeListener.get()?.invoke(partialResult, done)
+                }
                 .build()
 
-            llmInference = inference
-            session = LlmInferenceSession.createFromOptions(inference, sessionOptions)
+            llmInference = LlmInference.createFromOptions(context, options)
             isLoaded = true
 
             val elapsed = System.currentTimeMillis() - startMs
@@ -215,29 +211,31 @@ You are the OS. Act like it."""
         tools: String? = null
     ): Flow<String> = callbackFlow {
 
-        val activeSession = session
+        val inference = llmInference
             ?: throw IllegalStateException("Model not loaded")
 
         val prompt = buildPrompt(userMessage, history, tools)
         Log.d(TAG, "Prompt length: ${prompt.length} chars")
 
+        // Register this Flow's callback as the active listener for the
+        // single result listener registered on the model at load time.
+        activeListener.set { partialResult, done ->
+            trySend(partialResult)
+            if (done) close()
+        }
+
         try {
-            // Real, current API (verified against Google's official docs,
-            // dated 2026-01-28 — the most recent source found in this
-            // investigation): generateResponseAsync takes the prompt
-            // directly as its first argument, with the progress listener as
-            // a trailing lambda. No separate addQueryChunk() call needed for
-            // this single-shot streaming case.
-            activeSession.generateResponseAsync(prompt) { partialResult, done ->
-                trySend(partialResult)
-                if (done) close()
-            }
+            // Official, current API pattern: pass the prompt directly to the
+            // engine's generateResponseAsync — no separate session needed.
+            inference.generateResponseAsync(prompt)
         } catch (e: Exception) {
             Log.e(TAG, "Generation error", e)
             close(e)
         }
 
-        awaitClose { }
+        awaitClose {
+            activeListener.set(null)
+        }
     }
 
     /**
@@ -250,11 +248,11 @@ You are the OS. Act like it."""
         tools: String? = null
     ): Result<String> = withContext(Dispatchers.Default) {
         try {
-            val activeSession = session
+            val inference = llmInference
                 ?: return@withContext Result.failure(IllegalStateException("Model not loaded"))
 
             val prompt = buildPrompt(userMessage, history, tools)
-            val response = activeSession.generateResponse(prompt)
+            val response = inference.generateResponse(prompt)
             Result.success(response)
         } catch (e: Exception) {
             Log.e(TAG, "Generation error", e)
@@ -301,16 +299,10 @@ You are the OS. Act like it."""
     /** Release model from memory. Call when app goes to background for extended period. */
     fun unload() {
         try {
-            session?.close()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error closing LlmInferenceSession", e)
-        }
-        try {
             llmInference?.close()
         } catch (e: Exception) {
             Log.w(TAG, "Error closing LlmInference", e)
         }
-        session = null
         llmInference = null
         isLoaded = false
         Log.i(TAG, "Model unloaded from memory")
