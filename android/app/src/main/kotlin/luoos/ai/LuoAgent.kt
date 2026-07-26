@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -11,22 +12,32 @@ import kotlinx.coroutines.flow.flow
  * LuoAgent — the autonomous agent loop for Luo OS.
  *
  * Implements:
- *  1. Simple chat mode (user ↔ Gemma)
+ *  1. Simple chat mode (user ↔ Qwen2.5-1.5B via llama.cpp)
  *  2. Agent mode: detect tool calls in model output → execute → feed result back
  *
- * Gemma 3 1B-IT signals tool calls via JSON blocks:
+ * The model signals tool calls via JSON blocks:
  *  {"tool": "tool_name", "params": {...}}
  *
  * The agent keeps looping (max 5 iterations) until the model stops calling tools
  * and produces a final natural language response.
+ *
+ * NOTE: llama.cpp is called here via LlamaInference.generate(), which returns
+ * a complete response rather than a token Flow (unlike the earlier MediaPipe-
+ * based GemmaInference.generateStreaming()). The response is chunked into
+ * words with a small delay to preserve a similar "typing" feel in the UI —
+ * an honest approximation, not real token-by-token streaming. A true native
+ * streaming callback is a reasonable future improvement (see
+ * luoos_llama_jni.cpp's nativeGenerate doc comment) but isn't required for
+ * correctness.
  */
 class LuoAgent(
-    private val gemma: GemmaInference,
+    private val llama: LlamaInference,
     private val tools: LuoTools
 ) {
     companion object {
         private const val TAG = "LuoAgent"
         private const val MAX_AGENT_ITERATIONS = 5
+        private const val WORD_CHUNK_DELAY_MS = 30L
         private val TOOL_CALL_REGEX = Regex(
             """\{"tool"\s*:\s*"([^"]+)"\s*,\s*"params"\s*:\s*(\{[^}]*\})\}""",
             RegexOption.DOT_MATCHES_ALL
@@ -37,7 +48,7 @@ class LuoAgent(
 
     /**
      * Process a user message through the full agent pipeline.
-     * Emits a Flow of AgentEvent so the UI can stream tokens live
+     * Emits a Flow of AgentEvent so the UI can display a typing-like effect
      * and show tool execution inline.
      */
     fun process(
@@ -45,8 +56,8 @@ class LuoAgent(
         history: List<Pair<String, String>>
     ): Flow<AgentEvent> = flow {
 
-        if (!gemma.isModelLoaded) {
-            emit(AgentEvent.Error("Gemma model is not loaded yet."))
+        if (!llama.isModelLoaded) {
+            emit(AgentEvent.Error("Model is not loaded yet."))
             return@flow
         }
 
@@ -61,17 +72,22 @@ class LuoAgent(
             iterations++
             Log.d(TAG, "Agent iteration $iterations for: $userInput")
 
-            // Collect the full model response (need full text to detect tool calls)
-            val responseBuilder = StringBuilder()
-
-            // Stream tokens to UI as they arrive
-            gemma.generateStreaming(userInput, currentHistory, toolsJson)
-                .collect { token ->
-                    responseBuilder.append(token)
-                    emit(AgentEvent.Token(token))
+            // llama.cpp returns the full response in one call (see class doc
+            // comment) — chunk it into words to emit a typing-like effect.
+            val fullResponse = llama.generate(userInput, currentHistory, toolsJson)
+                .getOrElse { e ->
+                    Log.e(TAG, "Generation failed", e)
+                    emit(AgentEvent.Error("Generation failed: ${e.message}"))
+                    return@flow
                 }
 
-            val fullResponse = responseBuilder.toString()
+            val words = fullResponse.split(" ")
+            for ((index, word) in words.withIndex()) {
+                val chunk = if (index == 0) word else " $word"
+                emit(AgentEvent.Token(chunk))
+                delay(WORD_CHUNK_DELAY_MS)
+            }
+
             Log.d(TAG, "Model response: ${fullResponse.take(200)}...")
 
             // Check if the model wants to call a tool
@@ -137,3 +153,4 @@ sealed class AgentEvent {
     /** Something went wrong */
     data class Error(val message: String) : AgentEvent()
 }
+

@@ -15,53 +15,46 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import luoos.android.ai.GemmaInference
-
-private val LuoBlack   = Color(0xFF0A0A0A)
-private val LuoCard    = Color(0xFF1A1A1A)
-private val LuoGreen   = Color(0xFF00FF9F)
-private val LuoGreenDim = Color(0xFF00CC7A)
-private val LuoGray    = Color(0xFF666666)
-private val LuoLightGray = Color(0xFFAAAAAA)
-private val LuoWhite   = Color(0xFFE8E8E8)
+import luoos.android.ai.LlamaInference
+import luoos.android.ui.theme.LuoColors
 
 @Composable
 fun SettingsScreen() {
     val context = LocalContext.current
-    // GemmaInference is cheap to construct — just holds a Context reference
+    // LlamaInference is cheap to construct — just holds a Context reference
     // and reads file state; it does NOT load the model here.
-    val gemma = remember { GemmaInference(context) }
-    val modelSizeMb = remember { gemma.modelFile.let { if (it.exists()) it.length() / 1_048_576 else 0 } }
+    val llama = remember { LlamaInference(context) }
+    val modelSizeMb = remember { llama.modelFile.let { if (it.exists()) it.length() / 1_048_576 else 0 } }
 
     Column(
-        Modifier.fillMaxSize().background(LuoBlack)
+        Modifier.fillMaxSize().background(LuoColors.background)
             .verticalScroll(rememberScrollState()).padding(16.dp)
     ) {
         Text("SETTINGS", fontFamily = FontFamily.Monospace, fontSize = 13.sp,
-             color = LuoGray, letterSpacing = 2.sp)
+             color = LuoColors.textDim, letterSpacing = 2.sp)
         Spacer(Modifier.height(16.dp))
 
         // ── Model Section ─────────────────────────────────────────────────────
         SectionHeader("AI MODEL")
-        Surface(color = LuoCard, shape = RoundedCornerShape(8.dp)) {
+        Surface(color = LuoColors.card, shape = RoundedCornerShape(8.dp)) {
             Column(Modifier.padding(16.dp)) {
 
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Gemma 3 1B-IT", color = LuoWhite,
+                        Text("Qwen2.5-1.5B-Instruct", color = LuoColors.textBright,
                              fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                        Text("INT4 quantized · CPU · offline",
-                             color = LuoGray, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                        Text("Q4_K_M GGUF · llama.cpp · offline",
+                             color = LuoColors.textDim, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
                         Spacer(Modifier.height(4.dp))
                         Text(
                             if (modelSizeMb > 0) "✓ Bundled with app (${modelSizeMb} MB)" else "✓ Bundled with app",
-                            color = LuoGreen, fontSize = 12.sp, fontFamily = FontFamily.Monospace
+                            color = LuoColors.accent, fontSize = 12.sp, fontFamily = FontFamily.Monospace
                         )
                     }
                     Icon(
                         Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = LuoGreen,
+                        tint = LuoColors.accent,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -71,7 +64,7 @@ fun SettingsScreen() {
                 Text(
                     "No download needed — the model ships inside the app and runs " +
                         "fully offline from first launch.",
-                    color = LuoLightGray, fontSize = 12.sp, lineHeight = 17.sp
+                    color = LuoColors.textNormal, fontSize = 12.sp, lineHeight = 17.sp
                 )
             }
         }
@@ -80,11 +73,11 @@ fun SettingsScreen() {
 
         // ── Device Info ───────────────────────────────────────────────────────
         SectionHeader("DEVICE")
-        Surface(color = LuoCard, shape = RoundedCornerShape(8.dp)) {
+        Surface(color = LuoColors.card, shape = RoundedCornerShape(8.dp)) {
             Column(Modifier.padding(16.dp)) {
                 InfoRow("Target device",    "Poco X3 NFC")
                 InfoRow("Processor",        "Snapdragon 732G")
-                InfoRow("Inference backend","CPU (LiteRT)")
+                InfoRow("Inference backend","CPU (llama.cpp)")
                 InfoRow("Min RAM",          "6 GB")
             }
         }
@@ -93,11 +86,11 @@ fun SettingsScreen() {
 
         // ── About ─────────────────────────────────────────────────────────────
         SectionHeader("ABOUT")
-        Surface(color = LuoCard, shape = RoundedCornerShape(8.dp)) {
+        Surface(color = LuoColors.card, shape = RoundedCornerShape(8.dp)) {
             Column(Modifier.padding(16.dp)) {
-                InfoRow("Version",  "0.3.0-android")
-                InfoRow("AI model", "Gemma 3 1B-IT (Google)")
-                InfoRow("Runtime",  "MediaPipe LiteRT")
+                InfoRow("Version",  "0.4.0-android")
+                InfoRow("AI model", "Qwen2.5-1.5B-Instruct")
+                InfoRow("Runtime",  "llama.cpp (matches laptop OS)")
                 InfoRow("Source",   "github.com/luokai25")
             }
         }
@@ -109,7 +102,7 @@ fun SettingsScreen() {
 @Composable
 private fun SectionHeader(title: String) {
     Text(title, fontFamily = FontFamily.Monospace, fontSize = 11.sp,
-         color = LuoGreenDim, letterSpacing = 1.sp)
+         color = LuoColors.accentDim, letterSpacing = 1.sp)
     Spacer(Modifier.height(6.dp))
 }
 
@@ -117,7 +110,7 @@ private fun SectionHeader(title: String) {
 private fun InfoRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 3.dp),
         horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = LuoGray,      fontSize = 13.sp, fontFamily = FontFamily.Monospace)
-        Text(value, color = LuoLightGray, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        Text(label, color = LuoColors.textDim,    fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        Text(value, color = LuoColors.textNormal, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
     }
 }

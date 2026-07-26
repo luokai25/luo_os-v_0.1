@@ -24,6 +24,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import luoos.android.ui.shell.ShellScreen
 import luoos.android.ui.settings.SettingsScreen
+import luoos.android.ui.theme.LuoColors
 
 sealed class LuoScreen(val route: String, val label: String, val icon: ImageVector) {
     object Shell    : LuoScreen("shell",    "Shell",    Icons.Default.Code)
@@ -33,10 +34,6 @@ sealed class LuoScreen(val route: String, val label: String, val icon: ImageVect
 }
 
 private val screens = listOf(LuoScreen.Shell, LuoScreen.Agent, LuoScreen.Memory, LuoScreen.Settings)
-
-private val LuoBlack   = Color(0xFF0A0A0A)
-private val LuoGreen   = Color(0xFF00FF9F)
-private val LuoGray    = Color(0xFF444444)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,13 +55,13 @@ class MainActivity : ComponentActivity() {
 fun LuoOSTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = darkColorScheme(
-            background    = LuoBlack,
-            surface       = Color(0xFF111111),
-            primary       = LuoGreen,
-            onPrimary     = LuoBlack,
-            secondary     = LuoGreen,
-            onBackground  = Color(0xFFE8E8E8),
-            onSurface     = Color(0xFFE8E8E8)
+            background    = LuoColors.background,
+            surface       = LuoColors.card,
+            primary       = LuoColors.accent,
+            onPrimary     = LuoColors.background,
+            secondary     = LuoColors.accent,
+            onBackground  = LuoColors.textNormal,
+            onSurface     = LuoColors.textNormal
         ),
         content = content
     )
@@ -74,7 +71,7 @@ fun LuoOSTheme(content: @Composable () -> Unit) {
 fun LuoOSRoot() {
     val navController = rememberNavController()
     Scaffold(
-        containerColor = LuoBlack,
+        containerColor = LuoColors.background,
         bottomBar = { LuoBottomBar(navController) }
     ) { innerPadding ->
         NavHost(
@@ -94,13 +91,13 @@ fun LuoOSRoot() {
 private fun LuoBottomBar(navController: androidx.navigation.NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val current = navBackStackEntry?.destination
-    NavigationBar(containerColor = Color(0xFF111111), tonalElevation = 0.dp) {
+    NavigationBar(containerColor = LuoColors.card, tonalElevation = 0.dp) {
         screens.forEach { screen ->
             val selected = current?.hierarchy?.any { it.route == screen.route } == true
             NavigationBarItem(
-                icon  = { Icon(screen.icon, screen.label, tint = if (selected) LuoGreen else LuoGray) },
+                icon  = { Icon(screen.icon, screen.label, tint = if (selected) LuoColors.accent else LuoColors.textDim) },
                 label = { Text(screen.label, fontFamily = FontFamily.Monospace, fontSize = 10.sp,
-                               color = if (selected) LuoGreen else LuoGray) },
+                               color = if (selected) LuoColors.accent else LuoColors.textDim) },
                 selected = selected,
                 onClick  = {
                     navController.navigate(screen.route) {
@@ -109,7 +106,7 @@ private fun LuoBottomBar(navController: androidx.navigation.NavController) {
                         restoreState    = true
                     }
                 },
-                colors = NavigationBarItemDefaults.colors(indicatorColor = Color(0xFF1E3A2F))
+                colors = NavigationBarItemDefaults.colors(indicatorColor = LuoColors.cardAlt)
             )
         }
     }
@@ -117,9 +114,9 @@ private fun LuoBottomBar(navController: androidx.navigation.NavController) {
 
 @Composable
 private fun PlaceholderScreen(name: String, eta: String) {
-    Box(Modifier.fillMaxSize().background(LuoBlack), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize().background(LuoColors.background), contentAlignment = Alignment.Center) {
         Text("$name\n[coming in $eta]",
-            color = Color(0xFF444444),
+            color = LuoColors.textDim,
             fontFamily = FontFamily.Monospace,
             textAlign = TextAlign.Center)
     }

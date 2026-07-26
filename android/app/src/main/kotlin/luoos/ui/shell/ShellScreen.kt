@@ -31,16 +31,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
-
-private val LuoBlack       = Color(0xFF0A0A0A)
-private val LuoDarkSurface = Color(0xFF111111)
-private val LuoCard        = Color(0xFF1A1A1A)
-private val LuoGreen       = Color(0xFF00FF9F)
-private val LuoGreenDim    = Color(0xFF00CC7A)
-private val LuoGray        = Color(0xFF666666)
-private val LuoWhite       = Color(0xFFE8E8E8)
-private val LuoRed         = Color(0xFFFF4444)
-private val LuoYellow      = Color(0xFFFFCC00)
+import luoos.android.ui.theme.LuoColors
 
 @Composable
 fun ShellScreen(vm: ShellViewModel = viewModel()) {
@@ -73,12 +64,16 @@ fun ShellScreen(vm: ShellViewModel = viewModel()) {
         }
     }
 
-    Surface(Modifier.fillMaxSize(), color = LuoBlack) {
+    Surface(Modifier.fillMaxSize(), color = LuoColors.background) {
         Column(Modifier.fillMaxSize()) {
             // Header
             LuoHeader(state) { vm.clearHistory() }
 
-            // Status bar (shown while loading/error)
+            // Status bar (shown while loading/error) — this is what's visible
+            // when the model fails to load, and WHY the input bar below is
+            // disabled: it's intentionally tied to real readiness, not a bug.
+            // If you're seeing "can't type", check this bar first — the fix
+            // is getting the model to load successfully, not the input field.
             if (state !is ShellState.Ready && state !is ShellState.Thinking) {
                 LuoStatusBar(state)
             }
@@ -119,17 +114,17 @@ fun ShellScreen(vm: ShellViewModel = viewModel()) {
 @Composable
 private fun LuoHeader(state: ShellState, onClear: () -> Unit) {
     val dotColor = when (state) {
-        is ShellState.Ready, ShellState.Thinking -> LuoGreen
-        is ShellState.LoadingModel               -> LuoYellow
-        is ShellState.Error                      -> LuoRed
-        else                                     -> LuoGray
+        is ShellState.Ready, ShellState.Thinking -> LuoColors.statusGood
+        is ShellState.LoadingModel               -> LuoColors.statusWarn
+        is ShellState.Error                      -> LuoColors.statusBad
+        else                                     -> LuoColors.textDim
     }
     val inf = rememberInfiniteTransition(label = "dot")
     val a by inf.animateFloat(1f, 0.3f,
         infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "a")
 
     Row(
-        Modifier.fillMaxWidth().background(LuoDarkSurface).padding(16.dp, 12.dp),
+        Modifier.fillMaxWidth().background(LuoColors.card).padding(16.dp, 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(8.dp)
@@ -137,11 +132,11 @@ private fun LuoHeader(state: ShellState, onClear: () -> Unit) {
             .background(dotColor, RoundedCornerShape(4.dp)))
         Spacer(Modifier.width(10.dp))
         Text("luo@android", fontFamily = FontFamily.Monospace, fontSize = 15.sp,
-             fontWeight = FontWeight.Bold, color = LuoGreen)
-        Text(":~\$", fontFamily = FontFamily.Monospace, fontSize = 15.sp, color = LuoGray)
+             fontWeight = FontWeight.Bold, color = LuoColors.accent)
+        Text(":~\$", fontFamily = FontFamily.Monospace, fontSize = 15.sp, color = LuoColors.textDim)
         Spacer(Modifier.weight(1f))
         IconButton(onClick = onClear, modifier = Modifier.size(32.dp)) {
-            Icon(Icons.Default.Delete, "Clear", tint = LuoGray, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.Delete, "Clear", tint = LuoColors.textDim, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -149,14 +144,14 @@ private fun LuoHeader(state: ShellState, onClear: () -> Unit) {
 @Composable
 private fun LuoStatusBar(state: ShellState) {
     val (text, color) = when (state) {
-        is ShellState.LoadingModel      -> "⏳ Loading Gemma 3 1B..." to LuoYellow
-        is ShellState.Extracting        -> "📦 Setting up Luo AI (first launch only)..." to LuoYellow
-        is ShellState.ServiceDisconnected -> "🔌 Connecting to AI service..." to LuoGray
-        is ShellState.Error             -> "⚠ ${state.message}" to LuoRed
-        else                            -> "" to LuoGray
+        is ShellState.LoadingModel        -> "⏳ Loading Qwen2.5-1.5B..." to LuoColors.statusWarn
+        is ShellState.Extracting          -> "📦 Setting up Luo AI (first launch only)..." to LuoColors.statusWarn
+        is ShellState.ServiceDisconnected -> "🔌 Connecting to AI service..." to LuoColors.textDim
+        is ShellState.Error               -> "⚠ ${state.message}" to LuoColors.statusBad
+        else                              -> "" to LuoColors.textDim
     }
     if (text.isNotEmpty()) {
-        Box(Modifier.fillMaxWidth().background(LuoCard).padding(16.dp, 8.dp)) {
+        Box(Modifier.fillMaxWidth().background(LuoColors.card).padding(16.dp, 8.dp)) {
             Text(text, fontSize = 12.sp, color = color, fontFamily = FontFamily.Monospace)
         }
     }
@@ -168,13 +163,13 @@ private fun BootMessage() {
         Modifier.fillMaxWidth().padding(vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("LUO OS v0.2", fontFamily = FontFamily.Monospace, fontSize = 22.sp,
-             fontWeight = FontWeight.Bold, color = LuoGreen)
+        Text("LUO OS v0.4", fontFamily = FontFamily.Monospace, fontSize = 22.sp,
+             fontWeight = FontWeight.Bold, color = LuoColors.accent)
         Spacer(Modifier.height(4.dp))
-        Text("AI is the OS.", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = LuoGray)
+        Text("AI is the OS.", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = LuoColors.textDim)
         Spacer(Modifier.height(12.dp))
-        Text("Gemma 3 1B · bundled · fully offline",
-             fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Color(0xFF333333))
+        Text("Qwen2.5-1.5B · bundled · llama.cpp · fully offline",
+             fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = LuoColors.textDim.copy(alpha = 0.6f))
     }
 }
 
@@ -183,12 +178,12 @@ private fun UserBubble(msg: ChatMessage) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         Box(
             Modifier.widthIn(max = 280.dp)
-                .background(Color(0xFF1E3A2F), RoundedCornerShape(12.dp, 2.dp, 12.dp, 12.dp))
+                .background(LuoColors.cardAlt, RoundedCornerShape(12.dp, 2.dp, 12.dp, 12.dp))
                 .padding(14.dp, 10.dp)
         ) {
             Column {
-                Text("> ", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = LuoGreenDim)
-                Text(msg.content, fontSize = 14.sp, color = LuoWhite, lineHeight = 20.sp)
+                Text("> ", fontFamily = FontFamily.Monospace, fontSize = 10.sp, color = LuoColors.accentDim)
+                Text(msg.content, fontSize = 14.sp, color = LuoColors.textNormal, lineHeight = 20.sp)
             }
         }
     }
@@ -199,25 +194,25 @@ private fun AssistantBubble(msg: ChatMessage) {
     Column(Modifier.fillMaxWidth()) {
         msg.toolCalls.forEach { call ->
             Text(call, fontFamily = FontFamily.Monospace, fontSize = 11.sp,
-                 color = LuoGray, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))
+                 color = LuoColors.textDim, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))
         }
         Row(verticalAlignment = Alignment.Top) {
             Text("[luo] ", fontFamily = FontFamily.Monospace, fontSize = 11.sp,
-                 fontWeight = FontWeight.Bold, color = LuoGreen,
+                 fontWeight = FontWeight.Bold, color = LuoColors.accent,
                  modifier = Modifier.padding(top = 2.dp))
             Box(
                 Modifier.weight(1f)
-                    .background(LuoCard, RoundedCornerShape(2.dp, 12.dp, 12.dp, 12.dp))
+                    .background(LuoColors.card, RoundedCornerShape(2.dp, 12.dp, 12.dp, 12.dp))
                     .padding(14.dp, 10.dp)
             ) {
                 Column {
-                    Text(msg.content, fontSize = 14.sp, color = LuoWhite, lineHeight = 21.sp)
+                    Text(msg.content, fontSize = 14.sp, color = LuoColors.textNormal, lineHeight = 21.sp)
                     if (msg.isStreaming) {
                         val inf = rememberInfiniteTransition(label = "cursor")
                         val ca by inf.animateFloat(1f, 0f,
                             infiniteRepeatable(tween(500), RepeatMode.Reverse), label = "ca")
                         Text("▌", fontFamily = FontFamily.Monospace, fontSize = 14.sp,
-                             color = LuoGreen.copy(alpha = ca))
+                             color = LuoColors.accent.copy(alpha = ca))
                     }
                 }
             }
@@ -232,8 +227,8 @@ private fun ThinkingDots() {
         infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Restart), label = "tick")
     val dots = ".".repeat(tick.toInt() + 1)
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("[luo] ", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = LuoGreen)
-        Text(dots, fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = LuoGray)
+        Text("[luo] ", fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = LuoColors.accent)
+        Text(dots, fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = LuoColors.textDim)
     }
 }
 
@@ -243,7 +238,7 @@ private fun InputBar(
     onChange: (String) -> Unit, onSend: () -> Unit,
     focusRequester: FocusRequester
 ) {
-    Surface(color = LuoDarkSurface, tonalElevation = 0.dp) {
+    Surface(color = LuoColors.card, tonalElevation = 0.dp) {
         Row(
             Modifier.fillMaxWidth().padding(12.dp, 8.dp)
                 .navigationBarsPadding().imePadding(),
@@ -251,24 +246,24 @@ private fun InputBar(
         ) {
             Text("\$ ", fontFamily = FontFamily.Monospace, fontSize = 16.sp,
                  fontWeight = FontWeight.Bold,
-                 color = if (enabled) LuoGreen else LuoGray)
+                 color = if (enabled) LuoColors.accent else LuoColors.textDim)
             TextField(
                 value = value, onValueChange = onChange,
                 modifier = Modifier.weight(1f).focusRequester(focusRequester),
                 enabled = enabled,
                 placeholder = {
                     Text("ask luo anything...", fontFamily = FontFamily.Monospace,
-                         fontSize = 14.sp, color = LuoGray)
+                         fontSize = 14.sp, color = LuoColors.textDim)
                 },
                 textStyle = TextStyle(fontFamily = FontFamily.Monospace,
-                                      fontSize = 14.sp, color = LuoWhite),
+                                      fontSize = 14.sp, color = LuoColors.textNormal),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor   = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
                     disabledContainerColor  = Color.Transparent,
                     focusedIndicatorColor   = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor             = LuoGreen
+                    cursorColor             = LuoColors.accent
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { onSend() }),
@@ -276,7 +271,7 @@ private fun InputBar(
             )
             IconButton(onClick = onSend, enabled = enabled && value.isNotBlank()) {
                 Icon(Icons.Default.Send, "Send",
-                     tint = if (enabled && value.isNotBlank()) LuoGreen else LuoGray)
+                     tint = if (enabled && value.isNotBlank()) LuoColors.accent else LuoColors.textDim)
             }
         }
     }

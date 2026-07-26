@@ -40,7 +40,7 @@ class LuoOSApp : Application() {
             "Luo AI Service",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Keeps Gemma 3 1B loaded and ready"
+            description = "Keeps Qwen2.5-1.5B loaded and ready"
             setShowBadge(false)
             enableVibration(false)
         }

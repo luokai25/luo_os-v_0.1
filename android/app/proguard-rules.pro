@@ -1,7 +1,10 @@
-# MediaPipe / LiteRT — keep all native inference classes
--keep class com.google.mediapipe.** { *; }
--keep class com.google.flatbuffers.** { *; }
--dontwarn com.google.mediapipe.**
+# llama.cpp JNI bridge — keep the external fun declarations so their names
+# still match luoos_llama_jni.cpp's exported JNI symbols if minification is
+# ever turned on. (Currently isMinifyEnabled = false for both build types,
+# so this isn't active yet, but keeping it accurate for when it is.)
+-keepclasseswithmembernames class luoos.android.ai.LlamaInference {
+    native <methods>;
+}
 
 # Room — keep entity and DAO classes
 -keep class luoos.android.models.** { *; }

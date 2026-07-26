@@ -19,10 +19,10 @@ import luoos.android.MainActivity
  * LuoAiService — the heart of Luo OS.
  *
  * A persistent ForegroundService that:
- *  - Extracts the bundled Gemma 3 1B model from APK assets on first launch
- *  - Loads it into memory on start
+ *  - Extracts the bundled Qwen2.5-1.5B GGUF model from APK assets on first launch
+ *  - Loads it into memory on start (via llama.cpp, matching the laptop OS)
  *  - Keeps it loaded so responses are instant (no reload delay per message)
- *  - Exposes GemmaInference + LuoAgent via local Binder
+ *  - Exposes LlamaInference + LuoAgent via local Binder
  *  - Shows a minimal persistent notification (Android requirement for foreground services)
  *
  * Lifecycle:
@@ -62,7 +62,7 @@ class LuoAiService : Service() {
 
     // ─── Public AI components (bound clients use these) ───────────────────────
 
-    lateinit var gemma: GemmaInference
+    lateinit var llama: LlamaInference
         private set
 
     lateinit var agent: LuoAgent
@@ -102,9 +102,9 @@ class LuoAiService : Service() {
         Log.i(TAG, "LuoAiService created")
 
         val db = (application as LuoOSApp).database
-        gemma = GemmaInference(this)
+        llama = LlamaInference(this)
         tools = LuoTools(this, db.memoryDao())
-        agent = LuoAgent(gemma, tools)
+        agent = LuoAgent(llama, tools)
 
         startForeground(NOTIF_ID, buildNotification("Initializing..."))
     }
@@ -127,7 +127,7 @@ class LuoAiService : Service() {
             }
             ACTION_STOP -> stopSelf()
             ACTION_UNLOAD_MODEL -> {
-                gemma.unload()
+                llama.unload()
                 _state.value = ServiceState.Idle
                 updateNotification("Model unloaded (save battery)")
             }
@@ -138,7 +138,7 @@ class LuoAiService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        gemma.unload()
+        llama.unload()
         serviceScope.cancel()
         Log.i(TAG, "LuoAiService destroyed")
     }
@@ -146,11 +146,11 @@ class LuoAiService : Service() {
     // ─── Model initialization ─────────────────────────────────────────────────
 
     private suspend fun initializeModel() {
-        if (!gemma.isModelReady) {
+        if (!llama.isModelReady) {
             _state.value = ServiceState.Extracting
             updateNotification("Setting up Luo AI (first launch only)...")
 
-            val extractResult = gemma.ensureModelExtracted()
+            val extractResult = llama.ensureModelExtracted()
             if (extractResult.isFailure) {
                 val error = extractResult.exceptionOrNull()?.message ?: "Unknown error"
                 _state.value = ServiceState.Error(error)
@@ -161,9 +161,9 @@ class LuoAiService : Service() {
         }
 
         _state.value = ServiceState.LoadingModel
-        updateNotification("Loading Gemma 3 1B...")
+        updateNotification("Loading Qwen2.5-1.5B...")
 
-        val result = gemma.loadModel()
+        val result = llama.loadModel()
 
         if (result.isSuccess) {
             _state.value = ServiceState.Ready

@@ -51,16 +51,20 @@ jobs:
         id: cache-model
         uses: actions/cache@v4
         with:
-          path: android/app/src/main/assets/models/gemma3-1b-it-int4.task
-          key: gemma3-1b-it-int4-task-v1
+          path: android/app/src/main/assets/models/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          key: qwen2.5-1.5b-instruct-q4_k_m-gguf-v1
 
-      - name: Fetch bundled model (Gemma 3 1B-IT, ~555 MB)
+      - name: Fetch bundled model (Qwen2.5-1.5B-Instruct, ~1.1 GB)
         if: steps.cache-model.outputs.cache-hit != 'true'
         run: |
           set -e
           MODEL_DIR="android/app/src/main/assets/models"
-          MODEL_FILE="$MODEL_DIR/gemma3-1b-it-int4.task"
-          MODEL_URL="https://huggingface.co/Usern123454321/custom_model.task/resolve/main/gemma3-1b-it-int4.task"
+          MODEL_FILE="$MODEL_DIR/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+          # Official Qwen repo, ungated, Apache-2.0 license — matches the
+          # laptop OS's own model source exactly (see
+          # luokai/core/model_engine.py). No license click needed, unlike
+          # the Gemma models this replaced.
+          MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
 
           mkdir -p "$MODEL_DIR"
           echo "Downloading model from $MODEL_URL ..."
@@ -68,10 +72,15 @@ jobs:
                -o "$MODEL_FILE" \
                "$MODEL_URL"
 
-      - name: Verify model file size
+      - name: Verify model file integrity (size + SHA256)
         run: |
-          MODEL_FILE="android/app/src/main/assets/models/gemma3-1b-it-int4.task"
-          MIN_SIZE_BYTES=400000000   # ~400 MB floor; real file is ~555 MB
+          MODEL_FILE="android/app/src/main/assets/models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+          MIN_SIZE_BYTES=900000000   # ~900 MB floor; real file is ~1.12 GB
+          # Confirmed real SHA256 for this exact file from the official
+          # Hugging Face repo page — checking the actual hash, not just
+          # size, is stronger verification than the size-floor-only check
+          # used for the model this replaced.
+          EXPECTED_SHA256="6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
 
           if [ ! -f "$MODEL_FILE" ]; then
             echo "::error::Model file is missing entirely at $MODEL_FILE. Aborting build."
@@ -86,7 +95,15 @@ jobs:
             exit 1
           fi
 
-          echo "✓ Model file size-verified ($ACTUAL_SIZE bytes)"
+          ACTUAL_SHA256=$(sha256sum "$MODEL_FILE" | cut -d' ' -f1)
+          echo "Model file SHA256: $ACTUAL_SHA256"
+
+          if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo "::error::SHA256 mismatch! Expected $EXPECTED_SHA256 but got $ACTUAL_SHA256. The upstream file may have changed or the download may be corrupt — aborting build rather than packaging an unverified model."
+            exit 1
+          fi
+
+          echo "✓ Model file verified — size and SHA256 both match ($ACTUAL_SIZE bytes)"
 
       - name: Cache Gradle
         uses: actions/cache@v4
@@ -182,13 +199,14 @@ jobs:
           body: |
             ## ⚡ Luo OS ${{ github.ref_name }}
 
-            AI-native Android OS powered by **Gemma 3 1B-IT** — bundled inside the app,
-            fully offline from the moment you install it. No download step, no waiting.
+            AI-native Android OS powered by **Qwen2.5-1.5B-Instruct** (via llama.cpp) —
+            bundled inside the app, fully offline from the moment you install it.
+            No download step, no waiting. Same AI engine as the laptop version of Luo OS.
 
             ---
 
             ### 📲 Install
-            1. Download `${{ env.APK_NAME }}` below (~600 MB — this is a large file since
+            1. Download `${{ env.APK_NAME }}` below (~1.2 GB — this is a large file since
                the AI model ships inside it)
             2. On your phone: **Settings → Security → Install unknown apps** → allow your file manager
             3. Tap the APK → **Install**
@@ -201,7 +219,7 @@ jobs:
             - Android 12+ (API 31)
             - arm64 device (Snapdragon, Dimensity, Exynos — **not x86**)
             - 6 GB+ RAM
-            - ~1.5 GB free storage (model + app data)
+            - ~2 GB free storage (model + app data)
 
             **Tested on:** Poco X3 NFC · Snapdragon 732G · 8 GB RAM
 

@@ -1,16 +1,16 @@
 This directory is intentionally empty in version control.
 
-The Gemma 3 1B-IT model file (gemma3-1b-it-int4.task, ~555 MB) is
-downloaded into this directory by the GitHub Actions release workflow
-(.github/workflows/build-apk.yml) immediately before the Gradle build,
-then bundled into the APK as an uncompressed asset.
+The Qwen2.5-1.5B-Instruct model file (qwen2.5-1.5b-instruct-q4_k_m.gguf,
+~1.1 GB) is downloaded into this directory by the GitHub Actions release
+workflow (.github/workflows/build-apk.yml) immediately before the Gradle
+build, then bundled into the APK as an uncompressed asset.
 
-It is NOT committed to git — a 555 MB binary in git history would
+It is NOT committed to git — a 1.1 GB binary in git history would
 permanently bloat every future clone of this repository.
 
 To build locally, download the model yourself and place it here as:
-  android/app/src/main/assets/models/gemma3-1b-it-int4.task
+  android/app/src/main/assets/models/qwen2.5-1.5b-instruct-q4_k_m.gguf
 
-Source (community re-upload, not an official Google repo — see project
-history for details on why): 
-  https://huggingface.co/Usern123454321/custom_model.task
+Source (official Qwen repo, ungated, Apache-2.0 licensed — matches the
+laptop OS's own model source exactly, see luokai/core/model_engine.py):
+  https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF
