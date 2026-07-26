@@ -19,7 +19,11 @@ data class ChatMessage(
     val role: String,           // "user" | "assistant"
     val content: String,
     val isStreaming: Boolean = false,
-    val toolCalls: List<String> = emptyList()
+    val toolCalls: List<String> = emptyList(),
+    // Real reasoning trace for this message, shown as collapsible "thoughts"
+    // in the UI — one entry per ReAct iteration's Thought: line, plus an
+    // optional leading Plan entry. Empty for plain (non-agentic) responses.
+    val thoughts: List<String> = emptyList()
 )
 
 sealed class ShellState {
@@ -107,7 +111,13 @@ class ShellViewModel : ViewModel() {
         val userMsg = ChatMessage(role = "user", content = userText.trim())
         _messages.value = _messages.value + userMsg
 
-        // Add placeholder for assistant streaming response
+        // Add placeholder for the assistant's response. Since LuoAgent's
+        // ReAct loop calls llama.cpp non-streaming per-iteration (see
+        // LlamaInference.generate's doc comment), there's no token-by-token
+        // stream anymore — instead this placeholder fills in with each real
+        // Thought as it arrives, then the Final Answer once the loop
+        // completes. This is more honest than the old word-chunked fake
+        // streaming: what's shown IS the model's real reasoning trace.
         val assistantPlaceholder = ChatMessage(
             id = System.currentTimeMillis() + 1,
             role = "assistant",
@@ -120,8 +130,8 @@ class ShellViewModel : ViewModel() {
         _shellState.value = ShellState.Thinking
 
         viewModelScope.launch {
-            val streamedContent = StringBuilder()
             val toolCallsList = mutableListOf<String>()
+            val thoughtsList = mutableListOf<String>()
 
             service.agent.process(userText.trim(), conversationHistory.toList())
                 .collect { event ->
@@ -129,28 +139,47 @@ class ShellViewModel : ViewModel() {
                         is AgentEvent.Thinking -> {
                             // already set state above
                         }
-                        is AgentEvent.Token -> {
-                            streamedContent.append(event.text)
-                            // Update the streaming placeholder in real-time
+                        is AgentEvent.Plan -> {
+                            thoughtsList.add("Plan:\n${event.planText}")
                             _messages.value = _messages.value.dropLast(1) + assistantPlaceholder.copy(
-                                content = streamedContent.toString(),
+                                thoughts = thoughtsList.toList(),
+                                isStreaming = true
+                            )
+                        }
+                        is AgentEvent.ThoughtStep -> {
+                            thoughtsList.add(event.text)
+                            // Show the latest thought as the live "typing"
+                            // content — the user sees real reasoning happen,
+                            // not a placeholder spinner.
+                            _messages.value = _messages.value.dropLast(1) + assistantPlaceholder.copy(
+                                content = event.text,
+                                thoughts = thoughtsList.toList(),
                                 isStreaming = true
                             )
                         }
                         is AgentEvent.ToolCall -> {
-                            toolCallsList.add("⚙ ${event.toolName}(${event.params.take(60)})")
+                            toolCallsList.add("⚙ ${event.toolName}(${event.paramsRaw.take(60)})")
+                            _messages.value = _messages.value.dropLast(1) + assistantPlaceholder.copy(
+                                toolCalls = toolCallsList.toList(),
+                                thoughts = thoughtsList.toList(),
+                                isStreaming = true
+                            )
                         }
                         is AgentEvent.ToolResult -> {
                             toolCallsList.add("✓ ${event.toolName}: ${event.result.take(80)}")
-                            // Reset streamed content for next generation
-                            streamedContent.clear()
+                            _messages.value = _messages.value.dropLast(1) + assistantPlaceholder.copy(
+                                toolCalls = toolCallsList.toList(),
+                                thoughts = thoughtsList.toList(),
+                                isStreaming = true
+                            )
                         }
                         is AgentEvent.Done -> {
                             // Finalize the assistant message
                             _messages.value = _messages.value.dropLast(1) + assistantPlaceholder.copy(
                                 content = event.fullResponse.trim(),
                                 isStreaming = false,
-                                toolCalls = toolCallsList.toList()
+                                toolCalls = toolCallsList.toList(),
+                                thoughts = thoughtsList.toList()
                             )
                             // Update conversation history
                             conversationHistory.add(Pair("user", userText.trim()))
@@ -166,7 +195,8 @@ class ShellViewModel : ViewModel() {
                         is AgentEvent.Error -> {
                             _messages.value = _messages.value.dropLast(1) + assistantPlaceholder.copy(
                                 content = "⚠ ${event.message}",
-                                isStreaming = false
+                                isStreaming = false,
+                                thoughts = thoughtsList.toList()
                             )
                             _inputEnabled.value = true
                             _shellState.value = ShellState.Ready

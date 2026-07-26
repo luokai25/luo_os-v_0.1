@@ -120,10 +120,13 @@ Java_luoos_android_ai_LlamaInference_nativeLoadModel(
 
 // ─────────────────────────────────────────────────────────────────────────
 // nativeGenerate — tokenizes a prompt, runs the prefill + decode loop, and
-// returns the complete generated response as a single string. Streaming is
-// handled Kotlin-side by chunking this call per-turn from a coroutine (see
-// LlamaInference.kt); a true token-by-token native callback is a possible
-// future improvement but isn't required for correctness.
+// returns "<token_count>\x01<response_text>": the real number of tokens
+// generated this call, prefixed with a U+0001 delimiter, then the response
+// text. This lets Kotlin compute genuine tokens/sec instead of estimating
+// from character count (see LuoAgent/LlamaInference's GenerationResult).
+// Streaming is handled Kotlin-side by chunking this call per-turn from a
+// coroutine (see LlamaInference.kt); a true token-by-token native callback
+// is a possible future improvement but isn't required for correctness.
 // ─────────────────────────────────────────────────────────────────────────
 JNIEXPORT jstring JNICALL
 Java_luoos_android_ai_LlamaInference_nativeGenerate(
@@ -133,7 +136,7 @@ Java_luoos_android_ai_LlamaInference_nativeGenerate(
     auto* session = reinterpret_cast<LlamaSession*>(handle);
     if (!session || !session->ctx) {
         LOGE("nativeGenerate called with invalid session handle");
-        return env->NewStringUTF("");
+        return env->NewStringUTF("0\x01");
     }
 
     const std::string promptStr = jstringToStdString(env, prompt);
@@ -154,12 +157,17 @@ Java_luoos_android_ai_LlamaInference_nativeGenerate(
 
     if (n_prompt_tokens < 0) {
         LOGE("Tokenization failed, buffer too small");
-        return env->NewStringUTF("");
+        return env->NewStringUTF("0\x01");
     }
     promptTokens.resize(n_prompt_tokens);
 
     std::string response;
     response.reserve(maxTokens * 4); // rough estimate, grows if needed
+
+    // Tracks the REAL number of tokens actually generated this call — not
+    // maxTokens, since the loop below can end early (EOG token, decode
+    // failure). Declared outside the loop so it survives any `break`.
+    int tokensGenerated = 0;
 
     // Prefill: process the whole prompt in one batch.
     llama_batch batch = llama_batch_get_one(promptTokens.data(), n_prompt_tokens);
@@ -189,12 +197,19 @@ Java_luoos_android_ai_LlamaInference_nativeGenerate(
         if (pieceLen > 0) {
             response.append(pieceBuf, pieceLen);
         }
+        tokensGenerated++;
 
         // Next batch is just the single new token, continuing the sequence.
         batch = llama_batch_get_one(&newToken, 1);
     }
 
-    return env->NewStringUTF(response.c_str());
+    // Prefix the real token count so Kotlin can compute genuine tokens/sec
+    // rather than estimate it from character count. U+0001 (a control
+    // character) can't appear in valid generated text, so it's a safe,
+    // unambiguous delimiter — see LlamaInference.kt's generate() for the
+    // Kotlin-side parsing of this exact format.
+    std::string delimitedResult = std::to_string(tokensGenerated) + "\x01" + response;
+    return env->NewStringUTF(delimitedResult.c_str());
 }
 
 // ─────────────────────────────────────────────────────────────────────────

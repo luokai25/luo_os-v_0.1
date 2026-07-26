@@ -3,6 +3,7 @@ package luoos.android.ui.shell
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -191,7 +193,45 @@ private fun UserBubble(msg: ChatMessage) {
 
 @Composable
 private fun AssistantBubble(msg: ChatMessage) {
+    var thoughtsExpanded by remember { mutableStateOf(false) }
+
     Column(Modifier.fillMaxWidth()) {
+        // Real reasoning trace ("thoughts") — the model's actual Thought:
+        // lines from the ReAct loop, not a cosmetic loading animation.
+        // Collapsed by default so it doesn't clutter the chat for simple
+        // exchanges; tapping reveals the genuine step-by-step reasoning.
+        if (msg.thoughts.isNotEmpty()) {
+            Row(
+                Modifier
+                    .padding(start = 4.dp, bottom = 4.dp)
+                    .clickable { thoughtsExpanded = !thoughtsExpanded },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (thoughtsExpanded) "▾" else "▸",
+                    fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = LuoColors.textDim
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "${msg.thoughts.size} thought${if (msg.thoughts.size == 1) "" else "s"}",
+                    fontFamily = FontFamily.Monospace, fontSize = 11.sp,
+                    color = LuoColors.textDim, fontStyle = FontStyle.Italic
+                )
+            }
+            if (thoughtsExpanded) {
+                Column(Modifier.padding(start = 16.dp, bottom = 6.dp)) {
+                    msg.thoughts.forEachIndexed { index, thought ->
+                        Text(
+                            "${index + 1}. $thought",
+                            fontFamily = FontFamily.Monospace, fontSize = 11.sp,
+                            color = LuoColors.textDim, lineHeight = 15.sp,
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         msg.toolCalls.forEach { call ->
             Text(call, fontFamily = FontFamily.Monospace, fontSize = 11.sp,
                  color = LuoColors.textDim, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp))

@@ -122,19 +122,21 @@ class LuoTools(
         )
     )
 
-    /** Serialize all tools to a JSON string for prompt injection */
-    fun toPromptJson(): String {
-        val list = allTools.map { tool ->
-            buildString {
-                append("{\n")
-                append("  \"name\": \"${tool.name}\",\n")
-                append("  \"description\": \"${tool.description}\",\n")
-                append("  \"params\": {")
-                append(tool.params.entries.joinToString(", ") { (k, v) -> "\"$k\": \"$v\"" })
-                append("}\n}")
-            }
+    /**
+     * Compact tool description for the ReAct prompt, matching the laptop's
+     * real format (react_agent.py's _get_tools_description: "- name: desc"
+     * per line) rather than a full JSON schema per tool. This matters more
+     * on a phone than a laptop: Qwen2.5-1.5B has a small context window
+     * (N_CTX = 2048, see LlamaInference.kt), so every token spent describing
+     * tools is a token not available for actual conversation or reasoning.
+     * Param names are still included (in parens) since the model needs them
+     * to fill in a correct "Action Input:" JSON object.
+     */
+    fun toPromptDescription(): String {
+        return allTools.joinToString("\n") { tool ->
+            val paramNames = if (tool.params.isEmpty()) "" else " (${tool.params.keys.joinToString(", ")})"
+            "- ${tool.name}$paramNames: ${tool.description}"
         }
-        return "[\n${list.joinToString(",\n")}\n]"
     }
 
     // ─── Tool Executor ────────────────────────────────────────────────────────

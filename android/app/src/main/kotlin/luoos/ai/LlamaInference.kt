@@ -37,6 +37,19 @@ import java.io.FileOutputStream
  */
 class LlamaInference(private val context: Context) {
 
+    /**
+     * Result of a single generate() call — carries the actual measured
+     * performance numbers (from the native decode loop), not an estimate.
+     * LuoModelStats (below) aggregates these across calls for a rolling
+     * "how is the model performing right now" view.
+     */
+    data class GenerationResult(
+        val text: String,
+        val tokenCount: Int,
+        val elapsedMs: Long,
+        val tokensPerSecond: Double
+    )
+
     companion object {
         private const val TAG = "LlamaInference"
 
@@ -61,13 +74,6 @@ class LlamaInference(private val context: Context) {
         private const val TOP_K = 40
         private const val TOP_P = 0.9f
         private const val MAX_RESPONSE_TOKENS = 512
-
-        // Luo OS system prompt — injected before every conversation
-        private const val SYSTEM_PROMPT = """You are Luo, the AI core of Luo OS — an AI-native mobile operating system.
-You run fully offline on the user's device. You are helpful, direct, and technically capable.
-You can control the device by calling tools. When you need to perform an action, call the appropriate tool.
-Keep responses concise. When uncertain, say so. Never pretend to have internet access unless the web_search tool is called.
-You are the OS. Act like it."""
     }
 
     // Native session handle — 0 means "not loaded". Opaque to Kotlin; the
@@ -103,6 +109,12 @@ You are the OS. Act like it."""
         topP: Float
     ): Long
 
+    /**
+     * Returns "<token_count>\u0001<response_text>" — the native side prefixes
+     * the real count of tokens it generated (not an estimate), separated by
+     * a U+0001 control character that can't appear in valid generated text,
+     * so generate() above can split it back apart reliably.
+     */
     private external fun nativeGenerate(
         handle: Long,
         prompt: String,
@@ -195,6 +207,7 @@ You are the OS. Act like it."""
             }
 
             sessionHandle = handle
+            LuoModelStats.recordThreadsConfigured(N_THREADS)
             val elapsed = System.currentTimeMillis() - startMs
             Log.i(TAG, "✓ Qwen2.5-1.5B loaded in ${elapsed}ms")
             Result.success(Unit)
@@ -207,8 +220,11 @@ You are the OS. Act like it."""
     }
 
     /**
-     * Generate a response for the given conversation. Returns the complete
-     * response as a single string.
+     * Generate a response for the given conversation. Returns a
+     * GenerationResult carrying both the text and real performance stats
+     * (tokens generated, elapsed time, tokens/sec) — the actual, measured
+     * numbers rather than an estimate, since the native layer counts real
+     * decode calls (see luoos_llama_jni.cpp's nativeGenerate).
      *
      * NOTE: unlike the earlier MediaPipe-based implementation, this does not
      * stream token-by-token from native code — nativeGenerate runs the full
@@ -218,23 +234,60 @@ You are the OS. Act like it."""
      * native streaming callback (JNI calling back into Kotlin per-token) is
      * a reasonable future improvement, not required for correctness.
      *
-     * @param userMessage The user's message
-     * @param history     Previous turns as list of (role, content) pairs
-     * @param tools       JSON tool definitions to inject (for agent mode)
+     * @param userMessage  The user's message (or, for ReAct, the running
+     *                     scratchpad text — LuoAgent controls what actually
+     *                     goes here)
+     * @param history      Previous turns as list of (role, content) pairs
+     * @param systemPrompt The system prompt for this call. LuoAgent chooses
+     *                     which of LuoPrompts' three modes to use per call
+     *                     (ReAct/Planning/Reflection) — LlamaInference has
+     *                     no opinion on which prompt is "the" system prompt.
      */
     suspend fun generate(
         userMessage: String,
         history: List<Pair<String, String>> = emptyList(),
-        tools: String? = null
-    ): Result<String> = withContext(Dispatchers.Default) {
+        systemPrompt: String
+    ): Result<GenerationResult> = withContext(Dispatchers.Default) {
         try {
             if (sessionHandle == 0L) {
                 return@withContext Result.failure(IllegalStateException("Model not loaded"))
             }
 
-            val prompt = buildPrompt(userMessage, history, tools)
-            val response = nativeGenerate(sessionHandle, prompt, MAX_RESPONSE_TOKENS)
-            Result.success(response)
+            val prompt = buildPrompt(userMessage, history, systemPrompt)
+            val startMs = System.currentTimeMillis()
+            val rawResult = nativeGenerate(sessionHandle, prompt, MAX_RESPONSE_TOKENS)
+            val elapsedMs = System.currentTimeMillis() - startMs
+
+            // nativeGenerate returns "<token_count>\u0001<response_text>" —
+            // a real count from the native decode loop, not an estimate.
+            // See luoos_llama_jni.cpp's nativeGenerate doc comment for why
+            // this delimiter was chosen (a control character that can't
+            // appear in valid UTF-8 generated text).
+            val delimiterIndex = rawResult.indexOf('\u0001')
+            val (tokenCount, text) = if (delimiterIndex >= 0) {
+                val count = rawResult.substring(0, delimiterIndex).toIntOrNull() ?: 0
+                val body = rawResult.substring(delimiterIndex + 1)
+                Pair(count, body)
+            } else {
+                // Defensive fallback if the delimiter is ever missing —
+                // treat the whole thing as text with an unknown token count
+                // rather than crash.
+                Log.w(TAG, "nativeGenerate result missing token-count delimiter")
+                Pair(0, rawResult)
+            }
+
+            val tokensPerSecond = if (elapsedMs > 0 && tokenCount > 0) {
+                tokenCount / (elapsedMs / 1000.0)
+            } else 0.0
+
+            Result.success(
+                GenerationResult(
+                    text = text,
+                    tokenCount = tokenCount,
+                    elapsedMs = elapsedMs,
+                    tokensPerSecond = tokensPerSecond
+                )
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Generation error", e)
             Result.failure(e)
@@ -248,16 +301,12 @@ You are the OS. Act like it."""
     private fun buildPrompt(
         userMessage: String,
         history: List<Pair<String, String>>,
-        tools: String?
+        systemPrompt: String
     ): String {
         val sb = StringBuilder()
 
         sb.append("<|im_start|>system\n")
-        sb.append(SYSTEM_PROMPT)
-        if (tools != null) {
-            sb.append("\n\nAvailable tools (call using JSON):\n")
-            sb.append(tools)
-        }
+        sb.append(systemPrompt)
         sb.append("<|im_end|>\n")
 
         for ((role, content) in history) {
