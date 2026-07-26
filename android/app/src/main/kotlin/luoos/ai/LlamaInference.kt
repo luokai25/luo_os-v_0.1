@@ -24,7 +24,8 @@ import java.io.FileOutputStream
  * model family the laptop app uses (see luokai/core/model_engine.py),
  * sourced from the official, ungated Qwen/Qwen2.5-1.5B-Instruct-GGUF repo.
  *
- * Model is BUNDLED inside the APK as an asset (assets/models/*.gguf) and
+ * Model is BUNDLED inside the APK as an asset under assets/models (a .gguf
+ * file) and
  * extracted to internal storage once on first launch, same pattern as
  * before — llama.cpp's model loader needs a real filesystem path, not an
  * asset stream.
