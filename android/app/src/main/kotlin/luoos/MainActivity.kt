@@ -22,6 +22,11 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
+import luoos.android.ui.boot.BootScreen
+import luoos.android.ui.desktop.ComingSoonScreen
+import luoos.android.ui.desktop.DesktopScreen
+import luoos.android.ui.desktop.LuoAppTier
+import luoos.android.ui.desktop.luoDesktopApps
 import luoos.android.ui.shell.ShellScreen
 import luoos.android.ui.settings.SettingsScreen
 import luoos.android.ui.theme.LuoColors
@@ -69,6 +74,13 @@ fun LuoOSTheme(content: @Composable () -> Unit) {
 
 @Composable
 fun LuoOSRoot() {
+    var booted by remember { mutableStateOf(false) }
+
+    if (!booted) {
+        BootScreen(onFinished = { booted = true })
+        return
+    }
+
     val navController = rememberNavController()
     Scaffold(
         containerColor = LuoColors.background,
@@ -76,13 +88,27 @@ fun LuoOSRoot() {
     ) { innerPadding ->
         NavHost(
             navController   = navController,
-            startDestination = LuoScreen.Shell.route,
+            startDestination = "desktop",
             modifier        = Modifier.padding(innerPadding)
         ) {
+            composable("desktop") {
+                DesktopScreen(onOpenApp = { app ->
+                    navController.navigate(app.route)
+                })
+            }
             composable(LuoScreen.Shell.route)    { ShellScreen() }
             composable(LuoScreen.Agent.route)    { PlaceholderScreen("Agent Tasks", "Phase 3") }
             composable(LuoScreen.Memory.route)   { PlaceholderScreen("Memory", "Phase 3") }
             composable(LuoScreen.Settings.route) { SettingsScreen() }
+            // Every app not yet wired to a real screen falls through to
+            // ComingSoonScreen. Routes already registered explicitly above
+            // (shell/agent/memory/settings) are excluded here to avoid
+            // registering the same route twice, which NavHost rejects.
+            val alreadyRegisteredRoutes = setOf("shell", "agent", "memory", "settings")
+            luoDesktopApps.filter { it.route !in alreadyRegisteredRoutes }
+                .forEach { app ->
+                    composable(app.route) { ComingSoonScreen(app) }
+                }
         }
     }
 }
