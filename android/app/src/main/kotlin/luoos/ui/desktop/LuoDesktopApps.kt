@@ -30,15 +30,11 @@ val luoDesktopApps: List<LuoDesktopApp> = listOf(
     LuoDesktopApp("agent",     "Agent",    Icons.Default.SmartToy,    "agent",     LuoAppTier.BUILT),
     LuoDesktopApp("memory",    "Memory",   Icons.Default.Memory,      "memory",    LuoAppTier.BUILT),
     LuoDesktopApp("settings",  "Settings", Icons.Default.Settings,    "settings",  LuoAppTier.BUILT),
-
-    // Tier 1, planned but not yet wired to a real screen — still grouped
-    // visually with the built apps since they're next in line, but their
-    // tier reflects reality (tapping them shows "coming soon" for now).
-    LuoDesktopApp("files",     "Files",    Icons.Default.Folder,      "files",     LuoAppTier.CAMERA_TOOLS),
-    LuoDesktopApp("terminal",  "Terminal", Icons.Default.Terminal,    "terminal",  LuoAppTier.CAMERA_TOOLS),
-    LuoDesktopApp("notes",     "Notes",    Icons.Default.Notes,       "notes",     LuoAppTier.CAMERA_TOOLS),
-    LuoDesktopApp("calendar",  "Calendar", Icons.Default.CalendarMonth, "calendar", LuoAppTier.CAMERA_TOOLS),
-    LuoDesktopApp("calculator","Calc",     Icons.Default.Calculate,   "calculator",LuoAppTier.CAMERA_TOOLS),
+    LuoDesktopApp("files",     "Files",    Icons.Default.Folder,      "files",     LuoAppTier.BUILT),
+    LuoDesktopApp("terminal",  "Terminal", Icons.Default.Terminal,    "terminal",  LuoAppTier.BUILT),
+    LuoDesktopApp("notes",     "Notes",    Icons.Default.Notes,       "notes",     LuoAppTier.BUILT),
+    LuoDesktopApp("calendar",  "Calendar", Icons.Default.CalendarMonth, "calendar", LuoAppTier.BUILT),
+    LuoDesktopApp("calculator","Calc",     Icons.Default.Calculate,   "calculator",LuoAppTier.BUILT),
 
     // Tier 2 — camera-based tools, planned next
     LuoDesktopApp("handtracking", "Hand Track", Icons.Default.PanTool,       "handtracking", LuoAppTier.CAMERA_TOOLS),

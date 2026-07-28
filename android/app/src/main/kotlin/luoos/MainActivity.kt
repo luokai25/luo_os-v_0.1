@@ -22,6 +22,11 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
+import luoos.android.ui.apps.CalculatorScreen
+import luoos.android.ui.apps.CalendarScreen
+import luoos.android.ui.apps.FilesScreen
+import luoos.android.ui.apps.NotesScreen
+import luoos.android.ui.apps.TerminalScreen
 import luoos.android.ui.boot.BootScreen
 import luoos.android.ui.desktop.ComingSoonScreen
 import luoos.android.ui.desktop.DesktopScreen
@@ -100,11 +105,19 @@ fun LuoOSRoot() {
             composable(LuoScreen.Agent.route)    { PlaceholderScreen("Agent Tasks", "Phase 3") }
             composable(LuoScreen.Memory.route)   { PlaceholderScreen("Memory", "Phase 3") }
             composable(LuoScreen.Settings.route) { SettingsScreen() }
+            composable("files")     { FilesScreen() }
+            composable("terminal")  { TerminalScreen() }
+            composable("notes")     { NotesScreen() }
+            composable("calendar")  { CalendarScreen() }
+            composable("calculator"){ CalculatorScreen() }
             // Every app not yet wired to a real screen falls through to
             // ComingSoonScreen. Routes already registered explicitly above
-            // (shell/agent/memory/settings) are excluded here to avoid
-            // registering the same route twice, which NavHost rejects.
-            val alreadyRegisteredRoutes = setOf("shell", "agent", "memory", "settings")
+            // are excluded here to avoid registering the same route twice,
+            // which NavHost rejects.
+            val alreadyRegisteredRoutes = setOf(
+                "shell", "agent", "memory", "settings",
+                "files", "terminal", "notes", "calendar", "calculator"
+            )
             luoDesktopApps.filter { it.route !in alreadyRegisteredRoutes }
                 .forEach { app ->
                     composable(app.route) { ComingSoonScreen(app) }
