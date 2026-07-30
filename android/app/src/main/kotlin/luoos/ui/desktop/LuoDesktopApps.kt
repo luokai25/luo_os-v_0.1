@@ -41,10 +41,11 @@ val luoDesktopApps: List<LuoDesktopApp> = listOf(
     LuoDesktopApp("perception",   "Perception", Icons.Default.RemoveRedEye, "perception",   LuoAppTier.BUILT),
 
     // Tier 3 — AI-visualization screens
-    LuoDesktopApp("canvas",   "Mind Canvas", Icons.Default.Hub,        "canvas",   LuoAppTier.AI_VISUALIZATION),
-    LuoDesktopApp("dreams",   "Dreams",      Icons.Default.NightsStay, "dreams",   LuoAppTier.AI_VISUALIZATION),
-    LuoDesktopApp("cells",    "Cells",       Icons.Default.Grain,      "cells",    LuoAppTier.AI_VISUALIZATION),
-    LuoDesktopApp("sovereign","Sovereign",   Icons.Default.Shield,     "sovereign",LuoAppTier.AI_VISUALIZATION),
+    // Tier 3 — AI-visualization screens, now built
+    LuoDesktopApp("canvas",   "Mind Canvas", Icons.Default.Hub,        "canvas",   LuoAppTier.BUILT),
+    LuoDesktopApp("dreams",   "Dreams",      Icons.Default.NightsStay, "dreams",   LuoAppTier.BUILT),
+    LuoDesktopApp("cells",    "Cells",       Icons.Default.Grain,      "cells",    LuoAppTier.BUILT),
+    LuoDesktopApp("sovereign","Sovereign",   Icons.Default.Shield,     "sovereign",LuoAppTier.BUILT),
 
     // Tier 4 — larger, best-effort/simplified features
     LuoDesktopApp("browser",     "Browser",     Icons.Default.Public,     "browser",     LuoAppTier.LARGE_FEATURE),

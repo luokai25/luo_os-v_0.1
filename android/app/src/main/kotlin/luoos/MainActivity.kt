@@ -24,10 +24,14 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import luoos.android.ui.apps.CalculatorScreen
 import luoos.android.ui.apps.CalendarScreen
+import luoos.android.ui.apps.CellsScreen
+import luoos.android.ui.apps.DreamsScreen
 import luoos.android.ui.apps.FilesScreen
 import luoos.android.ui.apps.HandTrackingScreen
+import luoos.android.ui.apps.MindCanvasScreen
 import luoos.android.ui.apps.NotesScreen
 import luoos.android.ui.apps.PerceptionScreen
+import luoos.android.ui.apps.SovereignScreen
 import luoos.android.ui.apps.TerminalScreen
 import luoos.android.ui.boot.BootScreen
 import luoos.android.ui.desktop.ComingSoonScreen
@@ -114,6 +118,10 @@ fun LuoOSRoot() {
             composable("calculator"){ CalculatorScreen() }
             composable("handtracking") { HandTrackingScreen() }
             composable("perception")   { PerceptionScreen() }
+            composable("canvas")    { MindCanvasScreen() }
+            composable("dreams")    { DreamsScreen() }
+            composable("cells")     { CellsScreen() }
+            composable("sovereign") { SovereignScreen() }
             // Every app not yet wired to a real screen falls through to
             // ComingSoonScreen. Routes already registered explicitly above
             // are excluded here to avoid registering the same route twice,
@@ -121,7 +129,8 @@ fun LuoOSRoot() {
             val alreadyRegisteredRoutes = setOf(
                 "shell", "agent", "memory", "settings",
                 "files", "terminal", "notes", "calendar", "calculator",
-                "handtracking", "perception"
+                "handtracking", "perception",
+                "canvas", "dreams", "cells", "sovereign"
             )
             luoDesktopApps.filter { it.route !in alreadyRegisteredRoutes }
                 .forEach { app ->
