@@ -36,9 +36,9 @@ val luoDesktopApps: List<LuoDesktopApp> = listOf(
     LuoDesktopApp("calendar",  "Calendar", Icons.Default.CalendarMonth, "calendar", LuoAppTier.BUILT),
     LuoDesktopApp("calculator","Calc",     Icons.Default.Calculate,   "calculator",LuoAppTier.BUILT),
 
-    // Tier 2 — camera-based tools, planned next
-    LuoDesktopApp("handtracking", "Hand Track", Icons.Default.PanTool,       "handtracking", LuoAppTier.CAMERA_TOOLS),
-    LuoDesktopApp("perception",   "Perception", Icons.Default.RemoveRedEye, "perception",   LuoAppTier.CAMERA_TOOLS),
+    // Tier 2 — camera-based tools, now built
+    LuoDesktopApp("handtracking", "Hand Track", Icons.Default.PanTool,       "handtracking", LuoAppTier.BUILT),
+    LuoDesktopApp("perception",   "Perception", Icons.Default.RemoveRedEye, "perception",   LuoAppTier.BUILT),
 
     // Tier 3 — AI-visualization screens
     LuoDesktopApp("canvas",   "Mind Canvas", Icons.Default.Hub,        "canvas",   LuoAppTier.AI_VISUALIZATION),

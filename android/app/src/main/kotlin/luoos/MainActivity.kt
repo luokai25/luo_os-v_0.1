@@ -25,7 +25,9 @@ import androidx.navigation.compose.*
 import luoos.android.ui.apps.CalculatorScreen
 import luoos.android.ui.apps.CalendarScreen
 import luoos.android.ui.apps.FilesScreen
+import luoos.android.ui.apps.HandTrackingScreen
 import luoos.android.ui.apps.NotesScreen
+import luoos.android.ui.apps.PerceptionScreen
 import luoos.android.ui.apps.TerminalScreen
 import luoos.android.ui.boot.BootScreen
 import luoos.android.ui.desktop.ComingSoonScreen
@@ -110,13 +112,16 @@ fun LuoOSRoot() {
             composable("notes")     { NotesScreen() }
             composable("calendar")  { CalendarScreen() }
             composable("calculator"){ CalculatorScreen() }
+            composable("handtracking") { HandTrackingScreen() }
+            composable("perception")   { PerceptionScreen() }
             // Every app not yet wired to a real screen falls through to
             // ComingSoonScreen. Routes already registered explicitly above
             // are excluded here to avoid registering the same route twice,
             // which NavHost rejects.
             val alreadyRegisteredRoutes = setOf(
                 "shell", "agent", "memory", "settings",
-                "files", "terminal", "notes", "calendar", "calculator"
+                "files", "terminal", "notes", "calendar", "calculator",
+                "handtracking", "perception"
             )
             luoDesktopApps.filter { it.route !in alreadyRegisteredRoutes }
                 .forEach { app ->
