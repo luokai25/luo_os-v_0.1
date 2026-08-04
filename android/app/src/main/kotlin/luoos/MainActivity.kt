@@ -22,17 +22,21 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
+import luoos.android.ui.apps.BrowserScreen
 import luoos.android.ui.apps.CalculatorScreen
 import luoos.android.ui.apps.CalendarScreen
 import luoos.android.ui.apps.CellsScreen
+import luoos.android.ui.apps.CodeScreen
 import luoos.android.ui.apps.DreamsScreen
 import luoos.android.ui.apps.FilesScreen
 import luoos.android.ui.apps.HandTrackingScreen
 import luoos.android.ui.apps.MindCanvasScreen
+import luoos.android.ui.apps.MusicScreen
 import luoos.android.ui.apps.NotesScreen
 import luoos.android.ui.apps.PerceptionScreen
 import luoos.android.ui.apps.SovereignScreen
 import luoos.android.ui.apps.TerminalScreen
+import luoos.android.ui.apps.VsCodeScreen
 import luoos.android.ui.boot.BootScreen
 import luoos.android.ui.desktop.ComingSoonScreen
 import luoos.android.ui.desktop.DesktopScreen
@@ -122,6 +126,10 @@ fun LuoOSRoot() {
             composable("dreams")    { DreamsScreen() }
             composable("cells")     { CellsScreen() }
             composable("sovereign") { SovereignScreen() }
+            composable("browser") { BrowserScreen() }
+            composable("code")    { CodeScreen() }
+            composable("vscode")  { VsCodeScreen() }
+            composable("music")   { MusicScreen() }
             // Every app not yet wired to a real screen falls through to
             // ComingSoonScreen. Routes already registered explicitly above
             // are excluded here to avoid registering the same route twice,
@@ -130,7 +138,8 @@ fun LuoOSRoot() {
                 "shell", "agent", "memory", "settings",
                 "files", "terminal", "notes", "calendar", "calculator",
                 "handtracking", "perception",
-                "canvas", "dreams", "cells", "sovereign"
+                "canvas", "dreams", "cells", "sovereign",
+                "browser", "code", "vscode", "music"
             )
             luoDesktopApps.filter { it.route !in alreadyRegisteredRoutes }
                 .forEach { app ->
