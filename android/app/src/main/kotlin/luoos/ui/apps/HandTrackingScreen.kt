@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.pose.Pose
 import com.google.mlkit.vision.pose.PoseDetection
